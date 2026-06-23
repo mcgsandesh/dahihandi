@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+/* आपल्या थीमचे प्रीमियम रंग Tailwind v4 नुसार इथे मॅप करूया */
+@theme {
+  --color-bhagwa: #ff6600;
+  --color-bhagwa-light: #fff3e0;
+  --color-bhagwa-dark: #e65c00;
+  --color-navy-sidebar: #0b132b;
+  --color-navy-bg: #f4f6f9;
+  --color-navy-text: #1e293b;
+}

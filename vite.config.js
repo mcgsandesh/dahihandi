@@ -4,10 +4,12 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/dahihandi/', // 👈 १. सर्वात महत्त्वाचं: हा बेस पाथ इथे हवाच!
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: 'inline', // 👈 PWA ला योग्य पाथवर रजिस्टर करण्यासाठी
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
         name: 'DahiHandi Management System',
@@ -17,6 +19,8 @@ export default defineConfig({
         background_color: '#f8fafc',
         display: 'standalone',
         orientation: 'portrait',
+        scope: '/dahihandi/',      // 👈 २. PWA चा एरिया ठरवण्यासाठी
+        start_url: '/dahihandi/',  // 👈 ३. ॲप ओपन झाल्यावर कोणत्या पाथने सुरू व्हावे यासाठी
         icons: [
           {
             src: 'pwa-192x192.png',

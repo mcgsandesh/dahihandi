@@ -12,7 +12,7 @@ export default defineConfig({
       injectRegister: 'inline', // 👈 PWA ला योग्य पाथवर रजिस्टर करण्यासाठी
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'DahiHandi Management System',
+        name: 'DahiHandi Management Platform',
         short_name: 'DahiHandi APP',
         description: 'Manage teams, t-shirt reports, and insurance details easily.',
         theme_color: '#ff6600', // आपला ऑरेंज ब्रँड कलर
@@ -23,17 +23,17 @@ export default defineConfig({
         start_url: '/dahihandi/',  // 👈 ३. ॲप ओपन झाल्यावर कोणत्या पाथने सुरू व्हावे यासाठी
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'icon-192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'icon-512.png',
             sizes: '512x512',
             type: 'image/png'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'icon-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'

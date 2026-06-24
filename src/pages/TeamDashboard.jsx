@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, doc, setDoc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { LayoutDashboard, LogOut, Shield, Shirt, Users, Search, Plus, User, Image, X, Edit2, Trash2, Check, Copy, CheckCircle, Link2, FileText, Phone, MessageSquare } from 'lucide-react';
+import { collection, doc, setDoc, serverTimestamp, updateDoc, query, where, onSnapshot } from 'firebase/firestore'; 
+import { LayoutDashboard, LogOut, Shield, Shirt, Users, Search, Plus, User, Image as ImageIcon, X, Edit2, Trash2, Check, Copy, CheckCircle, FileText, Phone, MessageSquare, MoreVertical, Check as CheckIcon } from 'lucide-react';
 import Swal from 'sweetalert2';
 import Reports from '../components/Reports';
+import TshirtForm from '../components/TshirtForm'; 
+import TeamProfile from '../components/TeamProfile'; 
+
 
 export default function TeamDashboard({ user, onLogout }) {
   
@@ -24,12 +27,16 @@ export default function TeamDashboard({ user, onLogout }) {
   const [customShorts, setCustomShorts] = useState('');
 
   const [isFormActive, setIsFormActive] = useState(user.isFormActive !== false);
+  
+  // 🎯 सुरुवातीला प्रॉपमधून आलेल्या डेटाने स्टेट सेट होईल
   const [teamData, setTeamData] = useState({
     teamCategory: user.teamCategory || 'Men',
     address: user.address || '',
     establishedYear: user.establishedYear || '',
     slogan: user.slogan || '',
-    logoUrl: user.logoUrl || ''
+    logoUrl: user.logoUrl || '',
+    aboutTeam: user.aboutTeam || '', 
+    bestPerformance: user.bestPerformance || '' 
   });
 
   // खेळाडू फॉर्म फील्ड्स
@@ -44,11 +51,12 @@ export default function TeamDashboard({ user, onLogout }) {
   const [needTowel, setNeedTowel] = useState('No');
   const [pyramidPlace, setPyramidPlace] = useState('Base'); 
   const [insuranceStatus, setInsuranceStatus] = useState('Pending');
+  const [tshirtGiven, setTshirtGiven] = useState('No'); 
 
   // ==========================================
   // 📌 SECTION 2: SMART CORE HELPERS
   // ==========================================
-  const shareLink = `${window.location.origin}/${(user.teamName || '').toLowerCase().trim().replace(/\s+/g, '-')}/register?t=${btoa(user.uid)}`;
+  const shareLink = `${window.location.origin}${import.meta.env.BASE_URL}${(user.teamName || '').toLowerCase().trim().replace(/\s+/g, '-')}/register?t=${btoa(user.uid)}`;
 
   const handleCopyLink = () => {
     try {
@@ -69,13 +77,6 @@ export default function TeamDashboard({ user, onLogout }) {
       });
       setTimeout(() => setCopied(false), 2000);
     } catch (err) { console.error(err); }
-  };
-
-  const handleDateMask = (value) => {
-    const v = value.replace(/\D/g, '').slice(0, 8);
-    if (v.length >= 5) return `${v.slice(0, 2)}/${v.slice(2, 4)}/${v.slice(4, 8)}`;
-    else if (v.length >= 3) return `${v.slice(0, 2)}/${v.slice(2, 4)}`;
-    return v;
   };
 
   const getInitials = (name) => {
@@ -104,21 +105,58 @@ export default function TeamDashboard({ user, onLogout }) {
     } catch (e) { return '—'; }
   };
 
-  const fetchPlayers = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, "players"));
+  // 🎯 १. 🔄 नवीन मास्टर लिसनर: ॲडमीनचा स्वतःचा प्रोफाईल डेटा (users) लाईव्ह सिंक करण्यासाठी (0 Read Extra Loss)
+  useEffect(() => {
+    const adminEmail = user.email || user.info?.email;
+    if (!adminEmail) return;
+
+    console.log("⚡ Listening for admin profile sync:", adminEmail);
+    const userDocRef = doc(db, "users", adminEmail);
+
+    const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        console.log("👑 Live Admin Data Sync Success!");
+        setTeamData({
+          teamCategory: data.teamCategory || 'Men',
+          address: data.address || '',
+          establishedYear: data.establishedYear || '',
+          slogan: data.slogan || '',
+          logoUrl: data.logoUrl || '',
+          aboutTeam: data.aboutTeam || '',
+          bestPerformance: data.bestPerformance || ''
+        });
+        setIsFormActive(data.isFormActive !== false);
+      }
+    });
+
+    return () => unsubscribeUser();
+  }, [user]);
+
+  // 🔄 खेळाडू यादीसाठी रिअर-टाइम लिसनर
+  useEffect(() => {
+    if (!user?.teamName) return;
+
+    console.log("⚡ Listening for players of team:", user.teamName);
+    
+    const playersRef = collection(db, "players");
+    const q = query(playersRef, where("teamName", "==", user.teamName));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const players = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        if (data.teamName === user.teamName && !data.isDeleted) { 
-          players.push({ id: doc.id, ...data }); 
+        if (data.isDeleted !== true) {
+          players.push({ id: doc.id, ...data });
         }
       });
       setPlayersList(players);
-    } catch (err) { console.error(err); }
-  };
+    }, (err) => {
+      console.error("डेटा लाईव्ह आणताना एरर आला:", err);
+    });
 
-  useEffect(() => { fetchPlayers(); }, []);
+    return () => unsubscribe();
+  }, [user?.teamName]);
 
   // ==========================================
   // 📌 SECTION 3: EDIT, TOGGLE & DATA WRITERS
@@ -127,7 +165,6 @@ export default function TeamDashboard({ user, onLogout }) {
     const nextStatus = currentStatus === 'Done' || currentStatus === 'झालेले' ? 'Pending' : 'Done';
     try {
       await updateDoc(doc(db, "players", id), { insurance: nextStatus });
-      fetchPlayers(); 
       Swal.fire({
         toast: true,
         position: 'top-end',
@@ -166,6 +203,7 @@ export default function TeamDashboard({ user, onLogout }) {
       setNeedTowel(player.towel || 'No');
       setPyramidPlace(player.pyramidPlace || 'Base');
       setInsuranceStatus(player.insurance === 'झालेले' || player.insurance === 'Done' ? 'Done' : 'Pending');
+      setTshirtGiven(player.tshirtGiven === 'Yes' || player.tshirtGiven === 'दिलेला' ? 'Yes' : 'No'); 
     } else {
       setEditingPlayerId(null);
       setPlayerName('');
@@ -181,12 +219,25 @@ export default function TeamDashboard({ user, onLogout }) {
       setNeedTowel('No');
       setPyramidPlace('Base');
       setInsuranceStatus('Pending');
+      setTshirtGiven('No'); 
     }
     setIsModalOpen(true);
   };
 
   const handleSavePlayer = async (e) => {
     e.preventDefault();
+
+    if (user && user.isDeleted === true) {
+      Swal.fire({
+        icon: 'error',
+        title: 'प्रवेश नाकारला!',
+        text: 'तुमचे अकाउंट बंद करण्यात आले आहे.',
+        confirmButtonColor: '#ff6600',
+      });
+      setIsModalOpen(false); 
+      return; 
+    }
+
     if (!playerName || birthDate.length < 10 || !mobileNumber) {
       Swal.fire({ icon: 'warning', title: 'माहिती अपूर्ण!', text: 'कृपया पूर्ण माहिती अचूक भरा.', confirmButtonColor: '#ff6600' });
       return;
@@ -201,7 +252,8 @@ export default function TeamDashboard({ user, onLogout }) {
         await updateDoc(doc(db, "players", editingPlayerId), {
           name: playerName.trim(), gender, dob: birthDate, mobile: mobileNumber.trim(),
           blood: bloodGroup, tshirt: finalTshirt, shorts: finalShorts, belt: needBelt, towel: needTowel,
-          pyramidPlace, insurance: insuranceStatus, updatedAt: serverTimestamp()
+          pyramidPlace, insurance: insuranceStatus, tshirtGiven: tshirtGiven,
+          updatedAt: serverTimestamp()
         });
         Swal.fire({ icon: 'success', title: 'यशस्वी!', text: 'खेळाडूची माहिती सुधारली!', confirmButtonColor: '#0b132b' });
       } else {
@@ -209,13 +261,32 @@ export default function TeamDashboard({ user, onLogout }) {
         await setDoc(doc(db, "players", playerId), {
           name: playerName.trim(), gender, dob: birthDate, mobile: mobileNumber.trim(),
           blood: bloodGroup, tshirt: finalTshirt, shorts: finalShorts, belt: needBelt, towel: needTowel,
-          pyramidPlace, insurance: insuranceStatus, teamName: user.teamName, year: user.currentYear || "2026", createdAt: serverTimestamp()
+          pyramidPlace, insurance: insuranceStatus, tshirtGiven: tshirtGiven,
+          teamName: user.teamName, year: user.currentYear || "2026", createdAt: serverTimestamp()
         });
         Swal.fire({ icon: 'success', title: 'नोंदणी पूर्ण!', text: 'खेळाडू यशस्वी जोडला गेला.', confirmButtonColor: '#ff6600' });
       }
       setIsModalOpen(false);
-      fetchPlayers();
-    } catch (err) { Swal.fire({ icon: 'error', title: 'त्रुटी!', text: 'अडचण आली.' }); } finally { setLoading(false); }
+    } catch (err) { 
+      Swal.fire({ icon: 'error', title: 'त्रुटी!', text: 'अडचण आली.' }); 
+    } finally { 
+      setLoading(false); 
+    }
+  };
+
+  const handleFastToggleTshirt = async (id, currentStatus) => {
+    const nextStatus = currentStatus === 'Yes' ? 'No' : 'Yes';
+    try {
+      await updateDoc(doc(db, "players", id), { tshirtGiven: nextStatus });
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: `टी-शर्ट वाटप: ${nextStatus === 'Yes' ? 'दिलेला आहे' : 'बाकी आहे'}`,
+        showConfirmButton: false,
+        timer: 1500
+      });
+    } catch (err) { console.error(err); }
   };
 
   const handleSoftDelete = async (id, name) => {
@@ -233,7 +304,6 @@ export default function TeamDashboard({ user, onLogout }) {
         try {
           await updateDoc(doc(db, "players", id), { isDeleted: true, deletedAt: serverTimestamp() });
           Swal.fire({ icon: 'success', title: 'काढून टाकले!', text: 'खेळाडू यादीतून काढला गेला आहे.', confirmButtonColor: '#0b132b' });
-          fetchPlayers();
         } catch (err) { Swal.fire('त्रुटी!', 'अडचण आली.', 'error'); }
       }
     });
@@ -242,20 +312,10 @@ export default function TeamDashboard({ user, onLogout }) {
   const handleToggleFormStatus = async () => {
     const nextStatus = !isFormActive;
     setIsFormActive(nextStatus);
-    try { await updateDoc(doc(db, "users", user.info.email), { isFormActive: nextStatus }); } catch (err) { setIsFormActive(isFormActive); }
+    try { await updateDoc(doc(db, "users", user.email || user.info?.email), { isFormActive: nextStatus }); } catch (err) { setIsFormActive(isFormActive); }
   };
 
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await updateDoc(doc(db, "users", user.info.email), { ...teamData });
-      Swal.fire({ icon: 'success', title: 'जतन झाले!', text: 'संघ प्रोफाईल अपडेट झाली.', confirmButtonColor: '#0b132b' });
-      setIsEditMode(false);
-    } catch (err) { Swal.fire('त्रुटी!', 'अपयश आले.', 'error'); } finally { setLoading(false); }
-  };
-
-  const filteredPlayers = playersList.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.mobile.includes(searchTerm));
+  const filteredPlayers = playersList.filter(p => p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || p.mobile?.includes(searchTerm));
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans antialiased pb-16 md:pb-0 text-slate-800">
@@ -288,9 +348,7 @@ export default function TeamDashboard({ user, onLogout }) {
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="w-full space-y-6">
           
-          {/* ==========================================
-          // 📊 MODERN DASHBOARD VIEW (5 CARDS IN ROW)
-          // ========================================== */}
+          {/* 📊 MODERN DASHBOARD VIEW */}
           {activeTab === 'dashboard' && (() => {
             const tshirtCounts = {};
             const shortsCounts = {};
@@ -317,7 +375,6 @@ export default function TeamDashboard({ user, onLogout }) {
                   </button>
                 </div>
 
-                {/* 🎯 ५ कडक प्रीमियम स्टॅट्स कार्ड्स एका सरळ रेषेत (Desktop: grid-cols-5, Mobile: grid-cols-3) */}
                 <div className="grid grid-cols-3 md:grid-cols-5 gap-3 md:gap-5">
                   <div onClick={() => setActiveTab('players')} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100/60 cursor-pointer hover:shadow-md transition-all flex flex-col justify-between">
                     <div className="flex items-center justify-between">
@@ -365,10 +422,7 @@ export default function TeamDashboard({ user, onLogout }) {
                   </div>
                 </div>
 
-                {/* 🏛️ २-कॉलम लेआउट (डावीकडे सुंदर चार्ट्स, उजवीकडे क्लिन टेबल) */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  
-                  {/* डावीकडील ५-कॉलम आकाराचे कडक वितरण */}
                   <div className="lg:col-span-5 bg-white p-6 rounded-3xl shadow-sm border border-slate-100/60 space-y-5">
                     <div>
                       <h3 className="text-sm font-black text-slate-800 tracking-wide border-b pb-2">टी-शर्ट साईझ वितरण</h3>
@@ -394,7 +448,6 @@ export default function TeamDashboard({ user, onLogout }) {
                       </div>
                     </div>
 
-                    {/* अतिरिक्त साहित्य व्यवस्थापन काउंटर्स */}
                     {(totalBelt > 0 || totalTowel > 0) && (
                       <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-3">
                         {totalBelt > 0 && <div className="bg-slate-50 p-3 rounded-xl text-xs font-bold text-slate-600 flex justify-between items-center"><span>Belt :</span><span className="font-black text-slate-900 bg-white shadow-sm px-2 py-0.5 rounded-lg">{totalBelt}</span></div>}
@@ -403,11 +456,8 @@ export default function TeamDashboard({ user, onLogout }) {
                     )}
                   </div>
 
-                  {/* उजवीकडील ७-कॉलम आकाराचे कडिंग 'अलीकडील नोंदी' टेबल व्ह्यू */}
                   <div className="lg:col-span-7 bg-white p-6 rounded-3xl shadow-sm border border-slate-100/60 overflow-hidden flex flex-col justify-between">
-                    <div className="mb-4">
-                      <h3 className="text-sm font-black text-slate-800 tracking-wide">अलीकडील ५ नोंदणीकृत खेळाडू</h3>
-                    </div>
+                    <div className="mb-4"><h3 className="text-sm font-black text-slate-800 tracking-wide">अलीकडील ५ नोंदणीकृत खेळाडू</h3></div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                         <thead>
@@ -440,10 +490,8 @@ export default function TeamDashboard({ user, onLogout }) {
                       </table>
                     </div>
                   </div>
-
                 </div>
 
-                {/* जलद कृती बटन्स */}
                 <div className="space-y-2.5">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">जलद कृती</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -457,107 +505,181 @@ export default function TeamDashboard({ user, onLogout }) {
             );
           })()}
 
-          {/* ==========================================
-          // 👥 VIEW 2: PLAYERS MANAGEMENT LIST
-          // ========================================== */}
+          {/* 👥 VIEW 2: PLAYERS MANAGEMENT LIST */}
           {activeTab === 'players' && (
             <>
-              <div className="border-b border-slate-200 pb-3"><h1 className="text-xl font-black text-slate-800">खेळाडू यादी ({filteredPlayers.length})</h1></div>
-              <div className="w-full relative"><span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><Search size={18} /></span><input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="नाव किंवा मोबाईलने शोधा..." className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-sm focus:outline-none" /></div>
+              <div className="border-b border-slate-200 pb-3 flex items-center space-x-2">
+                <button 
+                  onClick={() => setActiveTab('dashboard')} 
+                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-600 active:bg-slate-200 transition-all flex items-center justify-center"
+                  title="मागे जा"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"></path>
+                  </svg>
+                </button>
+                <h1 className="text-xl font-black text-slate-800">खेळाडू यादी ({filteredPlayers.length})</h1>
+              </div>
+
+              <div className="w-full relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                  <Search size={18} />
+                </span>
+                <input 
+                  type="text" 
+                  value={searchTerm} 
+                  onChange={(e) => setSearchTerm(e.target.value)} 
+                  placeholder="नाव किंवा मोबाईलने शोधा..." 
+                  className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-sm focus:outline-none" 
+                />
+              </div>
               
               <div className="bg-white rounded-3xl shadow-sm border border-slate-100 divide-y divide-slate-100 overflow-hidden">
                 {filteredPlayers.length === 0 ? (
                   <div className="p-6 text-center text-slate-400 text-xs font-medium">एकही खेळाडू उपलब्ध नाही.</div>
                 ) : (
-                  filteredPlayers.map((p) => (
-                    <div key={p.id} className="p-4 flex items-center justify-between hover:bg-slate-50/60 transition-all">
-                      <div className="flex items-center space-x-3.5 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-[#ff6600]/10 border border-[#ff6600]/20 flex items-center justify-center text-xs font-black text-[#ff6600] flex-shrink-0">
-                          {getInitials(p.name)}
+                  filteredPlayers.map((p, index) => {
+                    const isLastRecords = index >= filteredPlayers.length - 2 && filteredPlayers.length > 2;
+
+                    return (
+                      <div key={p.id} className="p-4 flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 hover:bg-slate-50/40 transition-all relative">
+                        
+                        <div className="flex items-center space-x-3.5 min-w-0 flex-1">
+                          <div className="w-10 h-10 rounded-full bg-[#ff6600]/10 border border-[#ff6600]/20 flex items-center justify-center text-xs font-black text-[#ff6600] flex-shrink-0">
+                            {getInitials(p.name)}
+                          </div>
+                          <div className="truncate">
+                            <h4 className="text-sm font-bold text-slate-800 truncate">{p.name}</h4>
+                            <p className="text-[11px] text-slate-400 font-bold mt-0.5">
+                              वय: {calculateAge(p.dob)} <span className="mx-1 text-slate-200">|</span> T: {p.tshirt} <span className="mx-1 text-slate-200">|</span> S: {p.shorts || '—'}
+                            </p>
+                          </div>
                         </div>
-                        <div className="truncate">
-                          <h4 className="text-sm font-bold text-slate-800 truncate">{p.name}</h4>
-                          <p className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-1.5 flex-wrap">
-                            <span>वय: {calculateAge(p.dob)}</span>
-                            <span className="text-slate-300">|</span>
-                            <span>T: {p.tshirt}</span>
-                            <span className="text-slate-300">|</span>
-                            <span>S: {p.shorts}</span>
-                            <span className="text-slate-300">|</span>
-                            <span 
+
+                        <div className="flex items-center space-x-3 justify-between md:justify-end">
+                          
+                          <div className="flex items-center space-x-2 flex-1 md:flex-initial pt-1 md:pt-0">
+                            <button 
                               onClick={() => handleFastToggleInsurance(p.id, p.insurance)}
-                              className={`cursor-pointer px-2 py-0.5 rounded text-[10px] font-bold ${p.insurance === 'Done' || p.insurance === 'झालेले' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}
+                              className={`flex-1 md:flex-initial md:w-32 text-center py-2 md:py-1 rounded-xl text-[10px] font-black tracking-wide uppercase transition-all border ${
+                                p.insurance === 'Done' || p.insurance === 'झालेले' 
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 active:bg-emerald-100' 
+                                  : 'bg-red-50 text-red-600 border-red-200 active:bg-red-100'
+                              }`}
                             >
-                              {p.insurance === 'Done' || p.insurance === 'झालेले' ? 'विमा पूर्ण' : 'विमा प्रलंबित'}
-                            </span>
-                          </p>
+                              {p.insurance === 'Done' || p.insurance === 'झालेले' ? '🛡️ विमा पूर्ण' : '⏳ विमा प्रलंबित'}
+                            </button>
+
+                            <button 
+                              onClick={() => handleFastToggleTshirt(p.id, p.tshirtGiven)}
+                              className={`flex-1 md:flex-initial md:w-32 text-center py-2 md:py-1 rounded-xl text-[10px] font-black tracking-wide uppercase transition-all border ${
+                                p.tshirtGiven === 'Yes' 
+                                  ? 'bg-purple-600 text-white border-purple-600 shadow-sm active:bg-purple-700' 
+                                  : 'bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 active:bg-purple-200'
+                              }`}
+                            >
+                              {p.tshirtGiven === 'Yes' ? '👕 टी-शर्ट दिला' : '📦 टी-शर्ट बाकी'}
+                            </button>
+                          </div>
+
+                          <div className="relative flex items-center">
+                            <div className="hidden md:flex items-center space-x-1.5 mr-2">
+                              <a href={`tel:${p.mobile}`} title="कॉल करा" className="p-2 hover:bg-green-50 text-green-600 rounded-xl transition-all"><Phone size={16} /></a>
+                              <a href={`https://wa.me/91${p.mobile}`} target="_blank" rel="noreferrer" title="व्हॉट्सॲप" className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-xl transition-all"><MessageSquare size={16} /></a>
+                              <button onClick={() => openPlayerModal(p)} title="सुधार करा" className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-all"><Edit2 size={16} /></button>
+                              <button onClick={() => handleSoftDelete(p.id, p.name)} title="काढून टाका" className="p-2 hover:bg-red-50 text-red-500 rounded-xl transition-all"><Trash2 size={16} /></button>
+                            </div>
+
+                            <div className="relative group md:hidden">
+                              <button className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-all focus:outline-none">
+                                <MoreVertical size={18} />
+                              </button>
+                              
+                              <div className={`absolute right-0 bg-white border border-slate-200 rounded-xl shadow-2xl py-1.5 w-32 hidden group-focus-within:block group-hover:block z-50 pointer-events-auto animate-in fade-in duration-150 ${
+                                isLastRecords 
+                                  ? 'bottom-9 top-auto origin-bottom slide-in-from-bottom-2' 
+                                  : 'top-9 bottom-auto origin-top slide-in-from-top-2'
+                              }`}>
+                                <a href={`tel:${p.mobile}`} className="flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-green-600 hover:bg-slate-50"><Phone size={13} /> <span>कॉल करा</span></a>
+                                <a href={`https://wa.me/91${p.mobile}`} target="_blank" rel="noreferrer" className="flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-emerald-600 hover:bg-slate-50"><MessageSquare size={13} /> <span>व्हॉट्सॲप</span></a>
+                                <button onClick={() => openPlayerModal(p)} className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-blue-600 hover:bg-slate-50 text-left"><Edit2 size={13} /> <span>सुधार करा</span></button>
+                                <button onClick={() => handleSoftDelete(p.id, p.name)} className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-50 text-left border-t border-slate-100"><Trash2 size={13} /> <span>काढून टाका</span></button>
+                              </div>
+                            </div>
+                          </div>
+
                         </div>
+
                       </div>
-                      
-                      <div className="flex items-center space-x-1 pl-2">
-                        <a href={`tel:${p.mobile}`} className="p-2 text-green-600 hover:bg-green-50 rounded-xl transition-all"><Phone size={14} /></a>
-                        <a href={`https://wa.me/91${p.mobile}`} target="_blank" rel="noreferrer" className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"><MessageSquare size={14} /></a>
-                        <button onClick={() => openPlayerModal(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit2 size={14} /></button>
-                        <button onClick={() => handleSoftDelete(p.id, p.name)} className="p-2 text-red-400 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={14} /></button>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </>
           )}
-{/* REPORT VIEW */}
-{activeTab === 'reports' && (
-  <div className="animate-in fade-in duration-300">
-    <Reports userTeamName={user.teamName} />
-  </div>
-)}
 
-          {/* PROFILE VIEW */}
-          {activeTab === 'profile' && (
-            <div className="space-y-5 max-w-xl mx-auto">
-              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xl relative overflow-hidden">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-16 h-16 bg-slate-100 rounded-2xl border border-slate-200 flex items-center justify-center overflow-hidden">
-                      {teamData.logoUrl ? <img src={teamData.logoUrl} alt="Logo" className="w-full h-full object-contain" /> : <Image className="text-slate-400" size={24} />}
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-black text-slate-800 uppercase tracking-wide">{user.teamName}</h2>
-                      <p className="text-xs text-[#ff6600] font-bold">{teamData.teamCategory === 'Women' ? 'महिला गोविंदा पथक' : 'पुरुष गोविंदा पथक'}</p>
-                      <p className="text-[10px] text-slate-400 font-medium">स्थापना: {teamData.establishedYear || '—'} | पत्ता: {teamData.address || '—'}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setIsEditMode(!isEditMode)} className={`p-2.5 rounded-xl transition-all ${isEditMode ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700'}`}><Edit2 size={16} /></button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase">पब्लिक फॉर्म स्थिती</span>
-                  <button type="button" onClick={handleToggleFormStatus} className={`w-full py-2 rounded-xl text-xs font-black transition-all shadow-sm ${isFormActive ? 'bg-green-600 text-white' : 'bg-red-500 text-white'}`}>{isFormActive ? '🟢 ON' : '🔴 OFF'}</button>
-                </div>
-                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase">नोंदणी लिंक</span>
-                  <button onClick={handleCopyLink} className={`w-full py-2 rounded-xl font-black text-xs transition-all flex items-center justify-center space-x-1 ${copied ? 'bg-emerald-600 text-white' : 'bg-[#ff6600] text-white'}`}>{copied ? <CheckCircle size={14} /> : <Copy size={14} />}<span>{copied ? 'कॉपी झाली!' : 'लिंक कॉपी'}</span></button>
-                </div>
-              </div>
-
-              {isEditMode && (
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-lg">
-                  <form onSubmit={handleUpdateProfile} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><label className="block text-xs font-bold text-slate-500 mb-1">पत्ता</label><input type="text" required value={teamData.address} onChange={(e) => setTeamData({...teamData, address: e.target.value})} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-slate-50" /></div>
-                      <div><label className="block text-xs font-bold text-slate-500 mb-1">स्थापना वर्ष</label><input type="number" required value={teamData.establishedYear} onChange={(e) => setTeamData({...teamData, establishedYear: e.target.value})} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-slate-50" /></div>
-                    </div>
-                    <button type="submit" disabled={loading} className="w-full bg-[#0b132b] text-white py-2.5 rounded-xl font-bold text-xs"><Check size={14} className="inline mr-1"/>जतन करा</button>
-                  </form>
-                </div>
-              )}
+          {/* REPORT VIEW */}
+          {activeTab === 'reports' && (
+            <div className="animate-in fade-in duration-300">
+              <Reports userTeamName={user.teamName} />
             </div>
           )}
 
+    {/* PROFILE VIEW */}
+        {activeTab === 'profile' && (
+          <div className="space-y-5 max-w-xl mx-auto animate-in fade-in duration-200">
+            
+            {/* मुख्य कार्ड (View/Edit सर्वकाही आता TeamProfile च्या आतूनच रेंडर होईल) */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xl">
+              <div className="flex justify-between items-start">
+                
+                {/* 🎯 कॉम्पोनंट कॉल */}
+                <TeamProfile 
+                  user={user} 
+                  teamData={teamData} 
+                  setTeamData={setTeamData} 
+                  isEditMode={isEditMode} 
+                  setIsEditMode={setIsEditMode}
+                />
+
+                {/* पेन्सिल एडिट बटण */}
+                <button 
+                  onClick={() => setIsEditMode(!isEditMode)} 
+                  className={`p-2.5 rounded-xl transition-all shadow-sm ${isEditMode ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700'}`}
+                >
+                  <Edit2 size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* क्विक ॲक्शन बट्स (स्थिती आणि लिंक कॉपी) */}
+            {!isEditMode && (
+              <div className="grid grid-cols-2 gap-3 animate-in fade-in duration-150">
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-2">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">पब्लिक फॉर्म स्थिती</span>
+                  <button type="button" onClick={handleToggleFormStatus} className={`w-full py-2.5 rounded-xl text-xs font-black transition-all shadow-sm ${isFormActive ? 'bg-green-600 text-white' : 'bg-red-500 text-white'}`}>{isFormActive ? '🟢 ON' : '🔴 OFF'}</button>
+                </div>
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-2">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">नोंदणी लिंक</span>
+                  <button onClick={handleCopyLink} className={`w-full py-2.5 rounded-xl font-black text-xs transition-all flex items-center justify-center space-x-1 ${copied ? 'bg-emerald-600 text-white' : 'bg-[#ff6600] text-white'}`}>{copied ? <CheckCircle size={14} /> : <Copy size={14} />}<span>{copied ? 'कॉपी झाली!' : 'लिंक कॉपी'}</span></button>
+                </div>
+              </div>
+            )}
+            
+          </div>
+        )}
+          
         </div>
+      </div>
+
+      {/* 🚪 मोबाईलसाठी कडक लॉगआउट बटण */}
+      <div className="mt-8 px-2 md:hidden">
+        <button 
+          onClick={onLogout} 
+          className="w-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 py-3 rounded-2xl font-black text-sm tracking-wide transition-all shadow-sm flex items-center justify-center space-x-2"
+        >
+          <span>अकाउंट लॉगआऊट करा</span>
+        </button>
       </div>
 
       {/* 📱 मोबाईल बॉटम बार */}
@@ -577,112 +699,56 @@ export default function TeamDashboard({ user, onLogout }) {
         <button onClick={() => openPlayerModal()} className="sm:hidden fixed bottom-20 right-5 bg-[#ff6600] text-white p-4 rounded-full shadow-xl shadow-[#ff6600]/30 z-20"><Plus size={22} /></button>
       )}
 
-      {/* 🗟 प्रगत संपादन मॉडेल (अचूक ड्रॉपडाऊन लेबल्स सह) */}
+      {/* 🗟 प्रगत संपादन मॉडेल */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
           <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative z-10 max-h-[85vh] overflow-y-auto">
             <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-slate-400 p-1"><X size={20} /></button>
             <div className="mb-4"><h3 className="text-lg font-black text-slate-800">{editingPlayerId ? 'खेळाडूची माहिती सुधारा' : 'गोविंदा खेळाडू नोंदणी'}</h3></div>
-            <form onSubmit={handleSavePlayer} className="space-y-4">
-              
-              <div className="space-y-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
-                <div><label className="block text-[11px] font-bold text-slate-500 mb-1">पूर्ण नाव</label><input type="text" required value={playerName} onChange={(e) => setPlayerName(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white font-medium" /></div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 mb-1">लिंग (Gender)</label>
-                    <select value={gender} onChange={(e) => setGender(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700">
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 mb-1">रक्त गट</label>
-                    <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700">
-                      <option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 mb-1">जन्म तारीख (DD/MM/YYYY)</label>
-                    <input type="text" required maxLength="10" value={birthDate} onChange={(e) => setBirthDate(handleDateMask(e.target.value))} placeholder="DD/MM/YYYY" className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white font-medium text-slate-700" />
-                  </div>
-                  <div><label className="block text-[11px] font-bold text-slate-500 mb-1">मोबाईल नंबर</label><input type="tel" required maxLength="10" value={mobileNumber} onChange={(e) => setMobileNumber(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white font-medium" /></div>
-                </div>
-
-                {/* 💡 आकार चार्ट ड्रॉपडाऊन (S - 36-38 सिस्टीम) */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 mb-1">टी-शर्ट साईझ</label>
-                    <select value={tshirtSize} onChange={(e) => setTshirtSize(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700 font-bold">
-                      <option value="S">S - 36–38</option>
-                      <option value="M">M - 38–40</option>
-                      <option value="L">L - 40–42</option>
-                      <option value="XL">XL - 42–44</option>
-                      <option value="2XL">2XL - 44–46</option>
-                      <option value="3XL">3XL - 46–48</option>
-                      <option value="4XL">4XL - 48–50</option>
-                      <option value="Custom">✏️ Custom साईझ</option>
-                    </select>
-                    {tshirtSize === 'Custom' && (
-                      <input type="text" placeholder="उदा. 24" value={customTshirt} onChange={(e) => setCustomTshirt(e.target.value)} className="w-full border border-purple-200 rounded-xl px-2 py-1 text-xs mt-1 bg-purple-50 font-bold" />
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 mb-1">शॉर्ट्स साईझ</label>
-                    <select value={shortsSize} onChange={(e) => setShortsSize(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700 font-bold">
-                      <option value="S">S - 36–38</option>
-                      <option value="M">M - 38–40</option>
-                      <option value="L">L - 40–42</option>
-                      <option value="XL">XL - 42–44</option>
-                      <option value="2XL">2XL - 44–46</option>
-                      <option value="3XL">3XL - 46–48</option>
-                      <option value="4XL">4XL - 48–50</option>
-                      <option value="Custom">✏️ Custom साईझ</option>
-                    </select>
-                    {shortsSize === 'Custom' && (
-                      <input type="text" placeholder="उदा. 22" value={customShorts} onChange={(e) => setCustomShorts(e.target.value)} className="w-full border border-orange-200 rounded-xl px-2 py-1 text-xs mt-1 bg-orange-50 font-bold" />
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 mb-1">Belt</label>
-                    <select value={needBelt} onChange={(e) => setNeedBelt(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700">
-                      <option>No</option><option>Yes</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 mb-1">टॉवेल (Towel)</label>
-                    <select value={needTowel} onChange={(e) => setNeedTowel(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700">
-                      <option>No</option><option>Yes</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 mb-1">Pyramid Place</label>
-                    <select value={pyramidPlace} onChange={(e) => setPyramidPlace(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700">
-                      {['Base', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Back Shidi', 'Front Shidi', 'Left Shidi', 'Right Shidi', 'Coach', 'Captain', 'Administration'].map(p=><option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 mb-1">विमा स्थिती</label>
-                    <select value={insuranceStatus} onChange={(e) => setInsuranceStatus(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700 font-bold">
-                      <option value="Pending">प्रलंबित (Pending)</option>
-                      <option value="Done">झालेले (Done)</option>
-                    </select>
-                  </div>
-                </div>
-
-              </div>
-              <button type="submit" disabled={loading} className="w-full bg-[#ff6600] text-white py-3 rounded-xl font-bold text-sm shadow-md transition-all"><span>{loading ? 'जतन होत आहे...' : editingPlayerId ? 'बदल जतन करा' : 'नोंदणी करा'}</span></button>
-            </form>
+            
+            <TshirtForm 
+              formData={{
+                playerName: playerName,
+                gender: gender,
+                bloodGroup: bloodGroup,
+                pyramidPlace: pyramidPlace,
+                birthDate: birthDate,
+                mobileNumber: mobileNumber,
+                tshirtSize: tshirtSize,
+                shortsSize: shortsSize,
+                customTshirt: customTshirt,
+                customShorts: customShorts,
+                needBelt: needBelt,
+                needTowel: needTowel,
+                insuranceStatus: insuranceStatus,
+                tshirtGiven: tshirtGiven 
+              }}
+              setFormData={(callback) => {
+                const updated = callback({
+                  playerName, gender, bloodGroup, pyramidPlace, birthDate, mobileNumber,
+                  tshirtSize, shortsSize, customTshirt, customShorts, needBelt, needTowel, insuranceStatus
+                });
+                if(updated.playerName !== undefined) setPlayerName(updated.playerName);
+                if(updated.gender !== undefined) setGender(updated.gender);
+                if(updated.bloodGroup !== undefined) setBloodGroup(updated.bloodGroup);
+                if(updated.pyramidPlace !== undefined) setPyramidPlace(updated.pyramidPlace);
+                if(updated.birthDate !== undefined) setBirthDate(updated.birthDate);
+                if(updated.mobileNumber !== undefined) setMobileNumber(updated.mobileNumber);
+                if(updated.tshirtSize !== undefined) setTshirtSize(updated.tshirtSize);
+                if(updated.shortsSize !== undefined) setShortsSize(updated.shortsSize);
+                if(updated.customTshirt !== undefined) setCustomTshirt(updated.customTshirt);
+                if(updated.customShorts !== undefined) setCustomShorts(updated.customShorts);
+                if(updated.needBelt !== undefined) setNeedBelt(updated.needBelt);
+                if(updated.needTowel !== undefined) setNeedTowel(updated.needTowel);
+                if(updated.insuranceStatus !== undefined) setInsuranceStatus(updated.insuranceStatus);
+              }}
+              onSubmit={handleSavePlayer}
+              loading={loading}
+              buttonText={editingPlayerId ? 'बदल जतन करा' : 'नोंदणी करा'}
+              showInsuranceSelect={true} 
+              showDistributionSelect={true} 
+            />
           </div>
         </div>
       )}

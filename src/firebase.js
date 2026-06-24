@@ -1,8 +1,9 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+// 👈 जुना getFirestore काढून आपण ऑफलाइन कॅशचे हे ३ इम्पॉर्ट जोडून घेतले
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc } from "firebase/firestore";
 
-// .env.local मधून फायरबेस कॉन्फिगरेशन वाचणे
+// .env.local मधून फायरबेस कॉन्फिगरेशन वाचणे (आहे तसेच सुरक्षित ठेवले आहे)
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -15,10 +16,17 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// 🔥 २. मुख्य बदल: जुन्या getFirestore ऐवजी आपण IndexedDB ऑफलाइन कॅश ऑन केली!
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager() // मल्टिपल टॅब्स उघडल्या तरी कॅश सुरक्षित मॅनेज करेल
+  })
+});
+
 const googleProvider = new GoogleAuthProvider();
 
-// गूगल लॉगिन फंक्शन जे रोल देखील तपासेल
+// गूगल लॉगिन फंक्शन (तुझा मूळ कडक लॉजिक जसाच्या तसा सुरक्षित आहे)
 export const loginWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);

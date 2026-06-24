@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, doc, setDoc, updateDoc, getDocs, serverTimestamp } from 'firebase/firestore';
-import { Users, PlusCircle, LogOut, Menu, X, Plus, Search, Edit2, Trash2, Link2, CheckCircle } from 'lucide-react';
+import { collection, doc, setDoc, updateDoc, getDocs, getDocsFromCache, serverTimestamp, query, where } from 'firebase/firestore'; 
+import { Users, PlusCircle, LogOut, Menu, X, Plus, Search, Edit2, Trash2, Link2, RotateCcw } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function Dashboard({ user, onLogout }) {
   // फॉर्म इनपुट स्टेट्स
@@ -11,26 +12,37 @@ export default function Dashboard({ user, onLogout }) {
   
   // मॅनेजमेंट आणि डेटा स्टेट्स
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
   const [teamsList, setTeamsList] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewTab, setViewTab] = useState('active'); // active = सक्रिय संघ, deactive = बंद केलेले संघ
   
   // मॉडेल आणि नेव्हिगेशन स्टेट्स
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingEmail, setEditingEmail] = useState(null); // एडिटिंग मोड ट्रॅकिंग करण्यासाठी
+  const [editingEmail, setEditingEmail] = useState(null);
 
-  // 🔄 १. फायरस्टोरमधून सर्व सक्रिय (Non-Deleted) टीम्स आणणे
+  // 🔄 १. सुधारित: डेटाबेस लेव्हलवर फक्त 'admin' फिल्टर करून Reads वाचवणारे फेच फंक्शन 🔥
   const fetchTeams = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, "users"));
+      const usersRef = collection(db, "users");
+      // 🎯 थेट डेटाबेसवरूनच फक्त 'admin' फिल्टर करून आणणे (कचरा Reads बंद)
+      const adminQuery = query(usersRef, where("role", "==", "admin"));
+      let querySnapshot;
+
+      try {
+        // ⚡ आधी कॅशमधून ट्राय करूया (0 Reads खर्च)
+        querySnapshot = await getDocsFromCache(adminQuery);
+        console.log("👑 SuperAdmin: Teams Data from Cache (IndexedDB)? true 🔥");
+      } catch (cacheErr) {
+        // 🌍 कॅश रिकामी असेल तर सर्व्हरवरून आणूया
+        console.log("👑 SuperAdmin: Cache empty/failed, fetching teams from server...");
+        querySnapshot = await getDocs(adminQuery);
+        console.log("👑 SuperAdmin: Teams Data from Cache (IndexedDB)? false (Server Read Used) 🌍");
+      }
+
       const teams = [];
       querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        // फक्त 'admin' रोल असलेल्या आणि सॉफ्ट डिलीट न झालेल्या टीम्स यादीत दाखवणे
-        if (data.role === 'admin' && !data.isDeleted) {
-          teams.push(data);
-        }
+        teams.push({ id: doc.id, ...doc.data() });
       });
       setTeamsList(teams);
     } catch (err) {
@@ -42,55 +54,65 @@ export default function Dashboard({ user, onLogout }) {
     fetchTeams();
   }, []);
 
-  // 🔓 २. सिलेक्टेड मोडनुसार (Add/Edit) मॉडेल ओपन करणे
   const openModal = (team = null) => {
     if (team) {
-      // --- Edit Mode ---
       setEditingEmail(team.email);
       setTeamName(team.teamName);
       setAdminName(team.name);
       setAdminEmail(team.email);
     } else {
-      // --- Add New Mode ---
       setEditingEmail(null);
       setTeamName('');
       setAdminName('');
       setAdminEmail('');
     }
-    setMessage({ type: '', text: '' });
     setIsModalOpen(true);
   };
 
-  // 🔐 ३. वर्ष आणि युनीक UID नुसार ब्रँडेड पब्लिक नोंदणी लिंक तयार करणे
+  // 🔐 २. अधिक कडक आणि युनिक नोंदणी लिंक जनरेटर
   const generateSecureLink = (team) => {
-    if (!team.uid || !team.currentYear) return '';
+    if (!team.teamSlug || !team.uid) return '';
     const baseUrl = window.location.origin;
-    // तुमच्या गरजेनुसार कडक ब्रँडेड फॉरमॅट: baseurl/year/uid/register
-    return `${baseUrl}/${team.currentYear}/${team.uid}/register`;
+    let baseRoute = import.meta.env.BASE_URL || '/';
+    if (!baseRoute.endsWith('/')) baseRoute += '/';
+    if (!baseRoute.startsWith('/')) baseRoute = '/' + baseRoute;
+    
+    return `${baseUrl}${baseRoute}${team.teamSlug}/register?t=${btoa(team.uid)}`;
   };
 
-  // 📋 ४. सुरक्षित लिंक क्लिपबोर्डमध्ये कॉपी करणे
   const copyToClipboard = (link) => {
     navigator.clipboard.writeText(link);
-    alert("🔒 अधिकृत ब्रँडेड नोंदणी लिंक कॉपी झाली आहे! तुम्ही ही खेळाडूंच्या व्हॉट्सॲप ग्रुपवर शेअर करू शकता.");
+    Swal.fire({
+      icon: 'success',
+      title: '🔒 लिंक कॉपी झाली!',
+      text: 'अधिकृत ब्रँडेड नोंदणी लिंक कॉपी झाली आहे. तुम्ही ही खेळाडूंच्या व्हॉट्सॲप ग्रुपवर शेअर करू शकता.',
+      confirmButtonColor: '#ff6600',
+      customClass: { popup: 'rounded-3xl' },
+      timer: 3000
+    });
   };
 
-  // 💾 ५. संघ जोडणे किंवा अपडेट करणे (Add & Edit Same Form Submit)
+  // 🚀 ३. सुधारित: मॅन्युअल मेसेजेस काढून प्रिमियम Swal पॉप-अप्स लावले
   const handleSaveTeam = async (e) => {
     e.preventDefault();
     if (!teamName || !adminName || !adminEmail) {
-      setMessage({ type: 'error', text: 'कृपया सर्व माहिती अचूक भरा!' });
+      Swal.fire({
+        icon: 'warning',
+        title: 'माहिती अपूर्ण!',
+        text: 'कृपया सर्व माहिती अचूक भरा!',
+        confirmButtonColor: '#ff6600',
+        customClass: { popup: 'rounded-2xl' }
+      });
       return;
     }
     setLoading(true);
-    setMessage({ type: '', text: '' });
 
     try {
       const emailLower = adminEmail.trim().toLowerCase();
-      const teamSlug = teamName.toLowerCase().trim().replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-');
+      // मराठी नावे असली तरी योग्य सुरक्षित इंग्रजी स्लग बनवण्यासाठी
+      const teamSlug = teamName.toLowerCase().trim().replace(/[^a-zA-Z0-9\s-\u0900-\u097F]/g, '').replace(/\s+/g, '-');
 
       if (editingEmail) {
-        // --- EDIT MODE OPERATE ---
         const userRef = doc(db, "users", editingEmail);
         await updateDoc(userRef, {
           name: adminName.trim(),
@@ -98,13 +120,19 @@ export default function Dashboard({ user, onLogout }) {
           teamSlug: teamSlug,
           updatedAt: serverTimestamp()
         });
-        setMessage({ type: 'success', text: 'संघाची माहिती यशस्वीरीत्या अपडेट झाली!' });
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'माहिती अपडेट झाली!',
+          text: 'संघाची माहिती यशस्वीरीत्या बदलण्यात आली आहे.',
+          showConfirmButton: false,
+          timer: 1500,
+          customClass: { popup: 'rounded-3xl' }
+        });
       } else {
-        // --- ADD MODE OPERATE ---
-        // 🆔 'MCG' आणि ४ अंकी युनीक नंबरचा कडक कोड जनरेशन
         const randomDigits = Math.floor(1000 + Math.random() * 9000);
         const generatedUid = `MCG${randomDigits}`;
-        const currentYear = new Date().getFullYear().toString(); // ऑटोमॅटिक चालू वर्ष (2026) सेट होईल
+        const currentYear = new Date().getFullYear().toString();
 
         await setDoc(doc(db, "users", emailLower), {
           uid: generatedUid,
@@ -113,68 +141,114 @@ export default function Dashboard({ user, onLogout }) {
           role: "admin",
           teamName: teamName.trim(),
           teamSlug: teamSlug,
-          currentYear: currentYear, // वर्ष मेंटेन केले
+          currentYear: currentYear,
           isDeleted: false,
-          isProfileComplete: false, // संघ प्रमुख पहिल्या लॉगिनला ही माहिती पूर्ण करेल
+          isFormActive: true,
+          isProfileComplete: false,
           createdAt: serverTimestamp()
         });
-        setMessage({ type: 'success', text: `"${teamName}" संघ ${generatedUid} आयडीसह यशस्वीरीत्या जोडला गेला!` });
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'संघ यशस्वी जोडला!',
+          text: `"${teamName}" संघ ${generatedUid} आयडीसह जोडला गेला आहे.`,
+          confirmButtonColor: '#ff6600',
+          customClass: { popup: 'rounded-3xl' }
+        });
       }
 
-      // फॉर्म क्लिअर आणि रिफ्रेशमेंट
       setTeamName('');
       setAdminName('');
       setAdminEmail('');
+      setIsModalOpen(false);
+      setEditingEmail(null);
       fetchTeams();
-      
-      setTimeout(() => {
-        setIsModalOpen(false);
-        setEditingEmail(null);
-      }, 1200);
 
     } catch (err) {
       console.error(err);
-      setMessage({ type: 'error', text: 'डेटा सुरक्षित करताना काहीतरी चूक झाली.' });
+      Swal.fire({
+        icon: 'error',
+        title: 'त्रुटी आली!',
+        text: 'डेटा सुरक्षित करताना काहीतरी तांत्रिक चूक झाली.',
+        confirmButtonColor: '#ff6600',
+        customClass: { popup: 'rounded-2xl' }
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // 🗑️ ६. सॉफ्ट डिलीट सिस्टीम (Soft Delete Process)
-  const handleSoftDelete = async (email) => {
-    if (window.confirm("तुम्हाला खात्री आहे की हा संघ यादीतून काढून टाकायचा आहे? (याने डेटा सुरक्षित राहील)")) {
+  // 🛑 ४. सॉफ्ट डी-ॲक्टिव्हेट करणे
+  const handleToggleActiveStatus = async (email, currentStatus) => {
+    const actionText = currentStatus ? "पुन्हा सक्रिय (Activate)" : "डी-ॲक्टिव्हेट (Deactivate)";
+    
+    const result = await Swal.fire({
+      title: 'तुम्हाला खात्री आहे का?',
+      text: `तुम्हाला या संघाला ${actionText} करायचे आहे का?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: currentStatus ? '#16a34a' : '#dc2626', 
+      cancelButtonColor: '#64748b',
+      confirmButtonText: currentStatus ? 'हो, सक्रिय करा!' : 'हो, बंद करा!',
+      cancelButtonText: 'रद्द करा',
+      customClass: { popup: 'rounded-3xl' }
+    });
+
+    if (result.isConfirmed) {
       try {
         const userRef = doc(db, "users", email);
         await updateDoc(userRef, {
-          isDeleted: true,
+          isDeleted: !currentStatus,
+          isFormActive: currentStatus ? true : false, 
           deletedAt: serverTimestamp()
         });
-        alert("संघ यशस्वीरीत्या यादीतून काढला गेला आहे.");
+
+        Swal.fire({
+          icon: 'success',
+          title: 'यशस्वी बदल!',
+          text: `संघ यशस्वीरीत्या ${currentStatus ? 'सक्रिय' : 'बंद'} केला गेला आहे.`,
+          showConfirmButton: false,
+          timer: 1500,
+          customClass: { popup: 'rounded-2xl' }
+        });
+
         fetchTeams();
       } catch (err) {
         console.error(err);
-        alert("काढून टाकताना एरर आला.");
+        Swal.fire({
+          icon: 'error',
+          title: 'घोटाळा झाला!',
+          text: 'स्थिती बदलताना तांत्रिक अडचण आली.',
+          confirmButtonColor: '#ff6600',
+          customClass: { popup: 'rounded-2xl' }
+        });
       }
     }
   };
 
-  // 🔍 ७. सर्च बार फिल्टरेशन (UID, टीम नाव किंवा प्रमुख नावाने शोध)
-  const filteredTeams = teamsList.filter(t => 
-    t.teamName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (t.uid && t.uid.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // ५. सर्च बार आणि टॅबनुसार फिल्टरेशन
+  const filteredTeams = teamsList.filter(t => {
+    const matchesSearch = t.teamName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          t.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (t.uid && t.uid.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    if (viewTab === 'active') {
+      return matchesSearch && !t.isDeleted;
+    } else {
+      return matchesSearch && t.isDeleted;
+    }
+  });
 
   return (
     <div className="min-h-screen bg-[#f4f6f9] flex flex-col md:flex-row font-sans antialiased">
       
       {/* 📱 मोबाईल हेडर */}
       <div className="md:hidden bg-[#0b132b] text-white px-4 py-3 flex items-center justify-between shadow-md z-30">
-        <span className="text-lg font-black tracking-wide">
+        <span className="text-base font-black tracking-wide">
           महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
         </span>
         <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-1 text-slate-300 hover:text-white">
-          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 
@@ -186,7 +260,7 @@ export default function Dashboard({ user, onLogout }) {
       `}>
         <div>
           <div className="hidden md:block mb-8">
-            <h2 className="text-xl font-black tracking-wide text-white">
+            <h2 className="text-lg font-black tracking-wide text-white">
               महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
             </h2>
             <p className="text-[10px] text-slate-400 tracking-widest uppercase mt-0.5">Superadmin Panel</p>
@@ -201,7 +275,7 @@ export default function Dashboard({ user, onLogout }) {
         <div className="border-t border-slate-800 pt-4 mt-6">
           <div className="flex items-center space-x-2 mb-3">
             <div className="w-7 h-7 rounded-full bg-[#ff6600]/20 flex items-center justify-center text-xs font-bold text-[#ff6600]">SU</div>
-            <p className="text-xs text-slate-400 truncate flex-1">{user.info.email}</p>
+            <p className="text-xs text-slate-400 truncate flex-1">{user?.info?.email || 'admin@govinda.com'}</p>
           </div>
           <button onClick={onLogout} className="w-full flex items-center justify-center space-x-2 bg-red-600/10 hover:bg-red-600 hover:text-white text-red-400 py-2.5 rounded-xl text-xs font-bold transition-all border border-red-500/20">
             <LogOut size={14} />
@@ -213,13 +287,13 @@ export default function Dashboard({ user, onLogout }) {
       {isMenuOpen && <div onClick={() => setIsMenuOpen(false)} className="fixed inset-0 bg-black/50 z-30 md:hidden"></div>}
 
       {/* 🖥️ मुख्य कार्यक्षेत्र */}
-      <div className="flex-1 p-4 md:p-10 overflow-y-auto z-10">
-        <div className="max-w-5xl mx-auto space-y-6">
+      <div className="flex-1 p-4 md:p-6 overflow-y-auto z-10 w-full">
+        <div className="w-full space-y-6">
           
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
             <div>
               <h1 className="text-xl md:text-2xl font-black text-slate-800">संघ व्यवस्थापन (Teams)</h1>
-              <p className="text-xs text-slate-500 mt-0.5">युनिक UID पॅटर्न आणि वर्षनिहाय सुरक्षित नोंदणी सिस्टीम.</p>
+              <p className="text-xs text-slate-500 mt-0.5">युनिक UID पॅटर्न आणि फ्रंट-एंड एक्टिव्ह/डी-एक्टिव्ह सिस्टीम.</p>
             </div>
             <button onClick={() => openModal()} className="hidden sm:flex bg-[#ff6600] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md hover:bg-[#e65c00] transition-all items-center space-x-2">
               <Plus size={16} />
@@ -227,33 +301,48 @@ export default function Dashboard({ user, onLogout }) {
             </button>
           </div>
 
+          {/* फ्रंट-एंड हँडलिंगसाठी टॅब्स */}
+          <div className="flex space-x-2 border-b border-slate-200 pb-1">
+            <button 
+              onClick={() => setViewTab('active')} 
+              className={`px-4 py-2 text-xs font-bold rounded-t-xl transition-all ${viewTab === 'active' ? 'bg-[#0b132b] text-white' : 'bg-white text-slate-600 border border-b-0 border-slate-200'}`}
+            >
+              🟢 सक्रिय संघ ({teamsList.filter(t => !t.isDeleted).length})
+            </button>
+            <button 
+              onClick={() => setViewTab('deactive')} 
+              className={`px-4 py-2 text-xs font-bold rounded-t-xl transition-all ${viewTab === 'deactive' ? 'bg-red-600 text-white' : 'bg-white text-slate-600 border border-b-0 border-slate-200'}`}
+            >
+              🔴 बंद केलेले संघ ({teamsList.filter(t => t.isDeleted).length})
+            </button>
+          </div>
+
           {/* 🔍 सर्च बार */}
           <div className="w-full max-w-md relative">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><Search size={18} /></span>
-            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="UID आयडी, संघ किंवा प्रमुख नावाने शोधा..." className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:border-[#ff6600] shadow-sm font-medium transition-all" />
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><Search size={17} /></span>
+            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="UID, संघ किंवा प्रमुख नावाने shoadh..." className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:border-[#ff6600] shadow-sm font-medium transition-all" />
           </div>
 
           {/* नोंदणी यादी */}
           <div className="space-y-3">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">नोंदणी झालेले संघ ({filteredTeams.length})</h3>
             
             {/* 🖥️ डेस्कटॉप टेबल व्ह्यू */}
-            <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden w-full">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="p-4">UID</th>
+                    <th className="p-4 w-24">UID</th>
                     <th className="p-4">संघ / टीमचे नाव</th>
-                    <th className="p-4">ॲडमिन नाव</th>
+                    <th className="p-4">ॲडमीन नाव</th>
                     <th className="p-4">नोंदणी लिंक (WhatsApp)</th>
-                    <th className="p-4">प्रोफाईल स्थिती</th>
-                    <th className="p-4 text-center">क्रिया</th>
+                    <th className="p-4">स्थिती</th>
+                    <th className="p-4 text-center w-28">क्रिया</th>
                   </tr>
                 </thead>
                 <tbody className="text-sm divide-y divide-slate-100">
                   {filteredTeams.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="p-8 text-center text-slate-400 text-xs font-medium">कोणताही संघ सापडला नाही.</td>
+                      <td colSpan="6" className="p-8 text-center text-slate-400 text-xs font-medium">या टॅबमध्ये कोणताही संघ उपलब्ध नाही.</td>
                     </tr>
                   ) : (
                     filteredTeams.map((t, idx) => {
@@ -261,10 +350,12 @@ export default function Dashboard({ user, onLogout }) {
                       return (
                         <tr key={idx} className="hover:bg-slate-50/50 transition-all text-slate-700">
                           <td className="p-4 font-mono text-xs font-bold text-slate-600 bg-slate-50/50">{t.uid || '—'}</td>
-                          <td className="p-4 font-bold text-slate-800">{t.teamName} <span className="text-[11px] text-slate-400 font-normal">({t.currentYear})</span></td>
+                          <td className="p-4 font-black text-slate-900 uppercase tracking-wide">
+                            {t.teamName} <span className="text-[11px] text-slate-400 font-normal">({t.currentYear})</span>
+                          </td>
                           <td className="p-4 font-medium">{t.name}</td>
                           <td className="p-4">
-                            {t.uid ? (
+                            {t.uid && !t.isDeleted ? (
                               <button 
                                 onClick={() => copyToClipboard(secureLink)}
                                 className="flex items-center space-x-1.5 text-xs bg-green-50 hover:bg-green-100 text-green-600 font-bold px-3 py-1.5 rounded-lg border border-green-200/50 transition-all"
@@ -273,17 +364,24 @@ export default function Dashboard({ user, onLogout }) {
                                 <span>लिंक कॉपी करा</span>
                               </button>
                             ) : (
-                              <span className="text-xs text-slate-400">उपलब्ध नाही</span>
+                              <span className="text-xs text-slate-400">अकाउंट डी-ॲक्टिव्ह आहे</span>
                             )}
                           </td>
                           <td className="p-4">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${t.isProfileComplete ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600'}`}>
-                              {t.isProfileComplete ? 'पूर्ण' : 'प्रलंबित'}
+                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${t.isDeleted ? 'bg-red-50 text-red-600' : (t.isProfileComplete ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600')}`}>
+                              {t.isDeleted ? 'बंद' : (t.isProfileComplete ? 'पूर्ण' : 'प्रलंबित')}
                             </span>
                           </td>
                           <td className="p-4 flex items-center justify-center space-x-2">
-                            <button onClick={() => openModal(t)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit2 size={15} /></button>
-                            <button onClick={() => handleSoftDelete(t.email)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={15} /></button>
+                            {!t.isDeleted && <button onClick={() => openModal(t)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit2 size={15} /></button>}
+                            
+                            <button 
+                              onClick={() => handleToggleActiveStatus(t.email, t.isDeleted)} 
+                              className={`p-2 rounded-xl transition-all ${t.isDeleted ? 'text-green-600 hover:bg-green-50' : 'text-red-500 hover:bg-red-50'}`}
+                              title={t.isDeleted ? "पुन्हा सुरू करा" : "बंद करा"}
+                            >
+                              {t.isDeleted ? <RotateCcw size={15} /> : <Trash2 size={15} />}
+                            </button>
                           </td>
                         </tr>
                       );
@@ -296,7 +394,7 @@ export default function Dashboard({ user, onLogout }) {
             {/* 📱 मोबाईल कार्ड व्ह्यू */}
             <div className="block md:hidden space-y-3">
               {filteredTeams.length === 0 ? (
-                <div className="bg-white rounded-2xl p-6 text-center text-slate-400 text-xs border border-slate-100">कोणताही संघ सापडला नाही.</div>
+                <div className="bg-white rounded-2xl p-6 text-center text-slate-400 text-xs border border-slate-100">या टॅबमध्ये कोणताही संघ उपलब्ध नाही.</div>
               ) : (
                 filteredTeams.map((t, idx) => {
                   const secureLink = generateSecureLink(t);
@@ -305,26 +403,28 @@ export default function Dashboard({ user, onLogout }) {
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="flex items-center space-x-2">
-                            <span className="font-mono text-[10px] font-bold bg-[#ff6600]/10 text-[#ff6600] px-2 py-0.5 rounded-md">{t.uid || 'No UID'}</span>
+                            <span className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded-md ${t.isDeleted ? 'bg-red-50 text-red-600' : 'bg-[#ff6600]/10 text-[#ff6600]'}`}>{t.uid || 'No UID'}</span>
                             <span className="text-[10px] text-slate-400 font-bold">{t.currentYear}</span>
                           </div>
-                          <h4 className="text-sm font-bold text-slate-800 mt-2">{t.teamName}</h4>
+                          <h4 className="text-sm font-black text-slate-900 uppercase tracking-wide mt-2">{t.teamName}</h4>
                           <p className="text-xs text-slate-500 font-medium mt-0.5">प्रमुख: {t.name}</p>
                         </div>
                         <div className="flex space-x-1">
-                          <button onClick={() => openModal(t)} className="p-1 text-blue-600"><Edit2 size={16} /></button>
-                          <button onClick={() => handleSoftDelete(t.email)} className="p-1 text-red-500"><Trash2 size={16} /></button>
+                          {!t.isDeleted && <button onClick={() => openModal(t)} className="p-1 text-blue-600"><Edit2 size={16} /></button>}
+                          <button onClick={() => handleToggleActiveStatus(t.email, t.isDeleted)} className={`p-1 ${t.isDeleted ? 'text-green-600' : 'text-red-500'}`}>
+                            {t.isDeleted ? <RotateCcw size={16} /> : <Trash2 size={16} />}
+                          </button>
                         </div>
                       </div>
                       
                       <div className="border-t border-slate-50 pt-2.5 flex flex-col gap-2">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-400">प्रोफाईल स्थिती:</span>
-                          <span className={`font-bold ${t.isProfileComplete ? 'text-green-600' : 'text-yellow-600'}`}>
-                            {t.isProfileComplete ? 'पूर्ण झाली' : 'प्रलंबित आहे'}
+                          <span className="text-slate-400">स्थिती:</span>
+                          <span className={`font-bold ${t.isDeleted ? 'text-red-600' : (t.isProfileComplete ? 'text-green-600' : 'text-yellow-600')}`}>
+                            {t.isDeleted ? 'बंद (Deactive)' : (t.isProfileComplete ? 'पूर्ण झाली' : 'प्रलंबित आहे')}
                           </span>
                         </div>
-                        {t.uid && (
+                        {t.uid && !t.isDeleted && (
                           <button 
                             onClick={() => copyToClipboard(secureLink)}
                             className="w-full flex items-center justify-center space-x-2 bg-green-50 active:bg-green-100 text-green-600 font-bold py-2 rounded-xl text-xs border border-green-200"
@@ -347,11 +447,11 @@ export default function Dashboard({ user, onLogout }) {
       {/* 📱 मोबाईल प्लस बटण */}
       <button onClick={() => openModal()} className="sm:hidden fixed bottom-6 right-6 bg-[#ff6600] text-white p-4 rounded-full shadow-xl shadow-[#ff6600]/30 z-20"><Plus size={24} /></button>
 
-      {/* 🗟 सामायिक नोंदणी / संपादन पॉप-अप मॉडेल */}
+      {/* 🗟 पॉप-अप मॉडेल */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
-          <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative z-10 border border-slate-100">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative z-10 border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
             <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1"><X size={20} /></button>
             <div className="mb-5">
               <h3 className="text-lg font-black text-slate-800">{editingEmail ? 'संघाची माहिती बदला' : 'नवीन संघ नोंदणी'}</h3>
@@ -359,18 +459,17 @@ export default function Dashboard({ user, onLogout }) {
             </div>
             <form onSubmit={handleSaveTeam} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">महोत्सव / टीमचे नाव</label>
-                <input type="text" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="उदा. शिवनेरी गोविंदा पथक" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#ff6600] bg-slate-50 font-medium" />
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">टीमचे नाव</label>
+                <input type="text" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="उदा. शिवनेरी गोविंदा पथक" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#ff6600] bg-slate-50 font-medium text-slate-800" />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">ॲडमिनचे नाव (प्रमुख)</label>
-                <input type="text" value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="उदा. संदीप महाडिक" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#ff6600] bg-slate-50 font-medium" />
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">ॲडमीनचे नाव (प्रमुख)</label>
+                <input type="text" value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="उदा. संदीप महाडिक" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#ff6600] bg-slate-50 font-medium text-slate-800" />
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">गुगल लॉगिन ईमेल आयडी</label>
-                <input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} disabled={editingEmail !== null} placeholder="उदा. admin@gmail.com" className={`w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none bg-slate-50 font-medium ${editingEmail ? 'text-slate-400 cursor-not-allowed' : 'focus:border-[#ff6600]'}`} />
+                <input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} disabled={editingEmail !== null} placeholder="उदा. admin@gmail.com" className={`w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none bg-slate-50 font-medium ${editingEmail ? 'text-slate-400 cursor-not-allowed' : 'focus:border-[#ff6600] text-slate-800'}`} />
               </div>
-              {message.text && <p className={`text-xs font-bold pt-1 ${message.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>{message.text}</p>}
               <button type="submit" disabled={loading} className="w-full bg-[#ff6600] text-white py-3 rounded-xl font-bold text-sm shadow-md hover:bg-[#e65c00] transition-all flex items-center justify-center space-x-2 disabled:opacity-50 mt-2">
                 <PlusCircle size={16} />
                 <span>{loading ? 'प्रोसेस होत आहे...' : editingEmail ? 'माहिती अपडेट करा' : 'संघ नोंदणी करा'}</span>

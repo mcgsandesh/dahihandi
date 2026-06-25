@@ -12,9 +12,7 @@ export default function PublicRegister() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const [day, setDay] = useState("01");
-const [month, setMonth] = useState("01");
-const [year, setYear] = useState("2012");
+    
 
   // 🎂 १. कॅलेंडर उघडताच सुरुवातीला २०१२ चे वर्ष दिसावे म्हणून डिफॉल्ट तारीख सेट केली
   const defaultDateForCalendar = `${new Date().getFullYear() - 14}-09-05`; // म्हणजेच 2012-01-01
@@ -297,6 +295,7 @@ const [year, setYear] = useState("2012");
         <TshirtForm 
           formData={formState}
           setFormData={setFormState}
+          teamData={teamInfo} // 👈 नवीन स्टेट नको, जो डेटा ऑलरेडी फेच केलाय तोच वापरा!
           onSubmit={handleSubmitPlayer}
           loading={loading}
           buttonText="माहिती सादर करा"

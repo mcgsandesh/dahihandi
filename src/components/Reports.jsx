@@ -305,17 +305,13 @@ export default function Reports({ userTeamName, onBack }) {
   // --- LOADING UI ---
   if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-[#ff6600]" /></div>;
 
-  // --- MAIN RENDER UI ---
+ // --- MAIN RENDER UI ---
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8">
-      <button onClick={onBack} className="mb-6 flex items-center font-bold text-sm text-slate-500 hover:text-[#ff6600] transition-all bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm active:scale-95">
-        <ArrowLeft size={16} className="mr-1.5" /> परत जा
-      </button>
-      
-      <h1 className="text-2xl font-black mb-6 text-slate-800">रिपोर्ट पॅनेल</h1>
+    /* 🎯 बदल: 'min-h-screen' आणि मॅन्युअल पॅडिंग काढून कंटेनर एकदम फ्लॅट आणि सुटसुटीत केला, जेणेकरून तो डॅशबोर्डमध्ये परफेक्ट बसेल */
+    <div className="w-full bg-transparent">
       
       {/* 🟢 मुख्य रिपोर्ट्स ग्रिड */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mb-6 mt-2">
         {/* T-Shirt Card */}
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div>

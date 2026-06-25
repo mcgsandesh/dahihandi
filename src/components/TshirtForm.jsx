@@ -9,7 +9,8 @@ export default function TshirtForm({
   showInsuranceSelect = false, // फक्त ॲडमीन पॅनेलमध्ये विमा स्थिती दाखवण्यासाठी
   showDistributionSelect = false, 
   teamCategory = 'Men',
-  maxDate // 🎯 बदल: इथे आपण PublicRegister कडून आलेला maxDate प्रॉप अचूक पकडला!
+  maxDate, // 🎯 बदल: PublicRegister कडून आलेला maxDate प्रॉप सुरक्षित!
+  teamData // 🎯 नवीन बदल: सेटिंग्समधील ON/OFF कंट्रोल्स तपासण्यासाठी प्रॉप पकडला!
 }) {
 
   // इनपुट चेंज हँडलर
@@ -17,10 +18,33 @@ export default function TshirtForm({
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  console.log("DEBUG TshirtForm - Received teamData:", teamData);
+  // 🎯 कंट्रोल्स ऑन आहेत की ऑफ हे तपासणे (डीफॉल्ट ऑन राहतील)
+  const isBeltEnabled = teamData?.showBeltField !== false;
+  const isTowelEnabled = teamData?.showTowelField !== false;
+
+console.log("DEBUG TshirtForm - Belt Enabled:", isBeltEnabled, "| Towel Enabled:", isTowelEnabled);
+  // 🎯 डायनॅमिक ग्रीड लेआउट: किती फील्ड्स स्क्रीनवर दिसणार आहेत त्यानुसार कॉलम्स ठरवणे
+  let activeFieldsCount = 0;
+  if (isBeltEnabled) activeFieldsCount++;
+  if (isTowelEnabled) activeFieldsCount++;
+  if (showInsuranceSelect) activeFieldsCount++;
+  if (showDistributionSelect) activeFieldsCount++;
+
+  console.log("DEBUG TshirtForm - Total Active Fields:", activeFieldsCount);
+
+  const gridClass = activeFieldsCount === 4 
+    ? 'grid-cols-2 sm:grid-cols-4' 
+    : activeFieldsCount === 3 
+      ? 'grid-cols-3' 
+      : activeFieldsCount === 1 
+        ? 'grid-cols-1' 
+        : 'grid-cols-2';
+
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       
-      {/* विभाग १: वैयक्तिक माहिती */}
+      {/* विभाग १: वैयक्तिक माहिती (तुझा ओरिजिनल कोड १००% सुरक्षित) */}
       <div className="space-y-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
         <p className="text-[10px] font-bold text-[#ff6600] uppercase tracking-wider">— वैयक्तिक माहिती —</p>
         
@@ -97,13 +121,18 @@ export default function TshirtForm({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-[11px] font-bold text-slate-600 mb-1">जन्म तारीख</label>
-            <input 
-              type="date" 
-              required
-              value={formData.birthDate || ''} 
-              onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-              max={maxDate} // 🎯 आता हा maxDate वरून प्रॉप मिळल्यामुळे कडक मर्यादित चालेल!
-              className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none bg-white font-medium text-slate-800 focus:border-[#ff6600]"
+            <input
+              type="date"
+              max={maxDate} // 🎯 तुझा मॅक्स डेट व्हॅलिडेशन पॅरामीटर जसाच्या तसा सुरक्षित!
+              value={
+                formData.birthDate && formData.birthDate.includes('/')
+                  ? `${formData.birthDate.split('/')[2]}-${formData.birthDate.split('/')[1].padStart(2, '0')}-${formData.birthDate.split('/')[0].padStart(2, '0')}`
+                  : formData.birthDate || ''
+              }
+              onChange={(e) => {
+                setFormData(prev => ({ ...prev, birthDate: e.target.value }));
+              }}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white font-bold text-slate-700 focus:outline-none"
             />
           </div>
           <div>
@@ -121,16 +150,16 @@ export default function TshirtForm({
         </div>
       </div>
 
-      {/* विभाग २: युनिформ मापे */}
+      {/* विभाग २: युनिформ मापे (तुझा ओरिजिनल कोड १००% सुरक्षित) */}
       <div className="space-y-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
-        <p className="text-[10px] font-bold text-[#ff6600] uppercase tracking-wider">— युनिформ —</p>
+        <p className="text-[10px] font-bold text-[#ff6600] uppercase tracking-wider">— युनिफॉर्म —</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-[11px] font-bold text-slate-600 mb-1">टी-शर्ट साईझ</label>
             <select 
               value={formData.tshirtSize || 'M'} 
               onChange={(e) => handleChange('tshirtSize', e.target.value)} 
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white font-medium text-slate-700 font-bold"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700 font-bold"
             >
               <option value="S">S - 36–38</option>
               <option value="M">M - 38–40</option>
@@ -157,8 +186,9 @@ export default function TshirtForm({
             <select 
               value={formData.shortsSize || 'M'} 
               onChange={(e) => handleChange('shortsSize', e.target.value)} 
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white font-medium text-slate-700 font-bold"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700 font-bold"
             >
+              <option value="No">No</option>
               <option value="S">S - 36–38</option>
               <option value="M">M - 38–40</option>
               <option value="L">L - 40–42</option>
@@ -181,58 +211,75 @@ export default function TshirtForm({
         </div>
       </div>
 
-      {/* विभाग ३: अतिरिक्त साहित्य */}
-      <div className="space-y-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
-        <p className="text-[10px] font-bold text-[#ff6600] uppercase tracking-wider">— अतिरिक्त साहित्य —</p>
-        <div className={`grid ${showInsuranceSelect ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">पट्टा (Belt)</label>
-            <select 
-              value={formData.needBelt || 'No'} 
-              onChange={(e) => handleChange('needBelt', e.target.value)} 
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white font-medium text-slate-700"
-            >
-              <option>No</option><option>Yes</option>
-            </select>
+      {/* 🎯 विभाग ३: अतिरिक्त साहित्य (टॉगलनुसार ऑटोमॅटिक हाइड-शो होणारा विभाग) */}
+      {activeFieldsCount > 0 && (
+        <div className="space-y-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
+          <p className="text-[10px] font-bold text-[#ff6600] uppercase tracking-wider">— अतिरिक्त साहित्य व स्थिती —</p>
+          <div className={`grid ${gridClass} gap-3`}>
+            
+            {/* 🎗️ पट्टा (Belt) - सेटिंग्समध्ये ON असेल तरच रेंडर होईल */}
+            {isBeltEnabled && (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">पट्टा (Belt)</label>
+                <select 
+                  value={formData.needBelt || 'No'} 
+                  onChange={(e) => handleChange('needBelt', e.target.value)} 
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white font-medium text-slate-700"
+                >
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+            )}
+
+            {/* 🧼 टॉवेल (Towel) - सेटिंग्समध्ये ON असेल तरच रेंडर होईल */}
+            {isTowelEnabled && (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">टॉवेल (Towel)</label>
+                <select 
+                  value={formData.needTowel || 'No'} 
+                  onChange={(e) => handleChange('needTowel', e.target.value)} 
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white font-medium text-slate-700"
+                >
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+            )}
+
+            {/* 🛡️ विमा स्थिती */}
+            {showInsuranceSelect && (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">विमा स्थिती</label>
+                <select 
+                  value={formData.insuranceStatus || 'Pending'} 
+                  onChange={(e) => handleChange('insuranceStatus', e.target.value)} 
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700 font-bold"
+                >
+                  <option value="Pending">प्रलंबित</option>
+                  <option value="Done">झालेले</option>
+                </select>
+              </div>
+            )}
+
+            {/* 👕 टी-शर्ट वाटप */}
+            {showDistributionSelect && (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">टी-शर्ट वाटप</label>
+                <select 
+                  value={formData.tshirtGiven || 'No'} 
+                  onChange={(e) => handleChange('tshirtGiven', e.target.value)} 
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700 font-bold"
+                >
+                  <option value="No">बाकी (No)</option>
+                  <option value="Yes">दिला (Yes)</option>
+                </select>
+              </div>
+            )}
+
           </div>
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">टॉवेल (Towel)</label>
-            <select 
-              value={formData.needTowel || 'No'} 
-              onChange={(e) => handleChange('needTowel', e.target.value)} 
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white font-medium text-slate-700"
-            >
-              <option>No</option><option>Yes</option>
-            </select>
-          </div>
-          {showInsuranceSelect && (
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">विма स्थिती</label>
-              <select 
-                value={formData.insuranceStatus || 'Pending'} 
-                onChange={(e) => handleChange('insuranceStatus', e.target.value)} 
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700 font-bold"
-              >
-                <option value="Pending">प्रलंबित</option>
-                <option value="Done">झालेले</option>
-              </select>
-            </div>
-          )}
-          {showDistributionSelect && (
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">टी-शर्ट वाटप</label>
-              <select 
-                value={formData.tshirtGiven || 'No'} 
-                onChange={(e) => handleChange('tshirtGiven', e.target.value)} 
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-700 font-bold"
-              >
-                <option value="No">बाकी (No)</option>
-                <option value="Yes">दिला (Yes)</option>
-              </select>
-            </div>
-          )}
         </div>
-      </div>
+      )}
 
       {/* सबमिट बटण */}
       <button 

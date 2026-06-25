@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, doc, setDoc, serverTimestamp, updateDoc, query, where, onSnapshot } from 'firebase/firestore'; 
-import { LayoutDashboard, LogOut, Shield, Shirt, Users, Search, Plus, User, Image as ImageIcon, X, Edit2, Trash2, Check, Copy, CheckCircle, FileText, Phone, MessageSquare, MoreVertical, Check as CheckIcon } from 'lucide-react';
+import { collection, doc, serverTimestamp, updateDoc, query, where, onSnapshot, setDoc } from 'firebase/firestore'; 
+import { LayoutDashboard, LogOut, Shield, Shirt, Users, Search, Plus, User, Image as ImageIcon, X, Edit2, Trash2, Check, Copy, CheckCircle, FileText, Phone, MessageSquare, MoreVertical, Package, Menu ,Settings as SettingsIcon} from 'lucide-react';
 import Swal from 'sweetalert2';
 import Reports from '../components/Reports';
 import TshirtForm from '../components/TshirtForm'; 
 import TeamProfile from '../components/TeamProfile'; 
-
+import PlayersList from '../components/PlayersList'; 
+import ManageInventory from '../components/ManageInventory';
+import Settings from '../components/Settings'; // 👈 वरती जिथे रिपोर्ट इम्पोर्ट केलाय तिथे जोडा
 
 export default function TeamDashboard({ user, onLogout }) {
   
-  // ==========================================
-  // 📌 SECTION 1: STATES & CONFIGURATION
-  // ==========================================
-  const [activeTab, setActiveTab] = useState('dashboard'); 
+  // जर सूपरॲडमीनने फॉर्म बंद केला असेल, तर थेट 'profile' टॅब ओपन होईल
+  const hasFormAccess = user.allowInAppForm !== false;
+  const [activeTab, setActiveTab] = useState(hasFormAccess ? 'dashboard' : 'profile'); 
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [playersList, setPlayersList] = useState([]);
@@ -28,7 +30,10 @@ export default function TeamDashboard({ user, onLogout }) {
 
   const [isFormActive, setIsFormActive] = useState(user.isFormActive !== false);
   
-  // 🎯 सुरुवातीला प्रॉपमधून आलेल्या डेटाने स्टेट सेट होईल
+  // 🎯 नवीन स्टेट्स: इन्व्हेंटरी मोडल आणि मोबाईल ड्रॉवरसाठी
+  const [isInvModalOpen, setIsInvModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
   const [teamData, setTeamData] = useState({
     teamCategory: user.teamCategory || 'Men',
     address: user.address || '',
@@ -36,7 +41,8 @@ export default function TeamDashboard({ user, onLogout }) {
     slogan: user.slogan || '',
     logoUrl: user.logoUrl || '',
     aboutTeam: user.aboutTeam || '', 
-    bestPerformance: user.bestPerformance || '' 
+    bestPerformance: user.bestPerformance || '',
+    inventory: user.inventory || {}
   });
 
   // खेळाडू फॉर्म फील्ड्स
@@ -59,6 +65,7 @@ export default function TeamDashboard({ user, onLogout }) {
   const shareLink = `${window.location.origin}${import.meta.env.BASE_URL}${(user.teamName || '').toLowerCase().trim().replace(/\s+/g, '-')}/register?t=${btoa(user.uid)}`;
 
   const handleCopyLink = () => {
+    if (!hasFormAccess) return;
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(shareLink); } 
       else {
@@ -67,13 +74,7 @@ export default function TeamDashboard({ user, onLogout }) {
       }
       setCopied(true); 
       Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'success',
-        title: 'नोंदणी लिंक कॉपी झाली!',
-        showConfirmButton: false,
-        timer: 2000,
-        timerProgressBar: true,
+        toast: true, position: 'top-end', icon: 'success', title: 'नोंदणी लिंक कॉपी झाली!', showConfirmButton: false, timer: 2000, timerProgressBar: true,
       });
       setTimeout(() => setCopied(false), 2000);
     } catch (err) { console.error(err); }
@@ -105,18 +106,17 @@ export default function TeamDashboard({ user, onLogout }) {
     } catch (e) { return '—'; }
   };
 
-  // 🎯 १. 🔄 नवीन मास्टर लिसनर: ॲडमीनचा स्वतःचा प्रोफाईल डेटा (users) लाईव्ह सिंक करण्यासाठी (0 Read Extra Loss)
+// 🔄 Master User Data Sync Listener (नवीन ५ एड्रेस फील्ड्ससह परफेक्ट सिंक)
   useEffect(() => {
     const adminEmail = user.email || user.info?.email;
     if (!adminEmail) return;
 
-    console.log("⚡ Listening for admin profile sync:", adminEmail);
     const userDocRef = doc(db, "users", adminEmail);
-
     const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        console.log("👑 Live Admin Data Sync Success!");
+        console.log("📥 Firebase Live Data Synced to Dashboard:", data);
+        
         setTeamData({
           teamCategory: data.teamCategory || 'Men',
           address: data.address || '',
@@ -124,7 +124,15 @@ export default function TeamDashboard({ user, onLogout }) {
           slogan: data.slogan || '',
           logoUrl: data.logoUrl || '',
           aboutTeam: data.aboutTeam || '',
-          bestPerformance: data.bestPerformance || ''
+          bestPerformance: data.bestPerformance || '',
+          inventory: data.inventory || {},
+          
+          // 🎯 कडक दुरुस्ती: फायरबेसमधून नवीन ५ फील्ड्स डॅशबोर्ड स्टेटमध्ये रीड केल्या!
+          areaName: data.areaName || '',
+          pincode: data.pincode || '',
+          city: data.city || '',
+          district: data.district || '',
+          state: data.state || ''
         });
         setIsFormActive(data.isFormActive !== false);
       }
@@ -133,11 +141,9 @@ export default function TeamDashboard({ user, onLogout }) {
     return () => unsubscribeUser();
   }, [user]);
 
-  // 🔄 खेळाडू यादीसाठी रिअर-टाइम लिसनर
+  // 🔄 Players Real-time Listener
   useEffect(() => {
-    if (!user?.teamName) return;
-
-    console.log("⚡ Listening for players of team:", user.teamName);
+    if (!user?.teamName || !hasFormAccess) return;
     
     const playersRef = collection(db, "players");
     const q = query(playersRef, where("teamName", "==", user.teamName));
@@ -156,7 +162,7 @@ export default function TeamDashboard({ user, onLogout }) {
     });
 
     return () => unsubscribe();
-  }, [user?.teamName]);
+  }, [user?.teamName, hasFormAccess]);
 
   // ==========================================
   // 📌 SECTION 3: EDIT, TOGGLE & DATA WRITERS
@@ -165,18 +171,12 @@ export default function TeamDashboard({ user, onLogout }) {
     const nextStatus = currentStatus === 'Done' || currentStatus === 'झालेले' ? 'Pending' : 'Done';
     try {
       await updateDoc(doc(db, "players", id), { insurance: nextStatus });
-      Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'success',
-        title: `विमा स्थिती: ${nextStatus === 'Done' ? 'झालेले' : 'प्रलंबित'}`,
-        showConfirmButton: false,
-        timer: 1500
-      });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `विма स्थिती: ${nextStatus === 'Done' ? 'झालेले' : 'प्रलंबित'}`, showConfirmButton: false, timer: 1500 });
     } catch (err) { console.error(err); }
   };
 
   const openPlayerModal = (player = null) => {
+    if (!hasFormAccess) return;
     if (player) {
       setEditingPlayerId(player.id);
       setPlayerName(player.name);
@@ -186,7 +186,6 @@ export default function TeamDashboard({ user, onLogout }) {
       setBloodGroup(player.blood || 'B+');
       
       const standardSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
-
       if (player.tshirt && !standardSizes.includes(player.tshirt)) {
         setTshirtSize('Custom'); setCustomTshirt(player.tshirt);
       } else {
@@ -226,14 +225,8 @@ export default function TeamDashboard({ user, onLogout }) {
 
   const handleSavePlayer = async (e) => {
     e.preventDefault();
-
     if (user && user.isDeleted === true) {
-      Swal.fire({
-        icon: 'error',
-        title: 'प्रवेश नाकारला!',
-        text: 'तुमचे अकाउंट बंद करण्यात आले आहे.',
-        confirmButtonColor: '#ff6600',
-      });
+      Swal.fire({ icon: 'error', title: 'प्रवेश नाकारला!', text: 'तुमचे Account बंद करण्यात आले आहे.', confirmButtonColor: '#ff6600' });
       setIsModalOpen(false); 
       return; 
     }
@@ -269,9 +262,7 @@ export default function TeamDashboard({ user, onLogout }) {
       setIsModalOpen(false);
     } catch (err) { 
       Swal.fire({ icon: 'error', title: 'त्रुटी!', text: 'अडचण आली.' }); 
-    } finally { 
-      setLoading(false); 
-    }
+    } finally { setLoading(false); }
   };
 
   const handleFastToggleTshirt = async (id, currentStatus) => {
@@ -309,6 +300,7 @@ export default function TeamDashboard({ user, onLogout }) {
     });
   };
 
+
   const handleToggleFormStatus = async () => {
     const nextStatus = !isFormActive;
     setIsFormActive(nextStatus);
@@ -317,39 +309,146 @@ export default function TeamDashboard({ user, onLogout }) {
 
   const filteredPlayers = playersList.filter(p => p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || p.mobile?.includes(searchTerm));
 
+  // डेस्कटॉप साइडबार मेनू (इन्व्हेंटरीसह ५ पूर्ण टॅब फिक्स)
+  const sidebarTabs = [
+    { id: 'dashboard', label: 'डॅशबोर्ड', icon: <LayoutDashboard size={18} />, show: hasFormAccess },
+    { id: 'players', label: 'खेळाडू यादी', icon: <Users size={18} />, show: hasFormAccess },
+    { id: 'inventory', label: 'इन्व्हेंटरी', icon: <Package size={18} />, show: hasFormAccess }, 
+    { id: 'reports', label: 'रिपोर्ट पॅनेल', icon: <FileText size={18} />, show: hasFormAccess },
+    { id: 'profile', label: 'संघ प्रोफाईल', icon: <User size={18} />, show: true },
+    { id: 'settings', label: 'सेटिंग्ज', icon: <SettingsIcon size={18} />, show: hasFormAccess }
+  ].filter(tab => tab.show);
+
+  // 🎯 नियम १: मोबाईल बॉटम बारवर फक्त ४ मुख्य मेनू फिक्स (संघ प्रोफाईल आणि लॉगआऊटसह)
+  const mobileTabs = [
+    { id: 'dashboard', label: 'डॅशबोर्ड', icon: <LayoutDashboard size={18} />, show: hasFormAccess },
+    { id: 'players', label: 'खेळाडू यादी', icon: <Users size={18} />, show: hasFormAccess },
+    { id: 'reports', label: 'रिपोर्ट्स', icon: <FileText size={18} />, show: hasFormAccess },
+    { id: 'profile', label: 'संघ प्रोफाईल', icon: <User size={18} />, show: true }
+  ].filter(tab => tab.show);
+
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans antialiased pb-16 md:pb-0 text-slate-800">
       
-      {/* 📱 मोबाईल टॉप हेडर */}
+{/* 📱 मोबाईल टॉप हेडर */}
       <div className="md:hidden bg-[#0b132b] text-white px-4 py-3 flex items-center justify-between shadow-md z-30 sticky top-0">
-        <span className="text-base font-black tracking-wide uppercase truncate">{user.teamName}</span>
-        <div className="bg-[#ff6600]/10 border border-[#ff6600]/30 text-[#ff6600] px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono">{user.uid}</div>
+        <div className="flex items-center space-x-2.5 min-w-0">
+          {/* 🎯 नियम ३: साइडबार उघडणारे ☰ मेनू बटण एकदम डावीकडे लावले */}
+          <button 
+            onClick={() => setIsDrawerOpen(true)} 
+            className="p-1.5 hover:bg-white/10 rounded-xl text-white transition-all active:scale-95 flex-shrink-0"
+            title="मेनू उघडा"
+          >
+            <Menu size={22} />
+          </button>
+          
+          <div className="flex flex-col min-w-0">
+            {/* 🎯 मोबाईल हेडर ब्रँडिंग फिक्स */}
+            <span className="text-[10px] font-black tracking-wide text-slate-400">
+              महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
+            </span>
+            <span className="text-xs font-bold uppercase truncate tracking-tight text-white max-w-[150px]">
+              {user.teamName}
+            </span>
+          </div>
+        </div>
+        
+        {/* 🎯 नियम ४: उजव्या कोपऱ्यात टीमचा अधिकृत UID बॅज जसाच्या तसा सुरक्षित */}
+        <div className="bg-[#ff6600]/10 border border-[#ff6600]/30 text-[#ff6600] px-2.5 py-1 rounded-xl text-[10px] font-black font-mono shadow-sm">
+          {user.uid || 'MCG1206'}
+        </div>
       </div>
 
-      {/* 🏢 डेस्कटॉप साइडबार */}
+      {/* 📱 मोबाईल कडक स्लाईड-इन ड्रॉवर (डावीकडून - Left Side उघडणारा) */}
+      {isDrawerOpen && (
+        <div className="fixed inset-0 z-50 md:hidden animate-in fade-in duration-150">
+          <div onClick={() => setIsDrawerOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm"></div>
+          
+          {/* 🎯 नियम ३: 'left-0' लावून मोबाईल ड्रॉवर डावीकडे परफेक्ट सेट केला */}
+          <div className="fixed left-0 top-0 bottom-0 w-64 bg-[#0b132b] text-white p-5 shadow-2xl flex flex-col justify-between z-50 animate-in slide-in-from-left duration-200">
+            <div className="w-full">
+              <div className="flex justify-between items-start pb-4 border-b border-slate-800 mb-5">
+                <div>
+                  {/* 🎯 हुबेहूब डेस्कटॉप सारखं कडक मोबाईल ड्रॉवर हेडर (Uppercase + Orange Branded) */}
+                  <h2 className="text-base font-black tracking-wide text-white">
+                    महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
+                  </h2>
+                  <p className="text-[11px] text-slate-300 tracking-wide uppercase mt-0.5 font-black truncate max-w-[170px]">
+                    {user.teamName}
+                  </p>
+                </div>
+                <button onClick={() => setIsDrawerOpen(false)} className="text-slate-400 hover:text-white p-1 text-sm font-bold mt-0.5">✕</button>
+              </div>
+              
+              {/* 🎯 कडक लूप मॅपिंग दुरुस्ती: मोबाईल ड्रॉवरमध्ये आता इन्व्हेंटरी आणि सेटिंग्ससह सर्व ५-६ ऑप्शन्स व्यवस्थित दिसतील! */}
+              <div className="space-y-1">
+                {sidebarTabs.map((tab) => (
+                  <button 
+                    key={tab.id} 
+                    onClick={() => { setIsDrawerOpen(false); setActiveTab(tab.id); }}
+                    className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${activeTab === tab.id ? 'bg-[#ff6600] text-white shadow-lg shadow-[#ff6600]/20' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+                  >
+                    {tab.icon}
+                    <span className="font-sans">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 🚪 ड्रॉवरच्या बॉटमला सुरक्षित लॉगआऊट */}
+            <button 
+              onClick={() => { setIsDrawerOpen(false); onLogout(); }} 
+              className="w-full flex items-center justify-center space-x-2 bg-red-600/10 text-red-400 py-2.5 rounded-xl text-xs font-bold border border-red-500/10 hover:bg-red-600 hover:text-white transition-all mb-2"
+            >
+              <LogOut size={14} />
+              <span>लॉगआऊट</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+
+      {/* 🏢 डेस्कटॉप साइडबार (इन्व्हेंटरी आणि लॉगआऊटसह फिक्स) */}
       <div className="hidden md:flex w-64 bg-[#0b132b] text-white p-6 flex-col justify-between z-40">
         <div>
-          <div className="mb-8"><h2 className="text-lg font-black text-white uppercase truncate tracking-wide">{user.teamName}</h2></div>
+          <div className="mb-8 border-b border-slate-800 pb-4">
+            <h2 className="text-lg font-black tracking-wide text-white">
+              महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
+            </h2>
+            <p className="text-[12px] text-slate-300 tracking-wide uppercase mt-1 font-black truncate">
+              {user.teamName}
+            </p>
+          </div>
+          
           <div className="space-y-1">
-            {[
-              { id: 'dashboard', label: 'डॅशबोर्ड', icon: <LayoutDashboard size={18} /> },
-              { id: 'players', label: 'खेळाडू यादी', icon: <Users size={18} /> },
-              { id: 'reports', label: 'रिपोर्ट पॅनेल', icon: <FileText size={18} /> },
-              { id: 'profile', label: 'संघ प्रोफाईल', icon: <User size={18} /> }
-            ].map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === tab.id ? 'bg-[#ff6600] text-white shadow-lg shadow-[#ff6600]/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>{tab.icon}<span>{tab.label}</span></button>
+            {sidebarTabs.map((tab) => (
+              <button 
+                key={tab.id} 
+                onClick={() => setActiveTab(tab.id)} 
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === tab.id ? 'bg-[#ff6600] text-white shadow-lg shadow-[#ff6600]/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
             ))}
           </div>
         </div>
-        <button onClick={onLogout} className="w-full flex items-center justify-center space-x-2 bg-red-600/10 text-red-400 py-3 rounded-xl text-xs font-bold border border-red-500/10 hover:bg-red-600 hover:text-white transition-all"><LogOut size={14} /><span>लॉगआऊट</span></button>
-      </div>
+        
+        <button 
+          onClick={onLogout} 
+          className="w-full flex items-center justify-center space-x-2 bg-red-600/10 text-red-400 py-3 rounded-xl text-xs font-bold border border-red-500/10 hover:bg-red-600 hover:text-white transition-all"
+        >
+          <LogOut size={14} />
+          <span>लॉगआऊट</span>
+        </button>
+      </div>   
 
       {/* 🖥️ मुख्य कार्यक्षेत्र */}
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="w-full space-y-6">
           
           {/* 📊 MODERN DASHBOARD VIEW */}
-          {activeTab === 'dashboard' && (() => {
+          {activeTab === 'dashboard' && hasFormAccess && (() => {
             const tshirtCounts = {};
             const shortsCounts = {};
             let totalBelt = 0;
@@ -362,14 +461,20 @@ export default function TeamDashboard({ user, onLogout }) {
               if (p.towel === 'Yes') totalTowel++;
             });
 
-            const recentPlayers = [...playersList]
-              .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
-              .slice(0, 5);
+            const recentPlayers = [...playersList].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5);
 
             return (
               <div className="w-full space-y-6 animate-in fade-in duration-200">
                 <div className="flex items-center justify-between">
-                  <h1 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">डॅशबोर्ड</h1>
+                  <div className="flex items-baseline space-x-3 min-w-0">
+                    <h1 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight flex-shrink-0">
+                      डॅशबोर्ड
+                    </h1>
+                    <span className="hidden sm:inline-block text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200/60 px-3 py-1.5 rounded-xl truncate max-w-md uppercase tracking-wide">
+                      {user.teamName}
+                    </span>
+                  </div>
+                  
                   <button onClick={() => openPlayerModal()} className="hidden sm:flex bg-[#ff6600] hover:bg-[#e65c00] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md items-center space-x-2 transition-all">
                     <Plus size={16} /><span>खेळाडू जोडा</span>
                   </button>
@@ -408,7 +513,7 @@ export default function TeamDashboard({ user, onLogout }) {
                       <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">टी-शर्ट नोंद</span>
                       <div className="w-7 h-7 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center"><Shirt size={14} /></div>
                     </div>
-                    <p className="text-2xl md:text-3xl font-black text-slate-800 mt-3">{playersList.length}</p>
+                    <p className="text-2xl stroke-slate-800 md:text-3xl font-black text-slate-800 mt-3">{playersList.length}</p>
                     <span className="text-[10px] text-purple-500 font-bold mt-2 block">View Details</span>
                   </div>
 
@@ -483,22 +588,9 @@ export default function TeamDashboard({ user, onLogout }) {
                               </td>
                             </tr>
                           ))}
-                          {recentPlayers.length === 0 && (
-                            <tr><td colSpan="5" className="py-6 text-center text-slate-400">एकही खेळाडू नोंदवला नाही.</td></tr>
-                          )}
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2.5">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">जलद कृती</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <button onClick={() => openPlayerModal()} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-3 text-left hover:shadow transition-all"><Plus size={16} className="text-emerald-500" /><span className="text-xs font-bold text-slate-700">खेळाडू जोडा</span></button>
-                    <button onClick={() => setActiveTab('players')} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-3 text-left hover:shadow transition-all"><Users size={16} className="text-blue-500" /><span className="text-xs font-bold text-slate-700">खेळाडू यादी</span></button>
-                    <button onClick={() => setActiveTab('reports')} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-3 text-left hover:shadow transition-all"><FileText size={16} className="text-purple-500" /><span className="text-xs font-bold text-slate-700">रिपोर्ट निर्यात</span></button>
-                    <button onClick={() => setActiveTab('profile')} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-3 text-left hover:shadow transition-all"><User size={16} className="text-orange-500" /><span className="text-xs font-bold text-slate-700">टीम प्रोफाईल</span></button>
                   </div>
                 </div>
               </div>
@@ -506,234 +598,148 @@ export default function TeamDashboard({ user, onLogout }) {
           })()}
 
           {/* 👥 VIEW 2: PLAYERS MANAGEMENT LIST */}
-          {activeTab === 'players' && (
-            <>
-              <div className="border-b border-slate-200 pb-3 flex items-center space-x-2">
-                <button 
-                  onClick={() => setActiveTab('dashboard')} 
-                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-600 active:bg-slate-200 transition-all flex items-center justify-center"
-                  title="मागे जा"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"></path>
-                  </svg>
-                </button>
-                <h1 className="text-xl font-black text-slate-800">खेळाडू यादी ({filteredPlayers.length})</h1>
-              </div>
+          {activeTab === 'players' && hasFormAccess && (
+            <PlayersList 
+              filteredPlayers={filteredPlayers}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              calculateAge={calculateAge}
+              getInitials={getInitials}
+              handleFastToggleInsurance={handleFastToggleInsurance}
+              handleFastToggleTshirt={handleFastToggleTshirt}
+              openPlayerModal={openPlayerModal}
+              handleSoftDelete={handleSoftDelete}
+              setActiveTab={setActiveTab}
+              playersList={playersList}
+              inventoryData={teamData?.inventory} 
+            />
+          )}
 
-              <div className="w-full relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
-                  <Search size={18} />
-                </span>
-                <input 
-                  type="text" 
-                  value={searchTerm} 
-                  onChange={(e) => setSearchTerm(e.target.value)} 
-                  placeholder="नाव किंवा मोबाईलने शोधा..." 
-                  className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-sm focus:outline-none" 
-                />
-              </div>
-              
-              <div className="bg-white rounded-3xl shadow-sm border border-slate-100 divide-y divide-slate-100 overflow-hidden">
-                {filteredPlayers.length === 0 ? (
-                  <div className="p-6 text-center text-slate-400 text-xs font-medium">एकही खेळाडू उपलब्ध नाही.</div>
-                ) : (
-                  filteredPlayers.map((p, index) => {
-                    const isLastRecords = index >= filteredPlayers.length - 2 && filteredPlayers.length > 2;
-
-                    return (
-                      <div key={p.id} className="p-4 flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 hover:bg-slate-50/40 transition-all relative">
-                        
-                        <div className="flex items-center space-x-3.5 min-w-0 flex-1">
-                          <div className="w-10 h-10 rounded-full bg-[#ff6600]/10 border border-[#ff6600]/20 flex items-center justify-center text-xs font-black text-[#ff6600] flex-shrink-0">
-                            {getInitials(p.name)}
-                          </div>
-                          <div className="truncate">
-                            <h4 className="text-sm font-bold text-slate-800 truncate">{p.name}</h4>
-                            <p className="text-[11px] text-slate-400 font-bold mt-0.5">
-                              वय: {calculateAge(p.dob)} <span className="mx-1 text-slate-200">|</span> T: {p.tshirt} <span className="mx-1 text-slate-200">|</span> S: {p.shorts || '—'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-3 justify-between md:justify-end">
-                          
-                          <div className="flex items-center space-x-2 flex-1 md:flex-initial pt-1 md:pt-0">
-                            <button 
-                              onClick={() => handleFastToggleInsurance(p.id, p.insurance)}
-                              className={`flex-1 md:flex-initial md:w-32 text-center py-2 md:py-1 rounded-xl text-[10px] font-black tracking-wide uppercase transition-all border ${
-                                p.insurance === 'Done' || p.insurance === 'झालेले' 
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 active:bg-emerald-100' 
-                                  : 'bg-red-50 text-red-600 border-red-200 active:bg-red-100'
-                              }`}
-                            >
-                              {p.insurance === 'Done' || p.insurance === 'झालेले' ? '🛡️ विमा पूर्ण' : '⏳ विमा प्रलंबित'}
-                            </button>
-
-                            <button 
-                              onClick={() => handleFastToggleTshirt(p.id, p.tshirtGiven)}
-                              className={`flex-1 md:flex-initial md:w-32 text-center py-2 md:py-1 rounded-xl text-[10px] font-black tracking-wide uppercase transition-all border ${
-                                p.tshirtGiven === 'Yes' 
-                                  ? 'bg-purple-600 text-white border-purple-600 shadow-sm active:bg-purple-700' 
-                                  : 'bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 active:bg-purple-200'
-                              }`}
-                            >
-                              {p.tshirtGiven === 'Yes' ? '👕 टी-शर्ट दिला' : '📦 टी-शर्ट बाकी'}
-                            </button>
-                          </div>
-
-                          <div className="relative flex items-center">
-                            <div className="hidden md:flex items-center space-x-1.5 mr-2">
-                              <a href={`tel:${p.mobile}`} title="कॉल करा" className="p-2 hover:bg-green-50 text-green-600 rounded-xl transition-all"><Phone size={16} /></a>
-                              <a href={`https://wa.me/91${p.mobile}`} target="_blank" rel="noreferrer" title="व्हॉट्सॲप" className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-xl transition-all"><MessageSquare size={16} /></a>
-                              <button onClick={() => openPlayerModal(p)} title="सुधार करा" className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-all"><Edit2 size={16} /></button>
-                              <button onClick={() => handleSoftDelete(p.id, p.name)} title="काढून टाका" className="p-2 hover:bg-red-50 text-red-500 rounded-xl transition-all"><Trash2 size={16} /></button>
-                            </div>
-
-                            <div className="relative group md:hidden">
-                              <button className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-all focus:outline-none">
-                                <MoreVertical size={18} />
-                              </button>
-                              
-                              <div className={`absolute right-0 bg-white border border-slate-200 rounded-xl shadow-2xl py-1.5 w-32 hidden group-focus-within:block group-hover:block z-50 pointer-events-auto animate-in fade-in duration-150 ${
-                                isLastRecords 
-                                  ? 'bottom-9 top-auto origin-bottom slide-in-from-bottom-2' 
-                                  : 'top-9 bottom-auto origin-top slide-in-from-top-2'
-                              }`}>
-                                <a href={`tel:${p.mobile}`} className="flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-green-600 hover:bg-slate-50"><Phone size={13} /> <span>कॉल करा</span></a>
-                                <a href={`https://wa.me/91${p.mobile}`} target="_blank" rel="noreferrer" className="flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-emerald-600 hover:bg-slate-50"><MessageSquare size={13} /> <span>व्हॉट्सॲप</span></a>
-                                <button onClick={() => openPlayerModal(p)} className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-blue-600 hover:bg-slate-50 text-left"><Edit2 size={13} /> <span>सुधार करा</span></button>
-                                <button onClick={() => handleSoftDelete(p.id, p.name)} className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-50 text-left border-t border-slate-100"><Trash2 size={13} /> <span>काढून टाका</span></button>
-                              </div>
-                            </div>
-                          </div>
-
-                        </div>
-
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </>
+          {/* 📦 नियम ५ व ६: स्वतंत्र इन्व्हेंटरी मॉड्यूल फुल व्ह्यू */}
+          {activeTab === 'inventory' && hasFormAccess && (
+            <ManageInventory 
+              user={user}
+              teamData={teamData}
+              setTeamData={setTeamData}
+              playersList={playersList}
+              onBack={() => setActiveTab('dashboard')}
+            />
           )}
 
           {/* REPORT VIEW */}
-          {activeTab === 'reports' && (
-            <div className="animate-in fade-in duration-300">
-              <Reports userTeamName={user.teamName} />
+          {activeTab === 'reports' && hasFormAccess && (
+            <div className="animate-in fade-in duration-300 space-y-4">
+              <div className="border-b border-slate-200 pb-3 flex items-center space-x-3">
+                <button 
+                  onClick={() => setActiveTab('dashboard')} 
+                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-600 active:bg-slate-200 transition-all flex items-center justify-center flex-shrink-0"
+                  title="मागे जा"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"></path>
+                  </svg>
+                </button>
+                <h1 className="text-xl font-black text-slate-800">रिपोर्ट पॅनेल</h1>
+              </div>
+              <Reports userTeamName={user.teamName} onBack={() => setActiveTab('dashboard')} />
             </div>
           )}
 
-    {/* PROFILE VIEW */}
-        {activeTab === 'profile' && (
-          <div className="space-y-5 max-w-xl mx-auto animate-in fade-in duration-200">
-            
-            {/* मुख्य कार्ड (View/Edit सर्वकाही आता TeamProfile च्या आतूनच रेंडर होईल) */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xl">
-              <div className="flex justify-between items-start">
+          {/* PROFILE VIEW - 🎯 क्लीन आणि सेंटर्ड डिझाईन */}
+          {activeTab === 'profile' && (
+            <div className="w-full max-w-2xl mx-auto animate-in fade-in duration-200 space-y-6">
+              
+              {/* मुख्य संघ प्रोफाईल कार्ड */}
+              <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm relative">
+                <div className="absolute top-6 right-6">
+                  <button 
+                    onClick={() => setIsEditMode(!isEditMode)} 
+                    className={`p-2 rounded-xl transition-all shadow-sm ${isEditMode ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                </div>
                 
-                {/* 🎯 कॉम्पोनंट कॉल */}
                 <TeamProfile 
                   user={user} 
                   teamData={teamData} 
                   setTeamData={setTeamData} 
                   isEditMode={isEditMode} 
-                  setIsEditMode={setIsEditMode}
+                  setIsEditMode={setIsEditMode} 
                 />
-
-                {/* पेन्सिल एडिट बटण */}
-                <button 
-                  onClick={() => setIsEditMode(!isEditMode)} 
-                  className={`p-2.5 rounded-xl transition-all shadow-sm ${isEditMode ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700'}`}
-                >
-                  <Edit2 size={16} />
-                </button>
               </div>
+
+              {/* मोबाईल लॉगआऊट - हे फक्त मोबाईलवर दिसेल */}
+              {!isEditMode && (
+                <div className="pb-8 pt-2 px-2 md:hidden">
+                  <button onClick={onLogout} className="w-full bg-red-500/10 text-red-500 border border-red-500/20 py-3 rounded-2xl font-black text-xs tracking-wide shadow-sm flex items-center justify-center space-x-2">
+                    <span>अकाउंट लॉगआऊट करा</span>
+                  </button>
+                </div>
+              )}
             </div>
+          )}
 
-            {/* क्विक ॲक्शन बट्स (स्थिती आणि लिंक कॉपी) */}
-            {!isEditMode && (
-              <div className="grid grid-cols-2 gap-3 animate-in fade-in duration-150">
-                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">पब्लिक फॉर्म स्थिती</span>
-                  <button type="button" onClick={handleToggleFormStatus} className={`w-full py-2.5 rounded-xl text-xs font-black transition-all shadow-sm ${isFormActive ? 'bg-green-600 text-white' : 'bg-red-500 text-white'}`}>{isFormActive ? '🟢 ON' : '🔴 OFF'}</button>
-                </div>
-                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">नोंदणी लिंक</span>
-                  <button onClick={handleCopyLink} className={`w-full py-2.5 rounded-xl font-black text-xs transition-all flex items-center justify-center space-x-1 ${copied ? 'bg-emerald-600 text-white' : 'bg-[#ff6600] text-white'}`}>{copied ? <CheckCircle size={14} /> : <Copy size={14} />}<span>{copied ? 'कॉपी झाली!' : 'लिंक कॉपी'}</span></button>
-                </div>
-              </div>
-            )}
-            
-          </div>
-        )}
+        {/* ⚙️ 🎯 नवीन सेटिंग्स कॉम्पोनंट व्ह्यू (सेम लाईक रिपोर्ट पॅनेल स्ट्रक्चर) */}
+          {activeTab === 'settings' && hasFormAccess && (
+            <Settings 
+              user={user}
+              teamData={teamData}
+              setTeamData={setTeamData}
+              isFormActive={isFormActive}
+              handleToggleFormStatus={handleToggleFormStatus}
+              shareLink={shareLink}
+              copied={copied}
+              handleCopyLink={handleCopyLink}
+              onBack={() => setActiveTab('dashboard')}
+            />
+          )}
+
           
         </div>
       </div>
 
-      {/* 🚪 मोबाईलसाठी कडक लॉगआउट बटण */}
-      <div className="mt-8 px-2 md:hidden">
-        <button 
-          onClick={onLogout} 
-          className="w-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 py-3 rounded-2xl font-black text-sm tracking-wide transition-all shadow-sm flex items-center justify-center space-x-2"
-        >
-          <span>अकाउंट लॉगआऊट करा</span>
-        </button>
-      </div>
-
-      {/* 📱 मोबाईल बॉटम बार */}
+      {/* 📱 मोबाईल बार आयटम्स (नियम १: फिक्स ४ मुख्य आयकॉन्स - गर्दी क्लोज) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-2 flex justify-around items-center shadow-lg z-30">
-        {[
-          { id: 'dashboard', label: 'डॅशबोर्ड', icon: <LayoutDashboard size={20} /> },
-          { id: 'players', label: 'खेळाडू', icon: <Users size={20} /> },
-          { id: 'reports', label: 'रिपोर्ट', icon: <FileText size={20} /> },
-          { id: 'profile', label: 'प्रोफाईल', icon: <User size={20} /> }
-        ].map((btn) => (
-          <button key={btn.id} onClick={() => setActiveTab(btn.id)} className={`flex flex-col items-center space-y-0.5 transition-all ${activeTab === btn.id ? 'text-[#ff6600] font-bold' : 'text-slate-400'}`}>{btn.icon}<span className="text-[10px]">{btn.label}</span></button>
+        {mobileTabs.map((btn) => (
+          <button 
+            key={btn.id} 
+            onClick={() => setActiveTab(btn.id)} 
+            className={`flex flex-col items-center space-y-0.5 transition-all ${activeTab === btn.id ? 'text-[#ff6600] font-bold' : 'text-slate-400'}`}
+          >
+            {btn.icon}
+            <span className="text-[10px]">{btn.label}</span>
+          </button>
         ))}
       </div>
 
       {/* 📱 मोबाईल प्लस तरंगते बटण */}
-      {(activeTab === 'dashboard' || activeTab === 'players') && (
-        <button onClick={() => openPlayerModal()} className="sm:hidden fixed bottom-20 right-5 bg-[#ff6600] text-white p-4 rounded-full shadow-xl shadow-[#ff6600]/30 z-20"><Plus size={22} /></button>
+      {hasFormAccess && (activeTab === 'dashboard' || activeTab === 'players') && (
+        <button onClick={() => openPlayerModal()} className="sm:hidden fixed bottom-20 right-5 bg-[#ff6600] text-white p-4 rounded-full shadow-xl z-20"><Plus size={22} /></button>
       )}
 
-      {/* 🗟 प्रगत संपादन मॉडेल */}
-      {isModalOpen && (
+{/* 🗟 प्रगत संपादन मॉडेल */}
+      {isModalOpen && hasFormAccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
           <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative z-10 max-h-[85vh] overflow-y-auto">
             <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-slate-400 p-1"><X size={20} /></button>
             <div className="mb-4"><h3 className="text-lg font-black text-slate-800">{editingPlayerId ? 'खेळाडूची माहिती सुधारा' : 'गोविंदा खेळाडू नोंदणी'}</h3></div>
-            
             <TshirtForm 
-              formData={{
-                playerName: playerName,
-                gender: gender,
-                bloodGroup: bloodGroup,
-                pyramidPlace: pyramidPlace,
-                birthDate: birthDate,
-                mobileNumber: mobileNumber,
-                tshirtSize: tshirtSize,
-                shortsSize: shortsSize,
-                customTshirt: customTshirt,
-                customShorts: customShorts,
-                needBelt: needBelt,
-                needTowel: needTowel,
-                insuranceStatus: insuranceStatus,
-                tshirtGiven: tshirtGiven 
-              }}
+              formData={{ playerName, gender, bloodGroup, pyramidPlace, birthDate, mobileNumber, tshirtSize, shortsSize, customTshirt, customShorts, needBelt, needTowel, insuranceStatus, tshirtGiven }}
               setFormData={(callback) => {
-                const updated = callback({
-                  playerName, gender, bloodGroup, pyramidPlace, birthDate, mobileNumber,
-                  tshirtSize, shortsSize, customTshirt, customShorts, needBelt, needTowel, insuranceStatus
-                });
+                const updated = callback({ playerName, gender, bloodGroup, pyramidPlace, birthDate, mobileNumber, tshirtSize, shortsSize, customTshirt, customShorts, needBelt, needTowel, insuranceStatus, tshirtGiven });
+                
+                console.log("🔄 TshirtForm Event Callback Triggered. Updated Fields:", updated);
+                
                 if(updated.playerName !== undefined) setPlayerName(updated.playerName);
                 if(updated.gender !== undefined) setGender(updated.gender);
                 if(updated.bloodGroup !== undefined) setBloodGroup(updated.bloodGroup);
                 if(updated.pyramidPlace !== undefined) setPyramidPlace(updated.pyramidPlace);
-                if(updated.birthDate !== undefined) setBirthDate(updated.birthDate);
+                if(updated.birthDate !== undefined) {
+                  console.log("📅 BirthDate changing inside Form to:", updated.birthDate);
+                  setBirthDate(updated.birthDate);
+                }
                 if(updated.mobileNumber !== undefined) setMobileNumber(updated.mobileNumber);
                 if(updated.tshirtSize !== undefined) setTshirtSize(updated.tshirtSize);
                 if(updated.shortsSize !== undefined) setShortsSize(updated.shortsSize);
@@ -742,16 +748,20 @@ export default function TeamDashboard({ user, onLogout }) {
                 if(updated.needBelt !== undefined) setNeedBelt(updated.needBelt);
                 if(updated.needTowel !== undefined) setNeedTowel(updated.needTowel);
                 if(updated.insuranceStatus !== undefined) setInsuranceStatus(updated.insuranceStatus);
+                // 🎯 दुरुस्ती: 'tshirtGiven' चा महत्त्वाचा चेक इथे जोडला जेणेकरून स्टेट्स टिकून राहील
+                if(updated.tshirtGiven !== undefined) setTshirtGiven(updated.tshirtGiven);
               }}
-              onSubmit={handleSavePlayer}
-              loading={loading}
-              buttonText={editingPlayerId ? 'बदल जतन करा' : 'नोंदणी करा'}
+              teamData={teamData} // 👈 हा प्रॉप इथे जोड!
+              onSubmit={handleSavePlayer} 
+              loading={loading} 
+              buttonText={editingPlayerId ? 'बदल जतन करा' : 'नोंदणी करा'} 
               showInsuranceSelect={true} 
               showDistributionSelect={true} 
             />
           </div>
         </div>
       )}
+
     </div>
   );
 }

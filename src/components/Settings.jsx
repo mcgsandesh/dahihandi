@@ -6,8 +6,9 @@ import Swal from 'sweetalert2'; // 👈 फीडबॅकसाठी
 
 export default function Settings({ user, teamData, setTeamData, isFormActive, handleToggleFormStatus, shareLink, copied, handleCopyLink, onBack }) {
 
-  // 🎯 कडक टॉगल फंक्शन (डेटाबेस आणि स्टेट दोन्ही एकाच वेळी अपडेट करेल)
-const toggleSetting = async (field) => {
+
+  // 🎯 कडक टॉगल फंक्शन (डेटाबेस आणि स्टेट दोन्ही एकाच वेळी परफेक्ट अपडेट करेल)
+  const toggleSetting = async (field) => {
     // 1. Old value save karun theva
     const currentValue = teamData[field] === true;
     const newValue = !currentValue;
@@ -16,17 +17,25 @@ const toggleSetting = async (field) => {
     // Firebase cha response chi vaat na pahata UI la pathvun de
     setTeamData(prev => ({ ...prev, [field]: newValue }));
 
-    // 3. Firebase update
+    // 3. Firebase update (Team UID नुसार कडक दुरुस्ती)
     try {
-      const adminEmail = user.email || user.info?.email;
-      const userRef = doc(db, "users", adminEmail);
+      // 🎯 कडक बदल: ईमेल ऐवजी थेट युनिक Team UID (Document ID) चा वापर केला
+      const teamIdentifier = user.teamUID || user.uid;
+
+      if (!teamIdentifier) {
+        throw new Error("संघ आयडी (Team UID) स्टेटमध्ये सापडला नाही!");
+      }
+
+      // 🚨 अचूक Team UID च्या डॉक्युमेंटवर थेट वार
+      const userRef = doc(db, "users", teamIdentifier);
       
       await updateDoc(userRef, { [field]: newValue });
       
       console.log(`✅ ${field} successfully updated to: ${newValue}`);
     } catch (error) {
       console.error("Firebase update failed:", error);
-      // Fail jhalyaas parat juna value la rollback kar
+      
+      // Fail jhalyaas parat juna value la rollback kar (तुझे मूळ लॉजिक सुरक्षित)
       setTeamData(prev => ({ ...prev, [field]: currentValue }));
       Swal.fire({ icon: 'error', title: 'त्रुटी', text: 'काहीतरी गडबड झाली, पुन्हा ट्राय करा.' });
     }

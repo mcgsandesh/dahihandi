@@ -186,94 +186,117 @@ export default function PlayersList({
         />
       </div>
 
-      {/* खेळाडू कार्ड्स यादी */}
-<div className="bg-white rounded-3xl shadow-sm border border-slate-100 divide-y divide-slate-100 overflow-hidden">
+      {/* 📱 खेळाडू कार्ड्सची मुख्य कंटेनर यादी (pb-32 सुरक्षित) */}
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 divide-y divide-slate-100 overflow-hidden pb-32">
         {filteredPlayers.map((p, index) => {
           const isLastRecords = index >= filteredPlayers.length - 2 && filteredPlayers.length > 2;
+          
           return (
-            <div key={p.id} className="p-4 flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 hover:bg-slate-50/40 transition-all relative">
+            <div 
+              key={p.id} 
+              className="p-4 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 hover:bg-slate-50/50 transition-all relative min-h-[100px]"
+            >
               
-            {/* डावी बाजू: प्रोफाईल फोटो/नाव/माहिती */}
-              <div className="flex items-center space-x-3.5 min-w-0 flex-1">
-                <div className="w-10 h-10 rounded-full bg-[#ff6600]/10 border border-[#ff6600]/20 flex items-center justify-center text-xs font-black text-[#ff6600] flex-shrink-0">
+              {/* 🏢 डावी बाजू: प्रोफाईल आणि एका ओळीत डेटा ॲडजस्टमेंट */}
+              <div className="flex items-start space-x-3.5 min-w-0 flex-1 pr-8 md:pr-0">
+                {/* इनिशियल्स गोल राऊंड */}
+                <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-xs font-black text-slate-700 flex-shrink-0 mt-0.5">
                   {getInitials(p.name)}
                 </div>
-                <div className="truncate flex-1">
-                  <h4 className="text-sm font-bold text-slate-800 truncate">{p.name}</h4>
+                
+                <div className="min-w-0 flex-1">
+                  {/* 🎯 कडक बदल १: नाव आणि वय आता एकाच ओळीत शेजारी शेजारी! */}
+                  <div className="flex items-center space-x-2 flex-wrap">
+                    <h4 className="text-sm font-black text-slate-800 tracking-wide truncate max-w-[180px] sm:max-w-none">
+                      {p.name}
+                    </h4>
+                    <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-1.5 py-0.5 rounded-md font-sans">
+                      वय: {calculateAge(p.dob)}
+                    </span>
+                  </div>
                   
-                  {/* 🎯 एकदम कडक बदल: वयासोबत आता टी-शर्ट आणि शॉर्ट्सचे पण प्रिमियम बॅजेस (Chips) */}
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400 font-bold mt-1">
-                    <span className="text-slate-500 font-sans mr-0.5">वय: {calculateAge(p.dob)}</span>
-                    
-                    {/* 👕 टी-शर्ट साईझ बॅज (प्रिमियम पर्पल चिप) */}
+                  {/* 🎯 कडक बदल २: सर्व उरलेले बॅजेस आता एकाच सिंगल ओळीत ॲडजस्ट */}
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 font-bold mt-2">
                     {p.tshirt && (
-                      <span className="bg-purple-50 text-purple-700 text-[10px] font-black px-1.5 py-0.5 rounded-md border border-purple-100/70 font-mono">
+                      <span className="bg-slate-50 text-slate-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border border-slate-200/50 font-mono">
                         👕 {p.tshirt}
                       </span>
                     )}
 
-                    {/* 🩳 शॉर्ट्स साईझ बॅज (प्रिमियम इंडिगो चिप) */}
                     {p.shorts && p.shorts !== '—' && (
-                      <span className="bg-indigo-50 text-indigo-700 text-[10px] font-black px-1.5 py-0.5 rounded-md border border-indigo-100/70 font-mono">
+                      <span className="bg-slate-50 text-slate-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border border-slate-200/50 font-mono">
                         🩳 {p.shorts}
                       </span>
                     )}
                     
-                    {/* 🎗️ कमर बेल्ट बॅज (फक्त 'Yes' असेल तरच दिसेल) */}
                     {(p.belt === 'Yes' || p.needBelt === 'Yes') && (
-                      <span className="bg-slate-100 text-slate-700 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-slate-200 uppercase tracking-tight">
+                      <span className="bg-amber-50/60 text-amber-800 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-amber-100/70 uppercase">
                         🎗️ Belt
                       </span>
                     )}
 
-                    {/* 🧼 टॉवेल बॅज (फक्त 'Yes' असेल तरच दिसेल) */}
                     {(p.towel === 'Yes' || p.needTowel === 'Yes') && (
-                      <span className="bg-teal-50 text-teal-700 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-teal-200 uppercase tracking-tight">
+                      <span className="bg-sky-50/60 text-sky-800 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-sky-100/70 uppercase">
                         🧼 Towel
                       </span>
                     )}
                   </div>
-
                 </div>
               </div>
 
-              {/* उजवी बाजू: मूळ टॉगल बट्स + सर्व ॲक्शन बट्स */}
-              <div className="flex items-center space-x-3 justify-between md:justify-end">
-                
-                {/* विमा आणि टी-शर्ट फास्ट टॉगल्स */}
-                <div className="flex items-center space-x-2 flex-1 md:flex-initial pt-1 md:pt-0">
-                  <button onClick={() => handleFastToggleInsurance(p.id, p.insurance)} className={`flex-1 md:flex-initial md:w-32 text-center py-2 md:py-1 rounded-xl text-[10px] font-black border ${p.insurance === 'Done' || p.insurance === 'झालेले' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}`}>{p.insurance === 'Done' || p.insurance === 'झालेले' ? '🛡️ विमा पूर्ण' : '⏳ विमा प्रलंबित'}</button>
-                  <button onClick={() => handleFastToggleTshirt(p.id, p.tshirtGiven)} className={`flex-1 md:flex-initial md:w-32 text-center py-2 md:py-1 rounded-xl text-[10px] font-black border ${p.tshirtGiven === 'Yes' ? 'bg-purple-600 text-white border-purple-600' : 'bg-purple-50 text-purple-600 border-purple-200'}`}>{p.tshirtGiven === 'Yes' ? '👕 टी-शर्ट दिला' : '📦 टी-शर्ट बाकी'}</button>
-                </div>
-
-                {/* ॲक्शन बटन्स ब्लॉक */}
-                <div className="relative flex items-center">
-                  {/* डेस्कटॉप ॲक्शन बटन्स */}
-                  <div className="hidden md:flex items-center space-x-1.5 mr-2">
-                    <a href={`tel:${p.mobile}`} title="कॉल करा" className="p-2 hover:bg-green-50 text-green-600 rounded-xl transition-all"><Phone size={16} /></a>
-                    <a href={`https://wa.me/91${p.mobile}`} target="_blank" rel="noreferrer" title="व्हॉट्सॲप" className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-xl transition-all"><MessageSquare size={16} /></a>
-                    <button onClick={() => { console.log("✏️ Editing Player Data:", p); openPlayerModal(p); }} title="सुधार करा" className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-all"><Edit2 size={16} /></button>
-                    <button onClick={() => handleSoftDelete(p.id, p.name)} title="काढून टाका" className="p-2 hover:bg-red-50 text-red-500 rounded-xl transition-all"><Trash2 size={16} /></button>
-                  </div>
-
-                  {/* मोबाईल ३-डॉट्स मेनू */}
-                  <div className="relative group md:hidden">
-                    <button className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-all focus:outline-none">
-                      <MoreVertical size={18} />
-                    </button>
-                    
-                    <div className={`absolute right-0 bg-white border border-slate-200 rounded-xl shadow-2xl py-1.5 w-32 hidden group-focus-within:block group-hover:block z-50 pointer-events-auto animate-in fade-in duration-150 ${
-                      isLastRecords ? 'bottom-9' : 'top-9'
-                    }`}>
-                      <a href={`tel:${p.mobile}`} className="flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-green-600 hover:bg-slate-50"><Phone size={13} /> <span>कॉल करा</span></a>
-                      <a href={`https://wa.me/91${p.mobile}`} target="_blank" rel="noreferrer" className="flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-emerald-600 hover:bg-slate-50"><MessageSquare size={13} /> <span>व्हॉट्सॲप</span></a>
-                      <button onClick={() => { console.log("✏️ Editing Player Data Mobile:", p); openPlayerModal(p); }} className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-blue-600 hover:bg-slate-50 text-left"><Edit2 size={13} /> <span>सुधार करा</span></button>
-                      <button onClick={() => handleSoftDelete(p.id, p.name)} className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-50 text-left border-t border-slate-100"><Trash2 size={13} /> <span>काढून टाका</span></button>
-                    </div>
+              {/* मोबाईलवर ३-डॉट्स बटण (Top Right Position - एकदम फिक्स) */}
+              <div className="absolute top-2 right-2 md:hidden">
+                <div className="relative group">
+                  <button className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-all focus:outline-none active:bg-slate-200">
+                    <MoreVertical size={18} />
+                  </button>
+                  
+                  <div className={`absolute right-0 bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 w-36 hidden group-focus-within:block group-hover:block z-50 pointer-events-auto animate-in fade-in zoom-in-95 duration-100 ${
+                    isLastRecords ? 'bottom-10' : 'top-10'
+                  }`}>
+                    <a href={`tel:${p.mobile}`} className="flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Phone size={13} className="text-emerald-500" /> <span>कॉल करा</span></a>
+                    <a href={`https://wa.me/91${p.mobile}`} target="_blank" rel="noreferrer" className="flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><MessageSquare size={13} className="text-green-500" /> <span>व्हॉट्सॲप</span></a>
+                    <button onClick={() => openPlayerModal(p)} className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 text-left"><Edit2 size={13} className="text-blue-500" /> <span>सुधार करा</span></button>
+                    <button onClick={() => handleSoftDelete(p.id, p.name)} className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 text-left border-t border-slate-100"><Trash2 size={13} /> <span>काढून टाका</span></button>
                   </div>
                 </div>
-
               </div>
+
+              {/* प्रोफेशनल मॉडर्न टॉगल बटन्स */}
+              <div className="flex items-center space-x-2.5 justify-between md:justify-end w-full md:w-auto">
+                <div className="flex items-center space-x-2 w-full md:w-auto">
+                  <button 
+                    onClick={() => handleFastToggleInsurance(p.id, p.insurance)} 
+                    className={`flex-1 md:flex-initial md:w-32 text-center py-2 md:py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
+                      p.insurance === 'Done' || p.insurance === 'झालेले' 
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-sm shadow-slate-900/10' 
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {p.insurance === 'Done' || p.insurance === 'झालेले' ? '🛡️ विमा पूर्ण' : '⏳ विमा बाकी'}
+                  </button>
+                  
+                  <button 
+                    onClick={() => handleFastToggleTshirt(p.id, p.tshirtGiven)} 
+                    className={`flex-1 md:flex-initial md:w-32 text-center py-2 md:py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
+                      p.tshirtGiven === 'Yes' 
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-600/10' 
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {p.tshirtGiven === 'Yes' ? '👕 टी-शर्ट दिला' : '📦 टी-शर्ट बाकी'}
+                  </button>
+                </div>
+
+                {/* डेस्कटॉप स्क्रीन ॲक्शन बटन्स */}
+                <div className="hidden md:flex items-center space-x-1 pl-1">
+                  <a href={`tel:${p.mobile}`} title="कॉल करा" className="p-2 hover:bg-slate-100 text-slate-600 rounded-xl transition-all"><Phone size={15} /></a>
+                  <a href={`https://wa.me/91${p.mobile}`} target="_blank" rel="noreferrer" title="व्हॉट्सॲप" className="p-2 hover:bg-slate-100 text-slate-600 rounded-xl transition-all"><MessageSquare size={15} /></a>
+                  <button onClick={() => openPlayerModal(p)} title="सुधार करा" className="p-2 hover:bg-slate-100 text-slate-600 rounded-xl transition-all"><Edit2 size={15} /></button>
+                  <button onClick={() => handleSoftDelete(p.id, p.name)} title="काढून टाका" className="p-2 hover:bg-red-50 text-red-500 rounded-xl transition-all"><Trash2 size={15} /></button>
+                </div>
+              </div>
+
             </div>
           );
         })}

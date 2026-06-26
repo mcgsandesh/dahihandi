@@ -13,7 +13,7 @@ export default defineConfig({
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
         name: 'DahiHandi Management Platform',
-        short_name: 'DahiHandi APP',
+        short_name: 'Maharashtracha Govinda',
         description: 'Manage teams, t-shirt reports, and insurance details easily.',
         theme_color: '#ff6600', // आपला ऑरेंज ब्रँड कलर
         background_color: '#f8fafc',

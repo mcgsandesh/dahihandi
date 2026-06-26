@@ -10,6 +10,12 @@ import PlayersList from '../components/PlayersList';
 import ManageInventory from '../components/ManageInventory';
 import Settings from '../components/Settings'; // 👈 वरती जिथे रिपोर्ट इम्पोर्ट केलाय तिथे जोडा
 
+// 🎯 नवीन पॅच इम्पोर्ट्स: हे ३ कॉम्पोनेंट्स वर जोडून घ्या
+import PublicDirectory from '../components/PublicDirectory';
+import PublicStats from '../components/PublicStats';
+import PublicInfo from '../components/PublicInfo';
+
+
 export default function TeamDashboard({ user, onLogout }) {
   
   // जर सूपरॲडमीनने फॉर्म बंद केला असेल, तर थेट 'profile' टॅब ओपन होईल
@@ -106,12 +112,13 @@ export default function TeamDashboard({ user, onLogout }) {
     } catch (e) { return '—'; }
   };
 
-// 🔄 Master User Data Sync Listener (नवीन ५ एड्रेस फील्ड्ससह परफेक्ट सिंक)
+// 🔄 Master User Data Sync Listener (Team UID पॅटर्ननुसार परफेक्ट लाईव्ह सिंक)
   useEffect(() => {
-    const adminEmail = user.email || user.info?.email;
-    if (!adminEmail) return;
+    // 🎯 कडक दुरुस्ती: ईमेलऐवजी थेट फिक्स teamUID वरून लिसनर लावणे
+    const teamIdentifier = user.teamUID || user.uid;
+    if (!teamIdentifier) return;
 
-    const userDocRef = doc(db, "users", adminEmail);
+    const userDocRef = doc(db, "users", teamIdentifier);
     const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -127,7 +134,6 @@ export default function TeamDashboard({ user, onLogout }) {
           bestPerformance: data.bestPerformance || '',
           inventory: data.inventory || {},
           
-          // 🎯 कडक दुरुस्ती: फायरबेसमधून नवीन ५ फील्ड्स डॅशबोर्ड स्टेटमध्ये रीड केल्या!
           areaName: data.areaName || '',
           pincode: data.pincode || '',
           city: data.city || '',
@@ -141,12 +147,14 @@ export default function TeamDashboard({ user, onLogout }) {
     return () => unsubscribeUser();
   }, [user]);
 
-  // 🔄 Players Real-time Listener
+  // 🔄 Players Real-time Listener (मल्टिपल ॲडमीन डेटा गायब होण्याचा प्रॉब्लेम १००% फिक्स)
   useEffect(() => {
-    if (!user?.teamName || !hasFormAccess) return;
+    const teamIdentifier = user.teamUID || user.uid;
+    if (!teamIdentifier || !hasFormAccess) return;
     
     const playersRef = collection(db, "players");
-    const q = query(playersRef, where("teamName", "==", user.teamName));
+    // 🎯 कडक दुरुस्ती: 'teamName' ऐवजी फिक्स 'teamUID' वर क्वेरी मारल्यामुळे दोन्ही ॲडमिन्सना सर्व खेळाडू अचूक दिसणार!
+    const q = query(playersRef, where("teamUID", "==", teamIdentifier));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const players = [];
@@ -162,7 +170,7 @@ export default function TeamDashboard({ user, onLogout }) {
     });
 
     return () => unsubscribe();
-  }, [user?.teamName, hasFormAccess]);
+  }, [user, hasFormAccess]);
 
   // ==========================================
   // 📌 SECTION 3: EDIT, TOGGLE & DATA WRITERS
@@ -223,7 +231,7 @@ export default function TeamDashboard({ user, onLogout }) {
     setIsModalOpen(true);
   };
 
-  const handleSavePlayer = async (e) => {
+ const handleSavePlayer = async (e) => {
     e.preventDefault();
     if (user && user.isDeleted === true) {
       Swal.fire({ icon: 'error', title: 'प्रवेश नाकारला!', text: 'तुमचे Account बंद करण्यात आले आहे.', confirmButtonColor: '#ff6600' });
@@ -240,28 +248,48 @@ export default function TeamDashboard({ user, onLogout }) {
     const finalTshirt = tshirtSize === 'Custom' ? customTshirt.trim() : tshirtSize;
     const finalShorts = shortsSize === 'Custom' ? customShorts.trim() : shortsSize;
 
+    // 🎯 युनिक संघ ओळख मिळवणे
+    const teamIdentifier = user.teamUID || user.uid;
+
+    if (!teamIdentifier) {
+      console.error("❌ संघ आयडी (Team UID) सापडला नाही!");
+      Swal.fire({ icon: 'error', title: 'त्रुटी!', text: 'संघ आयडी न मिळाल्यामुळे खेळाडू जतन करता आला नाही.', confirmButtonColor: '#ff6600' });
+      setLoading(false);
+      return;
+    }
+
     try {
+      // 🎯 अ) जर एडिट मोड चालू असेल (Update Mode)
       if (editingPlayerId) {
         await updateDoc(doc(db, "players", editingPlayerId), {
           name: playerName.trim(), gender, dob: birthDate, mobile: mobileNumber.trim(),
           blood: bloodGroup, tshirt: finalTshirt, shorts: finalShorts, belt: needBelt, towel: needTowel,
           pyramidPlace, insurance: insuranceStatus, tshirtGiven: tshirtGiven,
+          teamUID: teamIdentifier, // 👈 एडिट करताना देखील सेफर साईड म्हणून आयडी अपडेट ठेवला
           updatedAt: serverTimestamp()
         });
         Swal.fire({ icon: 'success', title: 'यशस्वी!', text: 'खेळाडूची माहिती सुधारली!', confirmButtonColor: '#0b132b' });
-      } else {
+      } 
+      // 🎯 ब) जर नवीन खेळाडू जोडायचा असेल (Create Mode)
+      else {
         const playerId = `PLY_${Date.now()}`;
         await setDoc(doc(db, "players", playerId), {
           name: playerName.trim(), gender, dob: birthDate, mobile: mobileNumber.trim(),
           blood: bloodGroup, tshirt: finalTshirt, shorts: finalShorts, belt: needBelt, towel: needTowel,
           pyramidPlace, insurance: insuranceStatus, tshirtGiven: tshirtGiven,
-          teamName: user.teamName, year: user.currentYear || "2026", createdAt: serverTimestamp()
+          
+          // 🚨 कडक बदल: मॅन्युअल एंट्रीमध्ये देखील 'teamUID' कडक लॉक केला!
+          teamUID: teamIdentifier, 
+          teamName: user.teamName, 
+          year: user.currentYear || "2026", 
+          createdAt: serverTimestamp()
         });
         Swal.fire({ icon: 'success', title: 'नोंदणी पूर्ण!', text: 'खेळाडू यशस्वी जोडला गेला.', confirmButtonColor: '#ff6600' });
       }
       setIsModalOpen(false);
     } catch (err) { 
-      Swal.fire({ icon: 'error', title: 'त्रुटी!', text: 'अडचण आली.' }); 
+      console.error(err);
+      Swal.fire({ icon: 'error', title: 'त्रुटी!', text: 'अडचण आली. कृपया पुन्हा प्रयत्न करा.' }); 
     } finally { setLoading(false); }
   };
 
@@ -301,10 +329,16 @@ export default function TeamDashboard({ user, onLogout }) {
   };
 
 
+// 🛑 फॉर्म ऑन/ऑफ स्टेटस हँडलर (No Document to Update एरर फिक्स)
   const handleToggleFormStatus = async () => {
     const nextStatus = !isFormActive;
     setIsFormActive(nextStatus);
-    try { await updateDoc(doc(db, "users", user.email || user.info?.email), { isFormActive: nextStatus }); } catch (err) { setIsFormActive(isFormActive); }
+    try { 
+      const teamIdentifier = user.teamUID || user.uid;
+      await updateDoc(doc(db, "users", teamIdentifier), { isFormActive: nextStatus }); 
+    } catch (err) { 
+      setIsFormActive(isFormActive); 
+    }
   };
 
   const filteredPlayers = playersList.filter(p => p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || p.mobile?.includes(searchTerm));
@@ -316,7 +350,11 @@ export default function TeamDashboard({ user, onLogout }) {
     { id: 'inventory', label: 'इन्व्हेंटरी', icon: <Package size={18} />, show: hasFormAccess }, 
     { id: 'reports', label: 'रिपोर्ट पॅनेल', icon: <FileText size={18} />, show: hasFormAccess },
     { id: 'profile', label: 'संघ प्रोफाईल', icon: <User size={18} />, show: true },
-    { id: 'settings', label: 'सेटिंग्ज', icon: <SettingsIcon size={18} />, show: hasFormAccess }
+    { id: 'settings', label: 'सेटिंग्ज', icon: <SettingsIcon size={18} />, show: hasFormAccess },
+    // 🎯 नवीन पॅच: ३ स्वतंत्र प्रिमियम पब्लिक मेनू फक्त साईडबारसाठी
+    { id: 'govinda_katta', label: '🚩 गोविंदा कट्टा', icon: <Users size={18} />, show: true },
+    { id: 'public_stats', label: '📊 उत्सव आकडेवारी', icon: <FileText size={18} />, show: hasFormAccess },
+    { id: 'public_info', label: '📜 उत्सव नियमावली', icon: <FileText size={18} />, show: true }
   ].filter(tab => tab.show);
 
   // 🎯 नियम १: मोबाईल बॉटम बारवर फक्त ४ मुख्य मेनू फिक्स (संघ प्रोफाईल आणि लॉगआऊटसह)
@@ -647,8 +685,7 @@ export default function TeamDashboard({ user, onLogout }) {
 
           {/* PROFILE VIEW - 🎯 क्लीन आणि सेंटर्ड डिझाईन */}
           {activeTab === 'profile' && (
-            <div className="w-full max-w-2xl mx-auto animate-in fade-in duration-200 space-y-6">
-              
+            <div className="w-full  mx-auto animate-in fade-in duration-200 space-y-6">              
               {/* मुख्य संघ प्रोफाईल कार्ड */}
               <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm relative">
                 <div className="absolute top-6 right-6">
@@ -669,14 +706,14 @@ export default function TeamDashboard({ user, onLogout }) {
                 />
               </div>
 
-              {/* मोबाईल लॉगआऊट - हे फक्त मोबाईलवर दिसेल */}
+              {/* मोबाईल लॉगआऊट - हे फक्त मोबाईलवर दिसेल 
               {!isEditMode && (
                 <div className="pb-8 pt-2 px-2 md:hidden">
                   <button onClick={onLogout} className="w-full bg-red-500/10 text-red-500 border border-red-500/20 py-3 rounded-2xl font-black text-xs tracking-wide shadow-sm flex items-center justify-center space-x-2">
                     <span>अकाउंट लॉगआऊट करा</span>
                   </button>
                 </div>
-              )}
+              )}*/}
             </div>
           )}
 
@@ -693,6 +730,37 @@ export default function TeamDashboard({ user, onLogout }) {
               handleCopyLink={handleCopyLink}
               onBack={() => setActiveTab('dashboard')}
             />
+          )}
+
+          {/* 🎯 नवीन पॅच: ३ स्वतंत्र व्ह्यूज रेंडरिंग लॉजिक (नो डबल हेडर घोळ) */}
+          {activeTab === 'govinda_katta' && (
+            <div className="animate-in fade-in duration-150 space-y-4">
+              <div className="border-b border-slate-200 pb-3 hidden md:block">
+                <h1 className="text-xl md:text-2xl font-black text-slate-800">🚩 गोविंदा कट्टा</h1>
+                <p className="text-xs text-slate-500 mt-0.5">नोंदणीकृत दहीहंडी मंडळांची लाईव्ह यादी.</p>
+              </div>
+              <PublicDirectory />
+            </div>
+          )}
+
+          {activeTab === 'public_stats' && hasFormAccess && (
+            <div className="animate-in fade-in duration-150 space-y-4">
+              <div className="border-b border-slate-200 pb-3 hidden md:block">
+                <h1 className="text-xl md:text-2xl font-black text-slate-800">📊 उत्सव आकडेवारी</h1>
+                <p className="text-xs text-slate-500 mt-0.5">मंडळे व पथकांचे थेट विश्लेषण आणि टक्केवारी.</p>
+              </div>
+              <PublicStats />
+            </div>
+          )}
+
+          {activeTab === 'public_info' && (
+            <div className="animate-in fade-in duration-150 space-y-4">
+              <div className="border-b border-slate-200 pb-3 hidden md:block">
+                <h1 className="text-xl md:text-2xl font-black text-slate-800">📜 उत्सव नियमावली</h1>
+                <p className="text-xs text-slate-500 mt-0.5">समन्वय समितीचे नियम व मार्गदर्शक तत्त्वे.</p>
+              </div>
+              <PublicInfo />
+            </div>
           )}
 
           

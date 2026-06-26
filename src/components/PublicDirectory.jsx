@@ -1,0 +1,286 @@
+import React, { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { Search, MapPin, Trophy, Users, Eye } from 'lucide-react';
+import Swal from 'sweetalert2';
+import PublicTeamProfile from './PublicTeamProfile';
+
+
+export default function PublicDirectory() {
+
+const [selectedTeam, setSelectedTeam] = useState(null);
+  const [teams, setTeams] = useState([]);
+  const [filteredTeams, setFilteredTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // फिल्टर्सच्या स्टेट्स
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All'); // 'All', 'Men', 'Women'
+  const [selectedDistrict, setSelectedDistrict] = useState('All');
+
+  // 🎯 १-Read + LocalStorage कॅश इंजिन (सुरक्षित जसेच्या तसे)
+  useEffect(() => {
+    const fetchLiveDirectory = async () => {
+      try {
+        const CACHE_KEY = 'govinda_public_directory';
+        const CACHE_TIME_KEY = 'govinda_directory_time';
+        const FOUR_HOURS = 4 * 60 * 60 * 1000;
+
+        const cachedData = localStorage.getItem(CACHE_KEY);
+        const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
+        const now = Date.now();
+
+        if (cachedData && cachedTime && (now - cachedTime < FOUR_HOURS)) {
+          console.log("⚡ [Smart Cache] डेटा LocalStorage मधून ओढला!");
+          const allTeams = JSON.parse(cachedData);
+          setTeams(allTeams);
+          setFilteredTeams(allTeams);
+          setLoading(false);
+          return;
+        }
+
+        const cacheDocRef = doc(db, "public_site_cache", "live_directory");
+        const docSnap = await getDoc(cacheDocRef);
+
+        if (docSnap.exists()) {
+          const cacheData = docSnap.data();
+          const allTeams = cacheData.teams || [];
+          
+          localStorage.setItem(CACHE_KEY, JSON.stringify(allTeams));
+          localStorage.setItem(CACHE_TIME_KEY, now.toString());
+
+          setTeams(allTeams);
+          setFilteredTeams(allTeams);
+        }
+      } catch (err) {
+        console.error("कॅश डेटा आणताना अडचण आली:", err);
+        const backupData = localStorage.getItem('govinda_public_directory');
+        if (backupData) {
+          const allTeams = JSON.parse(backupData);
+          setTeams(allTeams);
+          setFilteredTeams(allTeams);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLiveDirectory();
+  }, []);
+
+  // 🔄 फिल्टर आणि सर्च लॉजिक (सुरक्षित जसेच्या तसे)
+  useEffect(() => {
+    let result = teams;
+
+    if (selectedCategory !== 'All') {
+      result = result.filter(t => t.teamCategory === selectedCategory);
+    }
+
+    if (selectedDistrict !== 'All') {
+      result = result.filter(t => t.district?.toLowerCase() === selectedDistrict.toLowerCase());
+    }
+
+    if (searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(t => 
+        t.teamName?.toLowerCase().includes(term) ||
+        t.areaName?.toLowerCase().includes(term) ||
+        t.city?.toLowerCase().includes(term) ||
+        t.name?.toLowerCase().includes(term) ||
+        t.id?.toLowerCase().includes(term)
+      );
+    }
+
+    setFilteredTeams(result);
+  }, [searchTerm, selectedCategory, selectedDistrict, teams]);
+
+  const districts = ['All', ...new Set(teams.map(t => t.district).filter(Boolean))];
+
+// 🔗 मंडळाचे वैयक्तिक पब्लिक प्रोफाइल पाहण्यासाठी ॲक्शन
+const handleViewProfile = (team) => {
+  // 🎯 कडक बदल: युझर सिस्टीममध्ये लॉगिन आहे का ते तपासणे (localStorage वरून)
+  const isUserLoggedIn = localStorage.getItem('govinda_user');
+
+  if (!isUserLoggedIn) {
+    // जर युझर लॉगिन नसेल, तर त्याला कडक भाषेत लॉगिन करायला सांगणे 🛑
+    Swal.fire({
+      icon: 'info',
+      title: 'सुरक्षा लॉक! 🔐',
+      text: 'मंडळाची संपूर्ण प्रोफाइल आणि खेळाडूंची माहिती पाहण्यासाठी कृपया आधी तुमच्या गुगल अकाउंटने लॉगिन करा.',
+      confirmButtonColor: '#ff6600',
+      confirmButtonText: 'लॉगिन करा 🚩',
+      showCancelButton: true,
+      cancelButtonText: 'नाही, नंतर करतो',
+      customClass: { popup: 'rounded-3xl' }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // गेस्ट मोड साफ करून युझरला थेट मुख्य लॉगिन स्क्रीनवर पाठवणे
+        localStorage.removeItem('govinda_guest');
+        window.location.href = import.meta.env.BASE_URL || '/';
+      }
+    });
+    return;
+  }
+
+  // जर युझर आधीच लॉगिन असेल, तर मूळ SPA कॉम्पोनेंट ओपन होईल
+  setSelectedTeam(team);
+};
+
+  // ४. तुमच्या मुख्य return च्या वर (loading चेकच्या खाली) हा कडक कल्पक चेक लावा:
+if (selectedTeam) {
+  return <PublicTeamProfile team={selectedTeam} onBack={() => setSelectedTeam(null)} />;
+}
+
+  if (loading) {
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center space-y-3">
+        <div className="w-10 h-10 border-4 border-[#ff6600] border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-slate-500 text-xs font-bold tracking-wide">महाराष्ट्रातील गोविंदा पथके शोधत आहे...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      
+      {/* 📊 टॉप सर्च आणि फिल्टर बार */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm space-y-3">
+        <div className="relative">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><Search size={18} /></span>
+          <input 
+            type="text" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="मंडळाचे नाव, परिसर किंवा UID ने शोधा..." 
+            className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:border-[#ff6600] focus:bg-white font-medium transition-all"
+          />
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
+          <div className="flex bg-slate-100 p-1 rounded-xl space-x-1 self-start">
+            <button onClick={() => setSelectedCategory('All')} className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all ${selectedCategory === 'All' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>सर्व पथके</button>
+            <button onClick={() => setSelectedCategory('Men')} className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all ${selectedCategory === 'Men' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>👨‍👦 पुरुष</button>
+            <button onClick={() => setSelectedCategory('Women')} className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all ${selectedCategory === 'Women' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>👩‍👧 महिला</button>
+          </div>
+
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
+            <label className="text-xs font-bold text-slate-400 whitespace-nowrap">जिल्हा निवडा:</label>
+            <select 
+              value={selectedDistrict}
+              onChange={(e) => setSelectedDistrict(e.target.value)}
+              className="w-full sm:w-40 bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-[#ff6600]"
+            >
+              {districts.map((dist, idx) => (
+                <option key={idx} value={dist}>{dist === 'All' ? 'सर्व जिल्हे' : dist}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* 🟢 मुख्य यादी विभाग */}
+      {filteredTeams.length === 0 ? (
+        <div className="bg-white rounded-3xl p-12 text-center border border-slate-100 shadow-sm">
+          <p className="text-slate-400 text-sm font-medium">क्षमस्व, कोणतेही मंडळ सापडले नाही. 🚩</p>
+        </div>
+      ) : (
+        <>
+          {/* 🖥️ १. डेस्कटॉपसाठी प्रिमियम टेबल व्ह्यू (जसा प्लेयर लिस्टमध्ये आहे) */}
+          <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden w-full">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="p-4 w-24">UID</th>
+                  <th className="p-4">मंडळ / पथकाचे नाव</th>
+                  <th className="p-4">श्रेणी</th>
+                  <th className="p-4">परिसर / जिल्हा</th>
+                  <th className="p-4 text-center w-32">प्रोफाइल</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm divide-y divide-slate-100">
+                {filteredTeams.map((team, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/40 transition-all text-slate-700 font-medium">
+                    <td className="p-4 font-mono text-xs font-bold text-slate-600 bg-slate-50/50">{team.id || '—'}</td>
+                    <td className="p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200/60 flex items-center justify-center p-0.5 overflow-hidden flex-shrink-0">
+                          {team.logoUrl ? <img src={team.logoUrl} alt="Logo" className="w-full h-full object-contain rounded-md" /> : <span className="text-[10px] text-slate-400 font-bold">{team.id?.substring(0,2)}</span>}
+                        </div>
+                        <div>
+                          <span className="font-black text-slate-900 uppercase tracking-wide">{team.teamName}</span>
+                          {team.establishedYear && <span className="text-[11px] text-slate-400 font-bold ml-2 font-sans">(स्था. {team.establishedYear})</span>}
+                          {team.slogan && <p className="text-[11px] text-slate-400 italic font-medium mt-0.5">"{team.slogan}"</p>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${team.teamCategory === 'Women' ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600'}`}>
+                        {team.teamCategory === 'Women' ? 'महिला' : 'पुरुष'}
+                      </span>
+                    </td>
+                    <td className="p-4 text-slate-600 font-bold">
+                      {team.areaName || team.city || 'महाराष्ट्र'}, <span className="text-slate-400 text-xs">{team.district}</span>
+                    </td>
+                    <td className="p-4 text-center">
+                      <button onClick={() => handleViewProfile(team)} className="bg-slate-900 hover:bg-[#ff6600] text-white px-3 py-1.5 rounded-lg text-xs font-black transition-all shadow-sm flex items-center space-x-1 mx-auto active:scale-95">
+                        <Eye size={12} /><span>पहा</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 📱 २. मोबाईलसाठी एकदम लहान आणि सुपर कॉम्पॅक्ट कार्ड्स ग्रीड */}
+          <div className="block md:hidden grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {filteredTeams.map((team) => (
+              <div key={team.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-3 flex flex-col justify-between hover:border-slate-200 transition-all">
+                <div>
+                  {/* कार्ड हेडर: लोगो, नाव आणि स्थापना वर्ष एकत्र */}
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center p-0.5 flex-shrink-0 overflow-hidden">
+                      {team.logoUrl ? <img src={team.logoUrl} alt="Logo" className="w-full h-full object-contain rounded-md" /> : <span className="text-[9px] font-black text-slate-400 font-mono">{team.id?.substring(0, 2)}</span>}
+                    </div>
+                    
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center flex-wrap gap-x-1.5">
+                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide truncate max-w-[80%]">{team.teamName}</h4>
+                        {team.establishedYear && (
+                          <span className="text-[10px] text-slate-400 font-black font-sans">(स्था. {team.establishedYear})</span>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-1.5 mt-0.5">
+                        <span className="font-mono text-[12px] font-black px-1 rounded bg-slate-100 text-slate-500">{team.id}</span>
+                        <span className={`text-[8px] font-black px-1 rounded ${team.teamCategory === 'Women' ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600'}`}>{team.teamCategory === 'Women' ? 'महिला' : 'पुरुष'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* तळ विभाग: डाव्या बाजूला पत्ता व लगेच बाजूला लहान प्रोफाईल पहा बटन */}
+                <div className="mt-2.5 pt-2 border-t border-slate-50 flex items-center justify-between gap-2">
+                  <div className="flex items-center space-x-1 min-w-0 text-[10px] font-bold text-slate-400">
+                    <MapPin size={11} className="flex-shrink-0" />
+                    <span className="truncate text-slate-500">{team.areaName || team.city || 'महाराष्ट्र'}, {team.district}</span>
+                  </div>
+                  
+                  {/* डाव्या हाताला अलाईन केलेले लहान बटण */}
+                  <button 
+                    onClick={() => handleViewProfile(team)}
+                    className="bg-slate-900 text-white active:bg-[#ff6600] px-2.5 py-1 rounded-md text-[10px] font-black tracking-wide transition-all flex items-center space-x-1 flex-shrink-0 shadow-sm"
+                  >
+                    <Eye size={11} />
+                    <span>प्रोफाइल पहा</span>
+                  </button>
+                </div>
+
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+    </div>
+  );
+}

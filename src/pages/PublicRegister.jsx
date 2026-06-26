@@ -63,8 +63,11 @@ export default function PublicRegister() {
     validateLink();
   }, []);
 
-  //-------------------
-  const handleSubmitPlayer = async (e) => {
+  //-------------------------------------------------------------------------------------//
+  //यामुळे जर एखाद्या खेळाडूने फॉर्म आधीच ओपन करून ठेवला असेल आणि नंतर ॲडमीनने फॉर्म बंद केला, 
+  // तरीही सबमिट बटण दाबताच सिस्टीम त्याला तिथेच रोखणार आणि डेटाबेसमध्ये एन्ट्री होऊ देणार नाही ❌.
+   //-------------------------------------------------------------------------------------//
+const handleSubmitPlayer = async (e) => {
     e.preventDefault();
 
     let formattedDate = formState.birthDate;
@@ -76,125 +79,103 @@ export default function PublicRegister() {
     const cleanName = formState.playerName.trim();
     const cleanMobile = formState.mobileNumber.trim();
 
-    // 🎯 १. बेसिक माहिती अपूर्ण असल्यास मेसेज
+    // १. बेसिक माहिती अपूर्ण असल्यास मेसेज
     if (!cleanName || !formState.birthDate || !cleanMobile) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'माहिती अपूर्ण आहे!',
-        text: 'कृपया आवश्यक माहिती (नाव, जन्मदिनांक आणि मोबाईल) अचूक भरा!',
-        confirmButtonColor: '#ff6600',
-        customClass: { popup: 'rounded-3xl' }
-      });
+      Swal.fire({ icon: 'warning', title: 'माहिती अपूर्ण आहे!', text: 'कृपया आवश्यक माहिती अचूक भरा!', confirmButtonColor: '#ff6600', customClass: { popup: 'rounded-3xl' } });
       return;
     }
 
-    // 🛡️ २. नावासाठी कडक RegEx व्हॅलिडेशन (मराठी आणि इंग्रजी दोन्हीसाठी परफेक्ट)
+    // २. नावासाठी कडक RegEx व्हॅलिडेशन
     const nameRegex = /^[a-zA-Z\u0900-\u097F\s]+$/;
     if (!nameRegex.test(cleanName) || cleanName.length < 3) {
-      Swal.fire({
-        icon: 'error',
-        title: 'चुकीचे नाव! 🛑',
-        text: 'कृपया खेळाडूचे नाव योग्य अक्षरांमध्ये टाका! नावात नंबर किंवा स्पेशल कॅरेक्टर्स वापरू नका.',
-        confirmButtonColor: '#ff6600',
-        customClass: { popup: 'rounded-3xl' }
-      });
+      Swal.fire({ icon: 'error', title: 'चुकीचे नाव! 🛑', text: 'कृपया खेळाडूचे नाव योग्य अक्षरांमध्ये टाका! नावात नंबर किंवा स्पेशल कॅरेक्टर्स वापरू नका.', confirmButtonColor: '#ff6600', customClass: { popup: 'rounded-3xl' } });
       return;
     }
 
-    // 📱 ३. मोबाईल नंबरसाठी कडक १० अंकी व्हॅलिडेशन
+    // ३. मोबाईल नंबरसाठी कडक १० अंकी व्हॅलिडेशन
     const mobileRegex = /^[0-9]{10}$/;
     if (!mobileRegex.test(cleanMobile)) {
-      Swal.fire({
-        icon: 'error',
-        title: 'चुकीचा मोबाईल नंबर! 📱',
-        text: 'कृपया अचूक १० अंकी मोबाईल नंबर प्रविष्ट करा!',
-        confirmButtonColor: '#ff6600',
-        customClass: { popup: 'rounded-3xl' }
-      });
+      Swal.fire({ icon: 'error', title: 'चुकीचा मोबाईल नंबर! 📱', text: 'कृपया अचूक १० अंकी मोबाईल नंबर प्रविष्ट करा!', confirmButtonColor: '#ff6600', customClass: { popup: 'rounded-3xl' } });
       return;
     }
 
-    // 🎂 ३.ब) जन्मदिनांक व्हॅलिडेशन (फक्त भविष्यातील तारीख ब्लॉक करणे, लहान मुलांचे वय ओपन ठेवले आहे)
+    // ३.ब) जन्मदिनांक व्हॅलिडेशन
     const birthDateObj = new Date(formState.birthDate);
     const today = new Date();
-
     if (birthDateObj > today) {
-      Swal.fire({
-        icon: 'error',
-        title: 'तारीख चुकीची आहे! 🛑',
-        text: 'जन्मदिनांक भविष्यातील असू शकत नाही. कृपया तुमची अचूक जन्म तारीख निवडा!',
-        confirmButtonColor: '#ff6600',
-        customClass: { popup: 'rounded-3xl' }
-      });
+      Swal.fire({ icon: 'error', title: 'तारीख चुकीची आहे! 🛑', text: 'जन्मदिनांक भविष्यातील असू शकत नाही. कृपया तुमची अचूक जन्म तारीख निवडा!', confirmButtonColor: '#ff6600', customClass: { popup: 'rounded-3xl' } });
       return;
     }
     
     setLoading(true);
-
-    // नाव मॅचिंग सोपे जावे म्हणून स्पेसेस नॉर्मलाईज करणे
     const normalizedNewName = cleanName.toLowerCase().replace(/\s+/g, ' ');
 
     try {
+      // STRIKT SECURITY CHECK: लाईव्ह स्टेटस तपासणे
+      const urlParams = new URLSearchParams(window.location.search);
+      const encryptedUid = urlParams.get('t');
+      if (!encryptedUid) throw new Error("Invalid Link Token");
+      const decryptedUid = atob(encryptedUid);
+
+      const usersRef = collection(db, "users");
+      const userQuery = query(usersRef, where("uid", "==", decryptedUid));
+      const userSnapshot = await getDocs(userQuery);
+
+      if (userSnapshot.empty) {
+        throw new Error("Team document not found");
+      }
+
+      const freshTeamDoc = userSnapshot.docs[0];
+      const freshTeamData = freshTeamDoc.data();
+      const freshTeamUID = freshTeamDoc.id; // 👈 कडक बदल: संघ आयडी शोधला
+
+      // सुपरॲडमीन आणि ॲडमीन परमिशन ब्लॉक्स
+      if (freshTeamData.allowInAppForm === false) {
+        Swal.fire({ icon: 'error', title: 'प्रवेश नाकारला! 🛑', text: `सुपरॲडमीनद्वारे या संघाची ऑनलाईन नोंदणी प्रक्रिया स्थगित करण्यात आली आहे.`, confirmButtonColor: '#ff6600', customClass: { popup: 'rounded-3xl' } });
+        setTeamInfo(freshTeamData); setLoading(false); return;
+      }
+
+      if (freshTeamData.isFormActive === false) {
+        Swal.fire({ icon: 'error', title: 'नोंदणी बंद झाली आहे! 🛑', text: `क्षमस्व, या पथकाची ऑनलाईन नोंदणी प्रक्रिया चालू स्थितीमध्ये नाही.`, confirmButtonColor: '#ff6600', customClass: { popup: 'rounded-3xl' } });
+        setTeamInfo(freshTeamData); setLoading(false); return;
+      }
+
+      if (freshTeamData.isDeleted === true) {
+        Swal.fire({ icon: 'error', title: 'अवैध लिंक! ⚠️', text: `हा संघ सध्या सिस्टीममध्ये सक्रिय नाही.`, confirmButtonColor: '#ff6600', customClass: { popup: 'rounded-3xl' } });
+        setTeamInfo(freshTeamData); setLoading(false); return;
+      }
+
+      // 🔄 ४. फ्रंटएंड मेमरी लेव्हलवर कडक डुप्लिकेशन चेक्स (teamUID नुसार)
       const playersRef = collection(db, "players");
-      
-      // 🎯 फायरबेस इंडेक्स एरर टाळण्यासाठी फक्त 'teamName' वर साधी क्वेरी
-      const teamPlayersQuery = query(
-        playersRef,
-        where("teamName", "==", teamInfo.teamName)
-      );
+      // 🎯 कडक बदल: 'teamName' ऐवजी थेट 'teamUID' मॅच करून डुप्लिकेशन्स चेक करणे! नाव सेम असले तरी प्रॉब्लेम मिटला!
+      const teamPlayersQuery = query(playersRef, where("teamUID", "==", freshTeamUID));
       const querySnapshot = await getDocs(teamPlayersQuery);
 
       let isMobileDuplicate = false;
       let isNameDuplicate = false;
 
-      // 🔄 ४. फ्रंटएंड मेमरी लेव्हलवर कडक चेक्स (0 Index Required!)
       querySnapshot.forEach((doc) => {
         const pData = doc.data();
-        
-        // फक्त सक्रिय (सॉफ्ट डिलीट नसलेल्या) खेळाडूंमध्येच चेक करणे
         if (pData.isDeleted !== true) {
-          // अ) मोबाईल नंबर चेक (Strict Unique Mobile)
-          if (pData.mobile === cleanMobile) {
-            isMobileDuplicate = true;
-          }
-          
-          // ब) नाव चेक (Case & Space Insensitive)
+          if (pData.mobile === cleanMobile) isMobileDuplicate = true;
           if (pData.name) {
             const normalizedExistingName = pData.name.toLowerCase().trim().replace(/\s+/g, ' ');
-            if (normalizedExistingName === normalizedNewName) {
-              isNameDuplicate = true;
-            }
+            if (normalizedExistingName === normalizedNewName) isNameDuplicate = true;
           }
         }
       });
 
-      // मोबाईल मॅच झाला तर ब्लॉक
       if (isMobileDuplicate) {
-        Swal.fire({
-          icon: 'error',
-          title: 'मोबाईल नंबर आधीच वापरला आहे! 🛑',
-          text: `या मोबाईल नंबरवर आधीच एका खेळाडूची नोंदणी झाली आहे. एका नंबरवरून फक्त एकच नोंदणी करता येईल!`,
-          confirmButtonColor: '#ff6600',
-          customClass: { popup: 'rounded-3xl' }
-        });
-        setLoading(false);
-        return; 
+        Swal.fire({ icon: 'error', title: 'मोबाईल नंबर आधीच वापरला आहे! 🛑', text: `एका नंबरवरून फक्त एकच नोंदणी करता येईल!`, confirmButtonColor: '#ff6600', customClass: { popup: 'rounded-3xl' } });
+        setLoading(false); return; 
       }
 
-      // नाव मॅच झाले तर ब्लॉक
       if (isNameDuplicate) {
-        Swal.fire({
-          icon: 'error',
-          title: 'नाव आधीच नोंदणीकृत आहे! 👤',
-          text: `"${cleanName}" या नावाची नोंदणी यापूर्वीच झालेली आहे. जर हा दुसरा खेळाडू असेल, तर कृपया तुमचे 'मधले नाव' (Middle Name) जोडून पुन्हा प्रयत्न करा!`,
-          confirmButtonColor: '#ff6600',
-          customClass: { popup: 'rounded-3xl' }
-        });
-        setLoading(false);
-        return;
+        Swal.fire({ icon: 'error', title: 'नाव आधीच नोंदणीकृत आहे! 👤', text: `या नावाची नोंदणी यापूर्वीच झालेली आहे.`, confirmButtonColor: '#ff6600', customClass: { popup: 'rounded-3xl' } });
+        setLoading(false); return;
       }
 
-      // 🚀 ५. सर्व ओके असेल तरच डेटाबेसमध्ये नोंदणी
+      // 🚀 ५. सर्व ओके असेल तरच नोंदणी आणि 'teamUID' डेटाबेसमध्ये राइट करणे
       const finalTshirt = formState.tshirtSize === 'Custom' ? formState.customTshirt.trim() : formState.tshirtSize;
       const finalShorts = formState.shortsSize === 'Custom' ? formState.customShorts.trim() : formState.shortsSize;
       const playerId = `PLY_PUB_${Date.now()}`;
@@ -211,6 +192,9 @@ export default function PublicRegister() {
         towel: formState.needTowel,
         pyramidPlace: formState.pyramidPlace,
         insurance: "Pending", 
+        
+        // 🎯 कडक बदल: प्लेअर मॅपिंगसाठी टीम आयडी आणि नाव दोन्ही अचूक जमा केले!
+        teamUID: freshTeamUID, 
         teamName: teamInfo.teamName, 
         year: teamInfo.currentYear || "2026", 
         registeredVia: "public_link",
@@ -219,21 +203,13 @@ export default function PublicRegister() {
       });
       
       setSubmitted(true);
-      
     } catch (err) {
       console.error(err);
-      Swal.fire({
-        icon: 'error',
-        title: 'नोंदणी अयशस्वी!',
-        text: 'तांत्रिक अडचणीमुळे नोंदणी करता आली नाही. कृपया पुन्हा प्रयत्न करा.',
-        confirmButtonColor: '#ff6600',
-        customClass: { popup: 'rounded-3xl' }
-      });
-    } finally { 
-      setLoading(false); 
-    }
+      Swal.fire({ icon: 'error', title: 'नोंदणी अयशस्वी!', text: 'तांत्रिक अडचणीमुळे नोंदणी करता आली नाही.', confirmButtonColor: '#ff6600', customClass: { popup: 'rounded-3xl' } });
+    } finally { setLoading(false); }
   };
 
+//-----------
   if (checking) {
     return (
       <div className="min-h-screen bg-[#0b132b] flex items-center justify-center text-white font-sans">

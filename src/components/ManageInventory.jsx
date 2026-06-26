@@ -28,13 +28,23 @@ export default function ManageInventory({ user, teamData, setTeamData, playersLi
   const shortsSizes = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', 'Custom'];
   const currentInv = teamData?.inventory || {};
 
-  // साठा फायरबेसमध्ये जतन करणे
+// 🚀 साठा फायरबेसमध्ये जतन करणे (Team UID नुसार कडक दुरुस्ती)
   const handleSaveInventory = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const adminEmail = user.email || user.info?.email;
-      const userRef = doc(db, "users", adminEmail);
+      // 🎯 कडक बदल: ईमेल ऐवजी थेट युनिक Team UID (Document ID) चा रेफरन्स घेतला
+      const teamIdentifier = user.teamUID || user.uid || user.id;
+
+      if (!teamIdentifier) {
+        console.error("❌ संघ आयडी (Team UID) सापडला नाही!");
+        Swal.fire({ icon: 'error', title: 'त्रुटी!', text: 'संघ आयडी न मिळाल्यामुळे इन्व्हेंटरी जतन करता आली नाही.', confirmButtonColor: '#ff6600' });
+        setLoading(false);
+        return;
+      }
+
+      // 🚨 अचूक Team UID च्या डॉक्युमेंटवर थेट वार
+      const userRef = doc(db, "users", teamIdentifier);
 
       const cleanInventory = {};
       tshirtSizes.forEach(sz => { cleanInventory[`tshirt_${sz}`] = Number(invData[`tshirt_${sz}`] || 0); });
@@ -43,14 +53,17 @@ export default function ManageInventory({ user, teamData, setTeamData, playersLi
       cleanInventory.towel = Number(invData.towel || 0);
       cleanInventory.invUpdatedAt = serverTimestamp();
 
+      // १. डेटाबेस अपडेट केला
       await updateDoc(userRef, { inventory: cleanInventory });
+      
+      // २. तुझे मूळ लोकल स्टेट अपडेट्स (आहेत तसेच सुरक्षित)
       if (setTeamData) setTeamData(prev => ({ ...prev, inventory: cleanInventory }));
       
       setIsModalOpen(false);
       Swal.fire({ icon: 'success', title: 'साठा जतन झाला! 🎉', text: 'इन्वेंटरी यशस्वीरित्या अपडेट झाली आहे.', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-3xl' } });
     } catch (err) {
-      console.error(err);
-      Swal.fire({ icon: 'error', title: 'अडचण आली!', text: 'माहिती सुरक्षित करता आली नाही.' });
+      console.error("Inventory Save Error:", err);
+      Swal.fire({ icon: 'error', title: 'अडचण आली!', text: 'माहिती सुरक्षित करता आली नाही. कृपया पुन्हा प्रयत्न करा.' });
     } finally { setLoading(false); }
   };
 

@@ -394,7 +394,7 @@ export default function Dashboard({ user, onLogout }) {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
                 <div>
                   <h1 className="text-xl md:text-2xl font-black text-slate-800">संघ व्यवस्थापन (Teams)</h1>
-                  <p className="text-xs text-slate-500 mt-0.5">युनिक UID पॅटर्न आणि फ्रंट-エンド एक्टिव्ह/डी-एक्टिव्ह सिस्टीम.</p>
+                  <p className="text-xs text-slate-500 mt-0.5">युनिक UID पॅटर्न आणि फ्रंट एक्टिव्ह/डी-एक्टिव्ह सिस्टीम.</p>
                 </div>
                 
                 <div className="hidden sm:flex items-center space-x-3">

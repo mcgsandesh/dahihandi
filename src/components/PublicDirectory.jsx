@@ -251,7 +251,7 @@ if (selectedTeam) {
                         )}
                       </div>
                       <div className="flex items-center space-x-1.5 mt-0.5">
-                        <span className="font-mono text-[12px] font-black px-1 rounded bg-slate-100 text-slate-500">{team.id}</span>
+                        <span className="font-mono text-[11px] font-black px-1 rounded bg-slate-100 text-slate-500">{team.id}</span>
                         <span className={`text-[8px] font-black px-1 rounded ${team.teamCategory === 'Women' ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600'}`}>{team.teamCategory === 'Women' ? 'महिला' : 'पुरुष'}</span>
                       </div>
                     </div>

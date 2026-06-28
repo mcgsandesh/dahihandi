@@ -82,7 +82,7 @@ export default function Settings({ user, teamData, setTeamData, isFormActive, ha
           {/* २. बेल्ट (Belt) फील्ड */}
           <div className="flex items-center justify-between py-1 border-t border-slate-100 pt-3.5">
             <div className="pr-3">
-              <span className="text-xs font-bold text-slate-800 block">कमर बेल्ट (Belt) फील्ड</span>
+              <span className="text-xs font-bold text-slate-800 block">बेल्ट (Belt) फील्ड</span>
               <span className="text-[10px] text-slate-400 font-medium">नोंदणी फॉर्ममध्ये बेल्टचा पर्याय दाखवा</span>
             </div>
             <button 

@@ -43,7 +43,7 @@ export default function PublicInfo() {
         <div className="relative z-10 space-y-1.5">
           <div className="flex items-center space-x-2 text-orange-400 text-xs font-black uppercase tracking-wider">
             <Info size={14} />
-            <span>समन्वय समिती मार्गदर्शक तत्त्वे</span>
+            <span>मार्गदर्शक तत्त्वे</span>
           </div>
           <h3 className="text-base font-black tracking-wide">दहीहंडी उत्सव २०२६ नियमावली</h3>
           <p className="text-slate-400 text-[11px] leading-relaxed font-medium">

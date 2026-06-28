@@ -128,22 +128,27 @@ export default function App() {
   }, []);
 
   // गुगलने लॉगिन झाल्यावर डेटाबेसमधील रोल चेक करणे (सुरक्षित जसेच्या तसे)
-  const checkUserStatus = async (googleUser) => {
+const checkUserStatus = async (googleUser) => {
     try {
       const emailLower = googleUser.email.toLowerCase();
       const usersRef = collection(db, "users");
+      
+      // 🔒 १. मल्टिपल ॲडमीन एरे चेकिंग (१००% सुरक्षित आणि जसेच्या तसे)
       const q = query(usersRef, where("admins", "array-contains", emailLower));
       const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
         const userDoc = querySnapshot.docs[0];
         const dbData = userDoc.data();
-        const teamUID = userDoc.id;
+        const teamUID = userDoc.id; // हा तुमचा डॉक्युमेंट आयडी (उदा. MCG9999 किंवा युझर कट्टा आयडी)
+
+        // 🎯 कडक दुरुस्ती: आपण युझरचा गुगल UID आणि डॉक्युमेंट आयडी मॅच करण्याचा जाचक लॉक काढून टाकला आहे.
+        // आता फक्त त्याचा ईमेल डेटाबेसमध्ये नोंदणीकृत असेल तर त्याला थेट सन्मानाने प्रवेश मिळेल!
 
         if (dbData.isDeleted === true) {
           Swal.fire({
             title: 'अकाउंट बंद केले आहे!',
-            text: 'सुरक्षेच्या कारणास्तव तुमचे अकाउंट डीॲक्टिव्हेट करण्यात आले आहे. कृपया मुख्य सुपरॲडमीनशी संपर्क साधा.',
+            text: 'सुरक्षेच्या कारणास्तव तुमचे Account डीॲक्टिव्हेट करण्यात आले आहे. कृपया मुख्य सुपरॲडमीनशी संपर्क साधा.',
             icon: 'error',
             confirmButtonColor: '#ff6600',
             confirmButtonText: 'ठीक आहे'
@@ -154,6 +159,9 @@ export default function App() {
           return null; 
         }
 
+        const isSuper = dbData.role === "superadmin";
+
+        // 🔄 तुमचा जुना मूळ रिटर्न ऑब्जेक्ट (सुपरॲडमीन बायपाससह सुरक्षित)
         return {
           ...dbData, 
           teamUID: teamUID, 
@@ -163,10 +171,10 @@ export default function App() {
             photoURL: googleUser.photoURL
           },
           role: dbData.role || "admin",
-          teamName: dbData.teamName || "नॉन-रजिस्टर संघ",
+          teamName: dbData.teamName || (isSuper ? "मुख्य सुपरॲडमीन पॅनल" : "नॉन-रजिस्टर संघ"),
           uid: dbData.uid || teamUID,
           currentYear: dbData.currentYear || '2026',
-          isProfileComplete: dbData.isProfileComplete || false,
+          isProfileComplete: isSuper ? true : (dbData.isProfileComplete || false),
           allowInAppForm: dbData.allowInAppForm !== false, 
           teamCategory: dbData.teamCategory || 'Men',
           address: dbData.address || '',

@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import Papa from 'papaparse';
+
 import { db } from '../firebase';
-import { collection, doc, setDoc, updateDoc, getDocs, getDocsFromCache, serverTimestamp, query, where } from 'firebase/firestore'; 
-import { Users, PlusCircle, LogOut, Menu, X, Plus, Search, Edit2, Trash2, Link2, RotateCcw, CheckSquare, Square, Bell, Layers, BarChart3, BookOpen } from 'lucide-react';
+import { collection, doc, setDoc, updateDoc, getDocs, getDocsFromCache, serverTimestamp, query, where, writeBatch } from 'firebase/firestore'; 
+import { Users, PlusCircle, LogOut, Menu, X, Plus, Search, Edit2, Trash2, Link2, RotateCcw, CheckSquare, Square, Bell, Layers, BarChart3, BookOpen, Eye } from 'lucide-react'; // 🎯 Eye आयकॉन इम्पोर्ट केला
 import Swal from 'sweetalert2';
 
 // 🎯 ३ स्वतंत्र सब-कॉम्पोनेंट्स इम्पॉर्ट केले
 import PublicDirectory from '../components/PublicDirectory';
 import PublicStats from '../components/PublicStats';
 import PublicInfo from '../components/PublicInfo';
+import PublicTeamProfile from '../components/PublicTeamProfile'; // 🎯 ओरिजिनल प्रोफाईल कॉम्पोनेंट इम्पोर्ट केला
 
 export default function Dashboard({ user, onLogout }) {
   // Form input states
@@ -15,7 +18,8 @@ export default function Dashboard({ user, onLogout }) {
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [allowInAppForm, setAllowInAppForm] = useState(true); 
-  
+  // 🎯 कडक बदल: सुपरॲडमीन पॅनलसाठी नवीन कॅटेगरी स्टेट जोडली (बाय-डिफॉल्ट 'Men')
+  const [teamCategory, setTeamCategory] = useState('Men');
   // Data states
   const [loading, setLoading] = useState(false);
   const [teamsList, setTeamsList] = useState([]);
@@ -30,7 +34,166 @@ export default function Dashboard({ user, onLogout }) {
   // 🎯 कडक बदल १: 'activeMenu' आता ५ स्वतंत्र व्ह्यूज मॅनेज करेल
   const [activeMenu, setActiveMenu] = useState('teams'); // 'teams', 'govinda_katta', 'public_stats', 'public_info', 'approvals'
 
-  // 🔄 १. डेटाबेस फेच फंक्शन (reads वाचवणारे - सुरक्षित जसेच्या तसे)
+  const [importLoading, setImportLoading] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useState(null); // 🎯 प्रोफाईल प्रीव्ह्यूसाठी नवीन स्टेट
+
+  const handleBulkImportCSV = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setImportLoading(true);
+    console.log("📂 [File Selected]: फाईल सापडली:", file.name);
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      dynamicTyping: true, 
+      quoteChar: '"',      
+      escapeChar: '"',
+      complete: async (results) => {
+        const rows = results.data;
+        
+        console.log("📊 [CSV Parse Success]: एकूण ओळी (Rows) वाचल्या:", rows.length);
+        console.log("🔍 [First Row Sample]: पहिल्या ओळीचा डेटा कसा दिसतोय:", rows[0]);
+
+        if (rows.length === 0) {
+          Swal.fire({ icon: 'error', title: 'फाईल रिकामी आहे!', text: 'निवडलेल्या CSV फाईलमध्ये कोणताही डेटा सापडला नाही.' });
+          setImportLoading(false);
+          return;
+        }
+        
+        try {
+          const currentYear = new Date().getFullYear().toString();
+          const chunkSize = 400; 
+          let totalProcessed = 0;
+
+          for (let i = 0; i < rows.length; i += chunkSize) {
+            const chunk = rows.slice(i, i + chunkSize);
+            console.log(`📦 [Processing Chunk]: ओळ क्रमांक ${i} ते ${i + chunk.length} प्रोसेस होत आहे...`);
+            
+            const batch = writeBatch(db);
+            let chunkValidRowsCount = 0;
+
+            chunk.forEach((row, index) => {
+              if (!row.UID || !row.TeamName) {
+                console.warn(`⚠️ [Skipped Row ${i + index + 1}]: UID किंवा TeamName सापडले नाही! तपासणी करा:`, row);
+                return; 
+              }
+
+              chunkValidRowsCount++;
+              const docId = row.UID.toString().trim(); 
+              const emailLower = row.AdminEmail ? row.AdminEmail.toString().trim().toLowerCase() : '';
+              const adminArray = emailLower ? emailLower.split(',').map(em => em.trim()).filter(em => em !== '') : [];
+
+              let mobileArray = [];
+              if (row.Mobiles) {
+                mobileArray = row.Mobiles.toString().split(',').map(num => num.trim()).filter(num => num !== '');
+              }
+
+              let cleanName = row.TeamName.toString().trim();
+              cleanName = cleanName.replace(/\s*-\s*.+$/gi, '');
+              cleanName = cleanName.replace(/\s*\(.+?\)/gi, '');
+              cleanName = cleanName.replace(/\s*(Govinda?\s*P[ha]+t[ha]k|Dahi\s*Handi\s*P[ha]+t[ha]k|P[ha]+t[ha]k|Govinda?)/gi, '');
+              cleanName = cleanName.replace(/\s*(गोविंदा\s*पथक|गोविंद\s*पथक|दहीहंडी\s*पथक|पथक|गोविंदा)/gi, '');
+
+              const trailingWordsToRemove = ['jogeshwari', 'west', 'east', 'malad', 'kalyan', 'mumbai', 'thane', 'डोबिवली', 'कल्याण', 'मुंबई', 'ठाणे'];
+              trailingWordsToRemove.forEach(word => {
+                const regex = new RegExp(`\\s+${word}\\s*$` , 'gi');
+                cleanName = cleanName.replace(regex, '');
+              });
+
+              cleanName = cleanName.replace(/\s+/g, ' ').trim();
+              if (!cleanName) cleanName = row.TeamName.toString().trim();
+
+              const teamSlug = cleanName.toLowerCase().replace(/[^a-zA-Z0-9\s-\u0900-\u097F]/g, '').replace(/\s+/g, '-');
+
+              const docRef = doc(db, "users", docId);
+              
+              const uploadData = {
+                uid: docId,
+                teamName: cleanName, 
+                name: row.AdminName ? row.AdminName.toString().trim() : 'प्रमुख ॲडमीन', 
+                email: emailLower,
+                admins: adminArray,
+                mobiles: mobileArray,            
+                role: "admin",
+                teamSlug: teamSlug,
+                teamCategory: row.Category || 'Men',
+                coachName: row.CoachName ? row.CoachName.toString().trim() : '',
+                captainName: row.CaptainName ? row.CaptainName.toString().trim() : '',
+                isRegistered: row.IsRegistered === 'Yes' || row.IsRegistered === true, 
+                regNumber: row.RegNumber ? row.RegNumber.toString().trim() : '',
+                address: row.Address ? row.Address.toString().trim() : row.TeamName.toString().trim(), 
+                areaName: row.AreaName ? row.AreaName.toString().trim() : '',
+                pincode: row.Pincode ? row.Pincode.toString().trim() : '',
+                city: row.City ? row.City.toString().trim() : '',
+                district: row.District ? row.District.toString().trim() : '',
+                state: row.State ? row.State.toString().trim() : '',
+                slogan: row.Slogan ? row.Slogan.toString().trim() : '',
+                establishedYear: row.EstablishedYear ? row.EstablishedYear.toString().trim() : '',
+                aboutTeam: row.AboutTeam ? row.AboutTeam.toString().trim() : '',
+                bestPerformance: row.BestPerformance ? row.BestPerformance.toString().trim() : '',
+                bestPerformanceUrl: row.BestPerformanceUrl ? row.BestPerformanceUrl.toString().trim() : '',
+                logoUrl: row.LogoUrl ? row.LogoUrl.toString().trim() : '',
+                hasInsurance: true, 
+                milestone7: row.Milestone7 ? row.Milestone7.toString().trim() : '',
+                milestone8: row.Milestone8 ? row.Milestone8.toString().trim() : '',
+                milestone9: row.Milestone9 ? row.Milestone9.toString().trim() : '',
+                milestone10: row.Milestone10 ? row.Milestone10.toString().trim() : '',
+                socialLinks: {
+                  facebook: row.Facebook ? row.Facebook.toString().trim() : '',
+                  instagram: row.Instagram ? row.Instagram.toString().trim() : '',
+                  youtube: row.Youtube ? row.Youtube.toString().trim() : ''
+                },
+                currentYear: currentYear,
+                isDeleted: false,
+                isFormActive: false, 
+                allowInAppForm: false,
+                isProfileComplete: true, 
+                profileUpdatedAt: serverTimestamp(),
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+              };
+
+              batch.set(docRef, uploadData);
+            });
+
+            console.log(`⏳ [Committing Batch]: ${chunkValidRowsCount} रेकॉर्ड्स फायरबेसवर पाठवत आहे...`);
+            
+            if (chunkValidRowsCount > 0) {
+              await batch.commit();
+              totalProcessed += chunkValidRowsCount;
+              console.log(`✓ [Batch Success]: ${chunkValidRowsCount} रेकॉर्ड्स डेटाबेसमध्ये यशस्वी जमा झाले!`);
+            } else {
+              console.warn("🛑 [Batch Skipped]: या तुकड्यात एकही व्हॅलिड ओळ नव्हती.");
+            }
+          }
+
+          Swal.fire({
+            icon: totalProcessed > 0 ? 'success' : 'info',
+            title: totalProcessed > 0 ? 'इम्पोर्ट कडक पूर्ण! 🎉' : 'डेटा अपलोड झाला नाही!',
+            text: `एकूण ${totalProcessed} संघांचा डेटाबेसमध्ये रेकॉर्ड तयार झाला आहे.`,
+            confirmButtonColor: '#ff6600',
+            customClass: { popup: 'rounded-3xl' }
+          });
+          
+          fetchTeams();
+
+        } catch (err) {
+          console.error("❌❌❌ [FIRESTORE WRITE ERROR]:", err);
+          Swal.fire({ 
+            icon: 'error', 
+            title: 'फायरबेस रायटिंग एरर!', 
+            text: `त्रुटी: ${err.message || 'तपशील पाहण्यासाठी कन्सोल लॉग check करा.'}` 
+          });
+        } finally {
+          setImportLoading(false);
+          e.target.value = ''; 
+        }
+      }
+    });
+  };
+
   const fetchTeams = async () => {
     try {
       console.log("🚀 [SuperAdmin] fetchTeams सुरू झाले आहे...");
@@ -76,11 +239,13 @@ export default function Dashboard({ user, onLogout }) {
       }
       
       setAllowInAppForm(team.allowInAppForm !== false);
+      setTeamCategory(team.teamCategory || 'Men');
     } else {
       setEditingTeamUid(null); 
       setTeamName('');
       setAdminName('');
       setAdminEmail('');
+      setTeamCategory('Men');
       setAllowInAppForm(true); 
     }
     setIsModalOpen(true);
@@ -128,6 +293,7 @@ export default function Dashboard({ user, onLogout }) {
           admins: adminEmail.split(',').map(e => e.trim().toLowerCase()),
           teamName: teamName.trim(),
           teamSlug: teamSlug,
+          teamCategory: teamCategory,
           allowInAppForm: allowInAppForm,
           updatedAt: serverTimestamp()
         });
@@ -142,10 +308,11 @@ export default function Dashboard({ user, onLogout }) {
           uid: generatedUid, 
           name: adminName.trim(),
           email: emailLower,
-          admins: emailLower.split(',').map(e => e.trim().toLowerCase()),
+          admins: adminEmail.split(',').map(e => e.trim().toLowerCase()),
           role: "admin",
           teamName: teamName.trim(),
           teamSlug: teamSlug,
+          teamCategory: teamCategory,
           currentYear: currentYear,
           isDeleted: false,
           isFormActive: allowInAppForm,
@@ -159,6 +326,7 @@ export default function Dashboard({ user, onLogout }) {
       setTeamName('');
       setAdminName('');
       setAdminEmail('');
+      setTeamCategory('Men');
       setIsModalOpen(false);
       setEditingTeamUid(null); 
       fetchTeams();
@@ -167,7 +335,7 @@ export default function Dashboard({ user, onLogout }) {
       console.error(err);
       Swal.fire({ icon: 'error', title: 'त्रुटी आली!', text: 'डेटा सुरक्षित करताना तांत्रिक चूक झाली.', confirmButtonColor: '#ff6600' });
     } finally {
-      setLoading(false);
+      loading(false);
     }
   };
 
@@ -228,7 +396,19 @@ export default function Dashboard({ user, onLogout }) {
           city: t.city || '',
           district: t.district || '',
           state: t.state || '',
-          areaName: t.areaName || ''
+          areaName: t.areaName || '',
+          coachName: t.coachName || '',
+          captainName: t.captainName || '',
+          milestone7: t.milestone7 || '',
+          milestone8: t.milestone8 || '',
+          milestone9: t.milestone9 || '',
+          milestone10: t.milestone10 || '',
+          bestPerformanceUrl: t.bestPerformanceUrl || '',
+          socialLinks: {
+            facebook: t.socialLinks?.facebook || '',
+            instagram: t.socialLinks?.instagram || '',
+            youtube: t.socialLinks?.youtube || ''
+          }
         }));
 
       if (activeTeamsData.length === 0) {
@@ -247,7 +427,7 @@ export default function Dashboard({ user, onLogout }) {
 
       Swal.fire({
         icon: 'success',
-        title: 'वेबसाईट लाईव्ह झाली! 🎉',
+        title: 'वेबсайт लाईव्ह झाली! 🎉',
         text: `एकूण ${activeTeamsData.length} संघांचा डेटा यशस्वीरित्या कॅश केला गेला आहे.`,
         confirmButtonColor: '#ff6600',
         customClass: { popup: 'rounded-3xl' }
@@ -280,7 +460,6 @@ export default function Dashboard({ user, onLogout }) {
             <p className="text-[10px] text-[#ff6600] font-bold tracking-widest uppercase mt-0.5">⚙️ Superadmin Panel</p>
           </div>
           
-          {/* 🎯 कडक बदल २: मुख्य साईडबारमध्ये ३ स्वतंत्र प्रिमियम पर्याय जोडले */}
           <div className="space-y-1.5">
             <button 
               onClick={() => { setActiveMenu('teams'); setIsMenuOpen(false); }}
@@ -342,7 +521,7 @@ export default function Dashboard({ user, onLogout }) {
 
       {isMenuOpen && <div onClick={() => setIsMenuOpen(false)} className="fixed inset-0 bg-black/50 z-40 md:hidden"></div>}
 
-      {/* 🖥️ मुख्य कार्यक्षेत्र (🎯 ३ स्वतंत्र व्ह्यूज मख्खनसारखे मॅप केले) */}
+      {/* 🖥️ मुख्य कार्यक्षेत्र */}
       <div className="flex-1 w-full overflow-y-auto">
         
         {/* अ) गोविंदा कट्टा व्ह्यू */}
@@ -387,7 +566,7 @@ export default function Dashboard({ user, onLogout }) {
           </div>
         ) : (
           
-          /* इ) मूळ सुपरॲडमीन मुख्य यादी कार्यक्षेत्र (१००% ओरिजिनल सुरक्षित) */
+          /* इ) मूळ सुपरॲडमीन मुख्य यादी कार्यक्षेत्र */
           <div className="p-4 md:p-6 w-full">
             <div className="w-full space-y-6">
               
@@ -396,28 +575,29 @@ export default function Dashboard({ user, onLogout }) {
                   <h1 className="text-xl md:text-2xl font-black text-slate-800">संघ व्यवस्थापन (Teams)</h1>
                   <p className="text-xs text-slate-500 mt-0.5">युनिक UID पॅटर्न आणि फ्रंट एक्टिव्ह/डी-एक्टिव्ह सिस्टीम.</p>
                 </div>
-                
-                <div className="hidden sm:flex items-center space-x-3">
-                  <button
-                    onClick={handlePublishLive}
-                    disabled={loading}
-                    className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md hover:bg-slate-800 transition-all flex items-center space-x-2 disabled:opacity-50"
-                  >
-                    <span>🚀 Publish Live वेबसाइट</span>
-                  </button>
-                  
-                  <button onClick={() => openModal()} className="bg-[#ff6600] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md hover:bg-[#e65c00] transition-all flex items-center space-x-2">
-                    <Plus size={16} /><span>नवीन संघ जोडा</span>
-                  </button>
-                </div>
 
-                <div className="sm:hidden w-full">
+                {/* 🎯 कडक बदल: दोन्ही बटन्स एकदम लहान करून नीट एका रेषेत (अलाइनमेंट फिक्स) सेट केले! */}
+                <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap gap-y-2">
                   <button
                     onClick={handlePublishLive}
                     disabled={loading}
-                    className="w-full bg-slate-900 text-white py-2.5 rounded-xl font-bold text-xs shadow-md active:bg-slate-800 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                    className="bg-slate-900 text-white px-3 py-2 rounded-xl font-bold text-xs shadow-md hover:bg-slate-800 transition-all flex items-center space-x-1.5 disabled:opacity-50 h-[38px]"
                   >
-                    <span>🚀 Publish Live वेबसाइट</span>
+                    <span>🚀 Publish Live</span>
+                  </button>
+
+                  <label className={`cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl font-bold text-xs shadow-md transition-all flex items-center space-x-1.5 active:scale-95 h-[38px] ${importLoading ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <input 
+                      type="file" 
+                      accept=".csv" 
+                      onChange={handleBulkImportCSV} 
+                      className="hidden" 
+                    />
+                    <span>{importLoading ? '⏳ लोड होत आहे...' : '📤 Excel Import (.csv)'}</span>
+                  </label>
+
+                  <button onClick={() => openModal()} className="bg-[#ff6600] text-white px-3 py-2 rounded-xl font-bold text-xs shadow-md hover:bg-[#e65c00] transition-all flex items-center space-x-1.5 h-[38px]">
+                    <Plus size={14} /><span>नवीन संघ जोडा</span>
                   </button>
                 </div>
               </div>
@@ -442,8 +622,8 @@ export default function Dashboard({ user, onLogout }) {
                         <th className="p-4">संघ / टीमचे नाव</th>
                         <th className="p-4">ॲडमीन नाव</th>
                         <th className="p-4">नोंदणी लिंक (WhatsApp)</th>
-                        <th className="p-4">स्थितী</th>
-                        <th className="p-4 text-center w-28">क्रिया</th>
+                        <th className="p-4">स्थिती</th>
+                        <th className="p-4 text-center w-36">क्रिया</th>
                       </tr>
                     </thead>
                     <tbody className="text-sm divide-y divide-slate-100">
@@ -471,7 +651,15 @@ export default function Dashboard({ user, onLogout }) {
                                   {t.isDeleted ? 'बंद' : (t.isProfileComplete ? 'पूर्ण' : 'प्रलंबित')}
                                 </span>
                               </td>
-                              <td className="p-4 flex items-center justify-center space-x-2">
+                              <td className="p-4 flex items-center justify-center space-x-1">
+                                {/* 🎯 १-Read सेव्ह इंजिन सेफ प्रोफाईल बटण */}
+                                <button 
+                                  onClick={() => setSelectedTeam(t)} 
+                                  className="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                                  title="पब्लिक प्रोफाईल पहा"
+                                >
+                                  <Eye size={15} />
+                                </button>
                                 {!t.isDeleted && <button onClick={() => openModal(t)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit2 size={15} /></button>}
                                 <button onClick={() => handleToggleActiveStatus(t.id, t.isDeleted)} className={`p-2 rounded-xl transition-all ${t.isDeleted ? 'text-green-600 hover:bg-green-50' : 'text-red-500 hover:bg-red-50'}`}>
                                   {t.isDeleted ? <RotateCcw size={15} /> : <Trash2 size={15} />}
@@ -505,7 +693,11 @@ export default function Dashboard({ user, onLogout }) {
                             <p className="text-[10px] text-slate-500 font-medium truncate">प्रमुख: {t.name}</p>
                           </div>
                           
-                          <div className="flex items-center space-x-1.5 flex-shrink-0">
+                          <div className="flex items-center space-x-1 flex-shrink-0">
+                            {/* 🎯 मोबाईल व्ह्यू सेफ प्रोफाईल बटण */}
+                            <button onClick={() => setSelectedTeam(t)} className="p-2 text-slate-700 bg-slate-50 active:bg-slate-100 rounded-lg border border-slate-100">
+                              <Eye size={13} />
+                            </button>
                             {t.allowInAppForm !== false && !t.isDeleted && (
                               <button onClick={() => copyToClipboard(secureLink)} className="p-2 text-green-600 bg-green-50 active:bg-green-100 rounded-lg border border-green-100" title="लिंक कॉपी">
                                 <Link2 size={13} />
@@ -539,7 +731,7 @@ export default function Dashboard({ user, onLogout }) {
         </button>
       )}
 
-      {/* 📱 मोबाईल स्क्रीनसाठी प्रिमियम फिक्स 'Bottom Navigation' बार */}
+      {/* 📱 Bottom Navigation বার */}
       <div className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] z-40 flex justify-around items-center py-2 px-1">
         <button onClick={() => setActiveMenu('teams')} className={`flex flex-col items-center justify-center space-y-0.5 py-1 px-3 rounded-xl transition-all ${activeMenu === 'teams' ? 'text-[#ff6600] font-black' : 'text-slate-400 font-bold'}`}>
           <Layers size={18} />
@@ -562,7 +754,7 @@ export default function Dashboard({ user, onLogout }) {
         </button>
       </div>
 
-      {/* 🗟 पॉप-अप मॉडेल फॉर्म (सुरक्षित जसाच्या तसा) */}
+      {/* 🗟 पॉप-अप मॉडेल फॉर्म */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div onClick={() => { setIsModalOpen(false); setEditingTeamUid(null); }} className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
@@ -576,7 +768,7 @@ export default function Dashboard({ user, onLogout }) {
             </div>
             <form onSubmit={handleSaveTeam} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">टीळचे नाव</label>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">संघाचे नाव</label>
                 <input type="text" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="उदा. शिवनेरी गोविंदा पथक" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#ff6600] bg-slate-50 font-medium text-slate-800" />
               </div>
               <div>
@@ -587,6 +779,30 @@ export default function Dashboard({ user, onLogout }) {
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">गुगल लॉगिन ईमेल आयडी</label>
                 <input type="text" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder="उदा. admin1@gmail.com, admin2@gmail.com" className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#ff6600] bg-slate-50 font-medium text-slate-800" />
                 <p className="text-[10px] text-slate-400 font-medium mt-1">* एकापेक्षा जास्त ॲडमीन असल्यास ईमेल्स मध्ये स्वल्पविराम ( , ) द्यावा.</p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">संघाचा प्रकार (Category)</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'Men', label: '👨‍👦 पुरुष' },
+                    { id: 'Women', label: '👩‍👧 महिला' },
+                    { id: 'Both', label: '👨‍👩‍👦 दोन्ही' }
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setTeamCategory(cat.id)}
+                      className={`py-2 px-1 rounded-xl border text-xs font-black transition-all text-center active:scale-95 ${
+                        teamCategory === cat.id 
+                          ? 'bg-[#0b132b] text-white border-[#0b132b] shadow-sm' 
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               
               <div className="pt-2 pb-1 border-t border-b border-slate-100 flex items-center justify-between">
@@ -604,6 +820,23 @@ export default function Dashboard({ user, onLogout }) {
                 <span>{loading ? 'प्रोसेस होत आहे...' : editingTeamUid ? 'माहिती अपडेट करा' : 'संघ नोंदणी करा'}</span>
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🎯 कडक बदल: सुपरॲडमीनसाठी ओरिजिनल 'PublicTeamProfile' रिव्ह्यू मोडल पॉपअप */}
+      {selectedTeam && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative p-6 animate-in fade-in zoom-in-95 duration-150">
+            <button 
+              onClick={() => setSelectedTeam(null)} 
+              className="absolute top-4 right-4 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-xl font-bold z-10 text-xs transition-all active:scale-95"
+            >
+              ✕ बंद करा
+            </button>
+            <div className="pt-4">
+              <PublicTeamProfile team={selectedTeam} isPreviewMode={true} />
+            </div>
           </div>
         </div>
       )}

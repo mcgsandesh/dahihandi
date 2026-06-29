@@ -96,15 +96,17 @@ export default function PlayersList({
         </button>
       </div>
 
-      {/* टेबल मॅट्रिक्स लेआउट */}
-      <div className="bg-white border border-slate-200/80 p-3 rounded-2xl shadow-sm text-[11px] font-black text-slate-700 space-y-3 relative">
-        <div className="overflow-x-auto">
+{/* टेबल मॅट्रिक्स लेआउट (डेस्कटॉपवर २ भागांत विभागून जागा वाचवली 🎯) */}
+      <div className="bg-white border border-slate-200/80 p-3 rounded-2xl shadow-sm text-[11px] font-black text-slate-700 flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6 relative">
+        
+        {/* 📦 भाग १: मुख्य साईझ टेबल मॅट्रिक्स (डेस्कटॉपवर विड्थ ऑटो आणि आकडे मोठे ⚡) */}
+        <div className="overflow-x-auto flex-1 w-full md:w-auto">
           <table className="w-full text-center border-collapse">
             <thead>
               <tr className="text-slate-400 text-[9px] uppercase tracking-wider border-b border-slate-100">
                 <th className="py-1 px-1 text-left font-bold text-slate-400">SIZE</th>
                 {mainSizes.map(size => (
-                  <th key={size} className="py-1 px-1 font-mono font-black text-slate-800 min-w-[35px]">{size}</th>
+                  <th key={size} className="py-1 px-1 font-mono font-black text-slate-800 min-w-[35px] md:min-w-[45px] md:text-xs">{size}</th>
                 ))}
               </tr>
             </thead>
@@ -112,42 +114,50 @@ export default function PlayersList({
               <tr className="hover:bg-slate-50/40">
                 <td className="py-1.5 px-1 text-left font-sans font-bold text-purple-700">T (शिल्लक)</td>
                 {mainTshirtStock.map((stock, i) => (
-                  <td key={i} className="py-1.5 px-1 text-purple-600 font-bold">{stock}</td>
+                  <td key={i} className="py-1.5 px-1 text-purple-600 font-bold md:text-[13px] md:font-black">{stock}</td>
                 ))}
               </tr>
               <tr className="border-t border-slate-100 hover:bg-slate-50/40">
                 <td className="py-1.5 px-1 text-left font-sans font-bold text-indigo-700">S (शिल्लक)</td>
                 {mainShortsStock.map((stock, i) => (
-                  <td key={i} className="py-1.5 px-1 text-indigo-600 font-bold">{stock}</td>
+                  <td key={i} className="py-1.5 px-1 text-indigo-600 font-bold md:text-[13px] md:font-black">{stock}</td>
                 ))}
               </tr>
             </tbody>
           </table>
         </div>
 
-        {/* बेल्ट, टॉवेल आणि मोकळ्या जागेत कडक कस्टम बटण */}
-        <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 flex-wrap gap-2 relative">
-          <div className="flex items-center space-x-3 text-[10px] text-slate-500 font-sans">
-            <div>बेल्ट: <span className="text-slate-900 font-mono font-black bg-slate-50 border px-1.5 py-0.5 rounded-md ml-0.5">{leftBelt}</span></div>
-            <div>टॉवेल: <span className="text-teal-600 font-mono font-black bg-slate-50 border px-1.5 py-0.5 rounded-md ml-0.5">{leftTowel}</span></div>
+        {/* 📦 भाग २: बेल्ट, टॉवेल आणि इतर साईझ बटण पॅकेज (मोबाईलवर खाली, डेस्कटॉपवर उजव्या कोपऱ्यात फिट 🛠️) */}
+        <div className="flex items-center justify-between md:justify-end pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 flex-wrap md:flex-nowrap gap-3 relative md:self-center flex-shrink-0">
+          
+          {/* बेल्ट आणि टॉवेल स्टॉक्स डिस्प्ले */}
+          <div className="flex items-center space-x-3 md:space-x-4 text-[10px] md:text-[11px] text-slate-500 font-sans md:mr-2">
+            <div className="flex items-center">
+              <span>बेल्ट:</span> 
+              <span className="text-slate-900 font-mono font-black bg-slate-50 border px-2 py-0.5 md:py-1 rounded-md ml-1 md:text-xs shadow-sm">{leftBelt}</span>
+            </div>
+            <div className="flex items-center">
+              <span>टॉवेल:</span> 
+              <span className="text-teal-600 font-mono font-black bg-slate-50 border px-2 py-0.5 md:py-1 rounded-md ml-1 md:text-xs shadow-sm">{leftTowel}</span>
+            </div>
           </div>
 
-          {/* ⚡ इतर साइजचे बटण */}
+          {/* ⚡ इतर साइजचे बटण आणि ड्रॉपडाऊन पॉपअप */}
           {customSizesData.length > 0 ? (
             <div className="relative">
               <button 
                 onClick={() => setShowCustomPopup(!showCustomPopup)}
                 onMouseEnter={() => setShowCustomPopup(true)}
                 onMouseLeave={() => setShowCustomPopup(false)}
-                className="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-2.5 py-1 rounded-xl flex items-center space-x-1 transition-all active:scale-95 text-[10px]"
+                className="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-2.5 py-1 md:py-1.5 rounded-xl flex items-center space-x-1 transition-all active:scale-95 text-[10px] md:text-[11px] font-black shadow-sm"
               >
                 <span>✏️ इतर साईझ ({customSizesData.length})</span>
               </button>
 
-              {/* फ्लोटिंग पॉपअप ड्रॉपडाऊन कार्ड */}
+              {/* फ्लोटिंग पॉपअप ड्रॉपडाऊन कार्ड (डेस्कटॉपवर पोझिशन `bottom-9` सुरक्षित ठेवली) */}
               {showCustomPopup && (
                 <div 
-                  className="absolute right-0 bottom-7 bg-[#0b132b] text-white p-3 rounded-xl shadow-2xl border border-slate-800 w-48 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150 font-sans"
+                  className="absolute right-0 bottom-8 md:bottom-9 bg-[#0b132b] text-white p-3 rounded-xl shadow-2xl border border-slate-800 w-48 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150 font-sans"
                   onMouseEnter={() => setShowCustomPopup(true)}
                   onMouseLeave={() => setShowCustomPopup(false)}
                 >
@@ -164,10 +174,10 @@ export default function PlayersList({
               )}
             </div>
           ) : (
-            // जर कोणताही डेटा कलेक्ट झाला नाही तर कन्सोलमध्ये व्हेरिफाय करण्यासाठी डेव्हलपमेंट नोट
             <span className="text-[9px] text-slate-300 font-normal">नो कस्टम साईझ</span>
           )}
         </div>
+
       </div>
 
       {/* इथून खाली तुमची फिल्टर प्लेयर्स यादी सुरू राहू दे... */}
@@ -186,7 +196,7 @@ export default function PlayersList({
         />
       </div>
 
-      {/* 📱 खेळाडू कार्ड्सची मुख्य कंटेनर यादी (pb-32 सुरक्षित) */}
+    {/* 📱 खेळाडू कार्ड्सची मुख्य कंटेनर यादी (pb-32 सुरक्षित) */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 divide-y divide-slate-100 overflow-hidden pb-32">
         {filteredPlayers.map((p, index) => {
           const isLastRecords = index >= filteredPlayers.length - 2 && filteredPlayers.length > 2;
@@ -194,49 +204,51 @@ export default function PlayersList({
           return (
             <div 
               key={p.id} 
-              className="p-4 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 hover:bg-slate-50/50 transition-all relative min-h-[100px]"
+              className="p-3 md:py-2.5 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 hover:bg-slate-50/50 transition-all relative min-h-[75px] md:min-h-[55px]"
             >
               
-              {/* 🏢 डावी बाजू: प्रोफाईल आणि एका ओळीत डेटा ॲडजस्टमेंट */}
-              <div className="flex items-start space-x-3.5 min-w-0 flex-1 pr-8 md:pr-0">
-                {/* इनिशियल्स गोल राऊंड */}
-                <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-xs font-black text-slate-700 flex-shrink-0 mt-0.5">
+              {/* 🏢 डावी बाजू: प्रोफाईल आणि एका ओळीत डेटा ॲडजस्टमेंट (डेस्कटॉपवर कडक सिंगल लाईन 🎯) */}
+              <div className="flex items-center space-x-3.5 min-w-0 flex-1 pr-8 md:pr-4">
+                {/* इनिशियल्स गोल राऊंड (डेस्कटॉपवर थोडा बारीक केला जेणेकरून सुबक दिसेल) */}
+                <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-xs font-black text-slate-700 flex-shrink-0">
                   {getInitials(p.name)}
                 </div>
                 
-                <div className="min-w-0 flex-1">
-                  {/* 🎯 कडक बदल १: नाव आणि वय आता एकाच ओळीत शेजारी शेजारी! */}
-                  <div className="flex items-center space-x-2 flex-wrap">
-                    <h4 className="text-sm font-black text-slate-800 tracking-wide truncate max-w-[180px] sm:max-w-none">
+                {/* 🎯 कडक मॅजिक कंटेनर: मोबाईलवर एकाखाली एक, डेस्कटॉपवर एकाच ओळीत! */}
+                <div className="min-w-0 flex-1 flex flex-col md:flex-row md:items-center md:space-x-4">
+                  
+                  {/* नाव आणि वय पॅकेज */}
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                    <h4 className="text-sm font-black text-slate-800 tracking-wide truncate max-w-[160px] md:max-w-[220px]">
                       {p.name}
                     </h4>
-                    <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-1.5 py-0.5 rounded-md font-sans">
+                    <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-1.5 py-0.5 rounded-md font-sans flex-shrink-0">
                       वय: {calculateAge(p.dob)}
                     </span>
                   </div>
                   
-                  {/* 🎯 कडक बदल २: सर्व उरलेले बॅजेस आता एकाच सिंगल ओळीत ॲडजस्ट */}
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 font-bold mt-2">
+                  {/* 🎯 कडक बदल: हे सर्व बॅजेस आता डेस्कटॉपवर `md:mt-0` मुळे वरच्या ओळीत सरळ शेजारी फिट होतील! */}
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 font-bold mt-1.5 md:mt-0">
                     {p.tshirt && (
-                      <span className="bg-slate-50 text-slate-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border border-slate-200/50 font-mono">
+                      <span className="bg-slate-50 text-slate-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border border-slate-200/50 font-mono flex-shrink-0">
                         👕 {p.tshirt}
                       </span>
                     )}
 
                     {p.shorts && p.shorts !== '—' && (
-                      <span className="bg-slate-50 text-slate-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border border-slate-200/50 font-mono">
+                      <span className="bg-slate-50 text-slate-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border border-slate-200/50 font-mono flex-shrink-0">
                         🩳 {p.shorts}
                       </span>
                     )}
                     
                     {(p.belt === 'Yes' || p.needBelt === 'Yes') && (
-                      <span className="bg-amber-50/60 text-amber-800 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-amber-100/70 uppercase">
+                      <span className="bg-amber-50/60 text-amber-800 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-amber-100/70 uppercase flex-shrink-0">
                         🎗️ Belt
                       </span>
                     )}
 
                     {(p.towel === 'Yes' || p.needTowel === 'Yes') && (
-                      <span className="bg-sky-50/60 text-sky-800 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-sky-100/70 uppercase">
+                      <span className="bg-sky-50/60 text-sky-800 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-sky-100/70 uppercase flex-shrink-0">
                         🧼 Towel
                       </span>
                     )}
@@ -244,7 +256,7 @@ export default function PlayersList({
                 </div>
               </div>
 
-              {/* मोबाईलवर ३-डॉट्स बटण (Top Right Position - एकदम फिक्स) */}
+              {/* मोबाईलवर ३-डॉट्स बटण (Top Right Position - जसेच्या तसे सुरक्षित) */}
               <div className="absolute top-2 right-2 md:hidden">
                 <div className="relative group">
                   <button className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-all focus:outline-none active:bg-slate-200">
@@ -262,12 +274,12 @@ export default function PlayersList({
                 </div>
               </div>
 
-              {/* प्रोफेशनल मॉडर्न टॉगल बटन्स */}
+              {/* प्रोफेशनल मॉडर्न टॉगल बटन्स आणि ॲक्शन्स */}
               <div className="flex items-center space-x-2.5 justify-between md:justify-end w-full md:w-auto">
                 <div className="flex items-center space-x-2 w-full md:w-auto">
                   <button 
                     onClick={() => handleFastToggleInsurance(p.id, p.insurance)} 
-                    className={`flex-1 md:flex-initial md:w-32 text-center py-2 md:py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
+                    className={`flex-1 md:flex-initial md:w-28 text-center py-2 md:py-1 rounded-xl text-[11px] font-bold border transition-all ${
                       p.insurance === 'Done' || p.insurance === 'झालेले' 
                         ? 'bg-slate-900 text-white border-slate-900 shadow-sm shadow-slate-900/10' 
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
@@ -278,7 +290,7 @@ export default function PlayersList({
                   
                   <button 
                     onClick={() => handleFastToggleTshirt(p.id, p.tshirtGiven)} 
-                    className={`flex-1 md:flex-initial md:w-32 text-center py-2 md:py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
+                    className={`flex-1 md:flex-initial md:w-28 text-center py-2 md:py-1 rounded-xl text-[11px] font-bold border transition-all ${
                       p.tshirtGiven === 'Yes' 
                         ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-600/10' 
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
@@ -288,12 +300,12 @@ export default function PlayersList({
                   </button>
                 </div>
 
-                {/* डेस्कटॉप स्क्रीन ॲक्शन बटन्स */}
+                {/* डेस्कटॉप स्क्रीन ॲक्शन बटन्स (पूर्णपणे सुरक्षित) */}
                 <div className="hidden md:flex items-center space-x-1 pl-1">
-                  <a href={`tel:${p.mobile}`} title="कॉल करा" className="p-2 hover:bg-slate-100 text-slate-600 rounded-xl transition-all"><Phone size={15} /></a>
-                  <a href={`https://wa.me/91${p.mobile}`} target="_blank" rel="noreferrer" title="व्हॉट्सॲप" className="p-2 hover:bg-slate-100 text-slate-600 rounded-xl transition-all"><MessageSquare size={15} /></a>
-                  <button onClick={() => openPlayerModal(p)} title="सुधार करा" className="p-2 hover:bg-slate-100 text-slate-600 rounded-xl transition-all"><Edit2 size={15} /></button>
-                  <button onClick={() => handleSoftDelete(p.id, p.name)} title="काढून टाका" className="p-2 hover:bg-red-50 text-red-500 rounded-xl transition-all"><Trash2 size={15} /></button>
+                  <a href={`tel:${p.mobile}`} title="कॉल करा" className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-xl transition-all"><Phone size={14} /></a>
+                  <a href={`https://wa.me/91${p.mobile}`} target="_blank" rel="noreferrer" title="व्हॉट्सॲप" className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-xl transition-all"><MessageSquare size={14} /></a>
+                  <button onClick={() => openPlayerModal(p)} title="सुधार करा" className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-xl transition-all"><Edit2 size={14} /></button>
+                  <button onClick={() => handleSoftDelete(p.id, p.name)} title="काढून टाका" className="p-1.5 hover:bg-red-50 text-red-500 rounded-xl transition-all"><Trash2 size={14} /></button>
                 </div>
               </div>
 

@@ -144,7 +144,7 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
     } finally { setLoading(false); }
   };
 
-  // 🖥️ ३. VIEW MODE: कडक ३-बॉक्स लेआउट (Vertical Photo फिक्स सह 🎯)
+// 🖥️ ३. VIEW MODE: कडक ३-बॉक्स लेआउट (Vertical Photo आणि इतिहास बॉक्स अपग्रेड 🎯)
   if (!isEditMode) {
     return (
       <div className="w-full space-y-5 animate-in fade-in duration-150 p-0 m-0">
@@ -199,7 +199,7 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
           </div>
         </div>
 
-        {/* 📊 कडक बदल: ३ स्वतंत्र समान बॉक्सेस ग्रीड (४-४-४ स्प्लिट डेस्कटॉपवर) */}
+        {/* 📊 ३ स्वतंत्र समान बॉक्सेस ग्रीड (items-stretch मुळे तिन्ही बॉक्सेसची उंची समान राहील) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 w-full items-stretch">
           
           {/* 📦 बॉक्स १: मंडळाची अधिकृत माहिती (४ कॉलम्स) */}
@@ -264,23 +264,26 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
 
           {/* 📦 बॉक्स २: उत्सव सद्यस्थिती व ऐतिहासिक रेकॉर्ड्स (४ कॉलम्स) */}
           <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-4 w-full flex flex-col justify-between">
-            <div className="space-y-3.5">
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide border-b pb-2 flex items-center space-x-1">
+            <div className="space-y-3.5 flex-1 flex flex-col">
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide border-b pb-2 flex items-center space-x-1 flex-shrink-0">
                 <Trophy size={13} className="text-amber-500" /> <span>📊 उत्सव कामगिरी व इतिहास</span>
               </h3>
 
-              <div className="bg-orange-50/40 p-2.5 rounded-xl border border-orange-100 text-xs">
+              <div className="bg-orange-50/40 p-2.5 rounded-xl border border-orange-100 text-xs flex-shrink-0">
                 <span className="block font-black text-orange-800 uppercase tracking-wider text-[9px]">सर्वोत्कृष्ट कामगिरी (Record)</span>
                 <p className="text-slate-700 font-extrabold mt-0.5">{bestPerformance || '—'}</p>
               </div>
 
-              <div className="bg-slate-50/60 p-2.5 rounded-xl border text-xs">
-                <span className="block font-black text-slate-400 uppercase tracking-wider text-[9px]">संघाबद्दल संक्षिप्त इतिहास</span>
-                <p className="text-slate-600 font-medium mt-0.5 leading-relaxed text-[11px] line-clamp-3 whitespace-pre-wrap">{aboutTeam || '—'}</p>
+              {/* 🎯 कडक बदल १: संक्षिप्त इतिहासाची लाईन-क्लॅम्प काढून सुबक स्क्रोलर दिला जेणेकरून संपूर्ण माहिती दिसेल */}
+              <div className="bg-slate-50/60 p-2.5 rounded-xl border text-xs flex-1 flex flex-col min-h-[120px] max-h-[180px] lg:max-h-[220px]">
+                <span className="block font-black text-slate-400 uppercase tracking-wider text-[9px] flex-shrink-0 mb-1">संघाबद्दल संक्षिप्त इतिहास</span>
+                <div className="overflow-y-auto pr-1 text-slate-600 font-medium leading-relaxed text-[11px] whitespace-pre-wrap flex-1 scrollbar-thin">
+                  {aboutTeam || '—'}
+                </div>
               </div>
 
-              {/* 🎯 नवीन थरांचे ऐतिहासिक माइलस्टोन्स */}
-              <div className="pt-2 border-t border-dashed space-y-1.5">
+              {/* 🏆 थरांचे ऐतिहासिक माइलस्टोन्स */}
+              <div className="pt-2 border-t border-dashed space-y-1.5 flex-shrink-0">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">🏆 ऐतिहासिक थर रेकॉर्ड्स</span>
                 <div className="grid grid-cols-2 gap-1.5 text-[10px]">
                   <div className="bg-slate-50 p-1.5 rounded-lg border"><span className="text-slate-400 font-medium">७ थर:</span> <span className="text-slate-800 font-black block truncate">{milestone7 || '—'}</span></div>
@@ -292,19 +295,23 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
             </div>
           </div>
 
-          {/* 📦 बॉक्स ३: भव्य व्हर्टिकल सलामी क्षणचित्र (४ कॉलम्स) */}
-          <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between w-full h-full min-h-[420px]">
-            <div className="w-full h-full flex flex-col">
-              <span className="block font-black text-slate-800 uppercase tracking-wider text-[10px] border-b pb-2 mb-3">
+          {/* 📦 बॉक्स ३: भव्य व्हर्टिकल सलामी क्षणचित्र (४ कॉलम्स - हाईट अपग्रेड 🚀) */}
+          <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between w-full h-full min-h-[460px] lg:min-h-[520px]">
+            <div className="w-full h-full flex flex-col flex-1">
+              <span className="block font-black text-slate-800 uppercase tracking-wider text-[10px] border-b pb-2 mb-3 flex-shrink-0">
                 📸 सलामी क्षणचित्र (Vertical Format)
               </span>
               
-              {/* 🎯 कडक फिक्स: उंच मानवी मनोऱ्यासाठी परिपूर्ण व्हर्टिकल आस्पेक्ट रेशो (aspect-[3/4]) */}
-              <div className="flex-1 w-full rounded-2xl border border-slate-100 overflow-hidden bg-slate-50 shadow-sm relative min-h-[320px]">
+              {/* 🎯 कडक बदल २: मनोरा पूर्ण दिसण्यासाठी उंची वाढवली (min-h-[380px] lg:min-h-[440px]) आणि डार्क बॅकग्राउंड सेट केले */}
+              <div className="flex-1 w-full rounded-2xl border border-slate-900/10 overflow-hidden bg-slate-950 shadow-inner relative min-h-[380px] lg:min-h-[440px]">
                 {bestPerformanceUrl ? (
-                  <img src={bestPerformanceUrl} alt="Best Performance Vertical" className="absolute inset-0 w-full h-full object-cover" />
+                  <img 
+                    src={bestPerformanceUrl} 
+                    alt="Best Performance Vertical" 
+                    className="absolute inset-0 w-full h-full object-contain md:object-cover hover:object-contain transition-all duration-300" 
+                  />
                 ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-slate-400">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-slate-500 bg-slate-50">
                     <ImageIcon size={26} className="text-slate-300" />
                     <p className="text-[11px] font-bold mt-1 text-slate-500">सलामीचा फोटो उपलब्ध नाही</p>
                   </div>

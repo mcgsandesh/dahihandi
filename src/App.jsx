@@ -133,22 +133,19 @@ const checkUserStatus = async (googleUser) => {
       const emailLower = googleUser.email.toLowerCase();
       const usersRef = collection(db, "users");
       
-      // 🔒 १. मल्टिपल ॲडमीन एरे चेकिंग (१००% सुरक्षित आणि जसेच्या तसे)
+      // 🔒 १. फ्रेश डेटाबेस क्वेरी (जुन्या लोकल स्टोरेजला बायपास करून थेट Firestore मधून शोधणे)
       const q = query(usersRef, where("admins", "array-contains", emailLower));
       const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
         const userDoc = querySnapshot.docs[0];
         const dbData = userDoc.data();
-        const teamUID = userDoc.id; // हा तुमचा डॉक्युमेंट आयडी (उदा. MCG9999 किंवा युझर कट्टा आयडी)
-
-        // 🎯 कडक दुरुस्ती: आपण युझरचा गुगल UID आणि डॉक्युमेंट आयडी मॅच करण्याचा जाचक लॉक काढून टाकला आहे.
-        // आता फक्त त्याचा ईमेल डेटाबेसमध्ये नोंदणीकृत असेल तर त्याला थेट सन्मानाने प्रवेश मिळेल!
+        const teamUID = userDoc.id; // हा फ्रेश टीमचा आयडी मिळेल (उदा. Team B चा आयडी)
 
         if (dbData.isDeleted === true) {
           Swal.fire({
             title: 'अकाउंट बंद केले आहे!',
-            text: 'सुरक्षेच्या कारणास्तव तुमचे Account डीॲक्टिव्हेट करण्यात आले आहे. कृपया मुख्य सुपरॲडमीनशी संपर्क साधा.',
+            text: 'सुरक्षेच्या कारणास्तव तुमचे Account डीॲक्टिव्हेट करण्यात आले आहे.',
             icon: 'error',
             confirmButtonColor: '#ff6600',
             confirmButtonText: 'ठीक आहे'
@@ -161,8 +158,8 @@ const checkUserStatus = async (googleUser) => {
 
         const isSuper = dbData.role === "superadmin";
 
-        // 🔄 तुमचा जुना मूळ रिटर्न ऑब्जेक्ट (सुपरॲडमीन बायपाससह सुरक्षित)
-        return {
+        // 🎯 २. नवीन फ्रेश ऑब्जेक्ट तयार करणे
+        const freshUserObj = {
           ...dbData, 
           teamUID: teamUID, 
           info: {
@@ -174,7 +171,10 @@ const checkUserStatus = async (googleUser) => {
           teamName: dbData.teamName || (isSuper ? "मुख्य सुपरॲडमीन पॅनल" : "नॉन-रजिस्टर संघ"),
           uid: dbData.uid || teamUID,
           currentYear: dbData.currentYear || '2026',
+          
+          // 🛑 कडक बदल: फक्त सुपरॲडमीनला सक्ती बंद (true), सामान्य ॲडमीनला डेटाबेसनुसार (false/true) सक्ती दिसेल!
           isProfileComplete: isSuper ? true : (dbData.isProfileComplete || false),
+          
           allowInAppForm: dbData.allowInAppForm !== false, 
           teamCategory: dbData.teamCategory || 'Men',
           address: dbData.address || '',
@@ -183,6 +183,11 @@ const checkUserStatus = async (googleUser) => {
           logoUrl: dbData.logoUrl || googleUser.photoURL, 
           isDeleted: dbData.isDeleted || false 
         };
+
+        // 🔥 ३. लोकल स्टोरेजला नवीन टीमच्या डेटाने सक्तीने रिप्लेस करणे! (कॅश मेमरी फिक्स ⚡)
+        localStorage.setItem('govinda_user', JSON.stringify(freshUserObj));
+
+        return freshUserObj;
       } else {
         Swal.fire({
           icon: 'error',
@@ -192,6 +197,7 @@ const checkUserStatus = async (googleUser) => {
           customClass: { popup: 'rounded-3xl' }
         });
         await auth.signOut();
+        localStorage.removeItem('govinda_user');
         return null;
       }
     } catch (err) {

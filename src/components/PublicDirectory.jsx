@@ -18,39 +18,47 @@ const [selectedTeam, setSelectedTeam] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('All'); // 'All', 'Men', 'Women'
   const [selectedDistrict, setSelectedDistrict] = useState('All');
 
-  // 🎯 १-Read + LocalStorage कॅश इंजिन (सुरक्षित जसेच्या तसे)
+// 🎯 १-Read + Version-Controlled LocalStorage कॅश इंजिन (१००% इन्स्टंट लाईव्ह फिक्स ⚡)
   useEffect(() => {
     const fetchLiveDirectory = async () => {
       try {
         const CACHE_KEY = 'govinda_public_directory';
         const CACHE_TIME_KEY = 'govinda_directory_time';
+        const CACHE_VERSION_KEY = 'govinda_directory_version'; // 🎯 नवीन व्हर्जन की
         const FOUR_HOURS = 4 * 60 * 60 * 1000;
 
         const cachedData = localStorage.getItem(CACHE_KEY);
         const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
+        const cachedVersion = localStorage.getItem(CACHE_VERSION_KEY) || '0';
         const now = Date.now();
 
-        if (cachedData && cachedTime && (now - cachedTime < FOUR_HOURS)) {
-          console.log("⚡ [Smart Cache] डेटा LocalStorage मधून ओढला!");
-          const allTeams = JSON.parse(cachedData);
-          setTeams(allTeams);
-          setFilteredTeams(allTeams);
-          setLoading(false);
-          return;
-        }
-
+        // 🔍 १. पहिल्यांदा सर्व्हर कडून फ्रेश व्हर्जन आणि डेटा डायरेक्ट घेऊन येणे
         const cacheDocRef = doc(db, "public_site_cache", "live_directory");
         const docSnap = await getDoc(cacheDocRef);
 
         if (docSnap.exists()) {
           const cacheData = docSnap.data();
+          const serverVersion = cacheData.version || 0;
           const allTeams = cacheData.teams || [];
-          
-          localStorage.setItem(CACHE_KEY, JSON.stringify(allTeams));
-          localStorage.setItem(CACHE_TIME_KEY, now.toString());
 
-          setTeams(allTeams);
-          setFilteredTeams(allTeams);
+          // 🎯 २. कडक चेकिंग: जर सर्व्हरवरील व्हर्जन लोकल व्हर्जनपेक्षा नवीन असेल, तर थेट फ्रेश डेटा दाखवणे!
+          if (Number(serverVersion) > Number(cachedVersion) || !cachedData || !cachedTime || (now - cachedTime >= FOUR_HOURS)) {
+            console.log("🚀 [Instant Live] सर्व्हरवर नवीन बदल सापडले किंवा वेळ संपली! डेटा फ्रेश अपडेट केला.");
+            
+            // नवीन डेटा आणि फ्रेश व्हर्जन साठवणे
+            localStorage.setItem(CACHE_KEY, JSON.stringify(allTeams));
+            localStorage.setItem(CACHE_TIME_KEY, now.toString());
+            localStorage.setItem(CACHE_VERSION_KEY, serverVersion.toString());
+
+            setTeams(allTeams);
+            setFilteredTeams(allTeams);
+          } else {
+            // ३. जर व्हर्जन सारखंच असेल आणि ४ तास झाले नसतील, तर लोकल स्टोरेज मधून डेटा ओढणे (१-Read सेव्ह इंजिन)
+            console.log("⚡ [Smart Cache] व्हर्जन मॅच झाले! डेटा LocalStorage मधून ओढला.");
+            const localTeams = JSON.parse(cachedData);
+            setTeams(localTeams);
+            setFilteredTeams(localTeams);
+          }
         }
       } catch (err) {
         console.error("कॅश डेटा आणताना अडचण आली:", err);

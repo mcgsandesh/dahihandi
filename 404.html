@@ -4,14 +4,17 @@
     <meta charset="utf-8">
     <title>Maharashtracha Govinda</title>
     <script type="text/javascript">
-      var segmentCount = 0;
+      // 🎯 गिटहब सब-फोल्डर '/dahihandi' साठी कडक आणि अधिकृत फिक्स
       var l = window.location;
+      var repoName = "dahihandi";
+
+      // मूळ राऊट आणि क्वेरी पॅरामीटर्स गोळा करणे
+      var pathAndQuery = l.pathname.slice(repoName.length + 2) + l.search + l.hash;
+
+      // मूळ डोमेनवर रिडायरेक्ट करणे जिथे index.html आहे
       l.replace(
         l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        l.pathname.split('/').slice(0, 1 + segmentCount).join('/') +
-        '/?p=' + l.pathname.slice(1).split('/').slice(segmentCount).join('/').replace(/&/g, '~and~') +
-        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
-        l.hash
+        '/' + repoName + '/?p=' + encodeURIComponent(pathAndQuery)
       );
     </script>
   </head>

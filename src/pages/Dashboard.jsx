@@ -3,14 +3,14 @@ import Papa from 'papaparse';
 
 import { db } from '../firebase';
 import { collection, doc, setDoc, updateDoc, getDocs, getDocsFromCache, serverTimestamp, query, where, writeBatch } from 'firebase/firestore'; 
-import { Users, PlusCircle, LogOut, Menu, X, Plus, Search, Edit2, Trash2, Link2, RotateCcw, CheckSquare, Square, Bell, Layers, BarChart3, BookOpen, Eye } from 'lucide-react'; // 🎯 Eye आयकॉन इम्पोर्ट केला
+import { Users, PlusCircle, LogOut, Menu, X, Plus, Search, Edit2, Trash2, Link2, RotateCcw, CheckSquare, Square, Bell, Layers, BarChart3, BookOpen, Eye, UploadCloud, Send, Filter } from 'lucide-react'; // 🎯 नवीन आयकॉन्स इम्पोर्ट केले
 import Swal from 'sweetalert2';
 
 // 🎯 ३ स्वतंत्र सब-कॉम्पोनेंट्स इम्पॉर्ट केले
 import PublicDirectory from '../components/PublicDirectory';
 import PublicStats from '../components/PublicStats';
 import PublicInfo from '../components/PublicInfo';
-import PublicTeamProfile from '../components/PublicTeamProfile'; // 🎯 ओरिजिनल प्रोफाईल कॉम्पोनेंट इम्पोर्ट केला
+import PublicTeamProfile from '../components/PublicTeamProfile'; 
 
 export default function Dashboard({ user, onLogout }) {
   // Form input states
@@ -18,24 +18,23 @@ export default function Dashboard({ user, onLogout }) {
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [allowInAppForm, setAllowInAppForm] = useState(true); 
-  // 🎯 कडक बदल: सुपरॲडमीन पॅनलसाठी नवीन कॅटेगरी स्टेट जोडली (बाय-डिफॉल्ट 'Men')
   const [teamCategory, setTeamCategory] = useState('Men');
   // Data states
   const [loading, setLoading] = useState(false);
   const [teamsList, setTeamsList] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewTab, setViewTab] = useState('active'); 
+  const [viewTab, setViewTab] = useState('active'); // 'active', 'deactive', 'form_allowed' 🎯 नवीन टॅब सपोर्ट
+  const [categoryFilter, setCategoryFilter] = useState('All'); // 🎯 'All', 'Men', 'Women', 'Both' फिल्टर स्टेट
   
   // UI states
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTeamUid, setEditingTeamUid] = useState(null); 
 
-  // 🎯 कडक बदल १: 'activeMenu' आता ५ स्वतंत्र व्ह्यूज मॅनेज करेल
-  const [activeMenu, setActiveMenu] = useState('teams'); // 'teams', 'govinda_katta', 'public_stats', 'public_info', 'approvals'
+  const [activeMenu, setActiveMenu] = useState('teams'); 
 
   const [importLoading, setImportLoading] = useState(false);
-  const [selectedTeam, setSelectedTeam] = useState(null); // 🎯 प्रोफाईल प्रीव्ह्यूसाठी नवीन स्टेट
+  const [selectedTeam, setSelectedTeam] = useState(null); 
 
   const handleBulkImportCSV = (e) => {
     const file = e.target.files[0];
@@ -335,7 +334,7 @@ export default function Dashboard({ user, onLogout }) {
       console.error(err);
       Swal.fire({ icon: 'error', title: 'त्रुटी आली!', text: 'डेटा सुरक्षित करताना तांत्रिक चूक झाली.', confirmButtonColor: '#ff6600' });
     } finally {
-      loading(false);
+      setLoading(false);
     }
   };
 
@@ -368,11 +367,24 @@ export default function Dashboard({ user, onLogout }) {
     }
   };
 
+  // 🎯 सुधारित फिल्टर मॅकेनिझम: टॅब फिल्टर + कॅटेगरी ड्रॉपडाउन फिल्टर एकत्र काम करतील
   const filteredTeams = teamsList.filter(t => {
     const matchesSearch = t.teamName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           t.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (t.uid && t.uid.toLowerCase().includes(searchTerm.toLowerCase()));
-    return viewTab === 'active' ? (matchesSearch && !t.isDeleted) : (matchesSearch && t.isDeleted);
+    
+    // १. कॅटेगरीनुसार फिल्टर लावणे (All, Men, Women, Both)
+    const matchesCategory = categoryFilter === 'All' ? true : (t.teamCategory === categoryFilter);
+
+    // २. टॅब सिलेक्शन नुसार रिटर्न करणे (नवीन फॉर्म अलाऊड टॅब सपोर्ट कडक!)
+    if (viewTab === 'active') {
+      return matchesSearch && !t.isDeleted && matchesCategory;
+    } else if (viewTab === 'deactive') {
+      return matchesSearch && t.isDeleted && matchesCategory;
+    } else if (viewTab === 'form_allowed') {
+      return matchesSearch && !t.isDeleted && t.allowInAppForm !== false && matchesCategory;
+    }
+    return false;
   });
 
   const handlePublishLive = async () => {
@@ -570,46 +582,72 @@ export default function Dashboard({ user, onLogout }) {
           <div className="p-4 md:p-6 w-full">
             <div className="w-full space-y-6">
               
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
+              <div className="flex flex-row items-center justify-between gap-2 border-b border-slate-200 pb-4">
                 <div>
-                  <h1 className="text-xl md:text-2xl font-black text-slate-800">संघ व्यवस्थापन (Teams)</h1>
-                  <p className="text-xs text-slate-500 mt-0.5">युनिक UID पॅटर्न आणि फ्रंट एक्टिव्ह/डी-एक्टिव्ह सिस्टीम.</p>
+                  <h1 className="text-lg md:text-2xl font-black text-slate-800">संघ व्यवस्थापन (Teams)</h1>
+                  <p className="text-[10px] md:text-xs text-slate-500 mt-0.5 hidden sm:block">युनिक UID पॅटर्न आणि फ्रंट एक्टिव्ह/डी-एक्टिव्ह सिस्टीम.</p>
                 </div>
 
-                {/* 🎯 कडक बदल: दोन्ही बटन्स एकदम लहान करून नीट एका रेषेत (अलाइनमेंट फिक्स) सेट केले! */}
-                <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap gap-y-2">
+                {/* 🎯 कडक बदल: मोबाईल स्क्रीन फिक्स - बटन्स एकदम लहान आयकॉन पॅटर्न मध्ये राईट साईडला सेट केले! */}
+                <div className="flex items-center space-x-1.5 flex-shrink-0">
+                  {/* १. Publish Live बटण */}
                   <button
                     onClick={handlePublishLive}
                     disabled={loading}
-                    className="bg-slate-900 text-white px-3 py-2 rounded-xl font-bold text-xs shadow-md hover:bg-slate-800 transition-all flex items-center space-x-1.5 disabled:opacity-50 h-[38px]"
+                    className="bg-slate-900 text-white p-2 md:px-3 md:py-2 rounded-xl font-bold text-xs shadow-md hover:bg-slate-800 transition-all flex items-center justify-center space-x-1.5 disabled:opacity-50 h-[36px] w-[36px] md:w-auto"
+                    title="Publish Live वेबसाइट"
                   >
-                    <span>🚀 Publish Live</span>
+                    <Send size={14} className="md:mr-0" />
+                    <span className="hidden md:inline">Publish Live</span>
                   </button>
 
-                  <label className={`cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl font-bold text-xs shadow-md transition-all flex items-center space-x-1.5 active:scale-95 h-[38px] ${importLoading ? 'opacity-50 pointer-events-none' : ''}`}>
+                  {/* २. Excel Import बटण */}
+                  <label className={`cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white p-2 md:px-3 md:py-2 rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-1.5 active:scale-95 h-[36px] w-[36px] md:w-auto ${importLoading ? 'opacity-50 pointer-events-none' : ''}`} title="Excel Import (.csv)">
                     <input 
                       type="file" 
                       accept=".csv" 
                       onChange={handleBulkImportCSV} 
                       className="hidden" 
                     />
-                    <span>{importLoading ? '⏳ लोड होत आहे...' : '📤 Excel Import (.csv)'}</span>
+                    <UploadCloud size={14} />
+                    <span className="hidden md:inline">Excel Import</span>
                   </label>
 
-                  <button onClick={() => openModal()} className="bg-[#ff6600] text-white px-3 py-2 rounded-xl font-bold text-xs shadow-md hover:bg-[#e65c00] transition-all flex items-center space-x-1.5 h-[38px]">
+                  {/* ३. डेस्कटॉपवर फक्त दिसणारे बटण (मोबाईलवर फ्लोटिंग आहेच) */}
+                  <button onClick={() => openModal()} className="hidden md:flex bg-[#ff6600] text-white px-3 py-2 rounded-xl font-bold text-xs shadow-md hover:bg-[#e65c00] transition-all items-center space-x-1.5 h-[36px]">
                     <Plus size={14} /><span>नवीन संघ जोडा</span>
                   </button>
                 </div>
               </div>
 
-              <div className="flex space-x-2 border-b border-slate-200 pb-1">
-                <button onClick={() => setViewTab('active')} className={`px-4 py-2 text-xs font-bold rounded-t-xl transition-all ${viewTab === 'active' ? 'bg-[#0b132b] text-white' : 'bg-white text-slate-600 border border-slate-200 border-b-0'}`}>🟢 सक्रिय संघ ({teamsList.filter(t => !t.isDeleted).length})</button>
-                <button onClick={() => setViewTab('deactive')} className={`px-4 py-2 text-xs font-bold rounded-t-xl transition-all ${viewTab === 'deactive' ? 'bg-red-600 text-white' : 'bg-white text-slate-600 border border-slate-200 border-b-0'}`}>🔴 बंद केलेले संघ ({teamsList.filter(t => t.isDeleted).length})</button>
+              {/* 🎯 कडक बदल: नवीन '📋 नोंदणी सुरू' टॅब वाढवला */}
+              <div className="flex space-x-1.5 border-b border-slate-200 pb-1 overflow-x-auto scrollbar-none">
+                <button onClick={() => setViewTab('active')} className={`px-3 py-2 text-xs font-bold rounded-t-xl transition-all whitespace-nowrap ${viewTab === 'active' ? 'bg-[#0b132b] text-white' : 'bg-white text-slate-600 border border-slate-200 border-b-0'}`}>🟢 सक्रिय ({teamsList.filter(t => !t.isDeleted).length})</button>
+                <button onClick={() => setViewTab('form_allowed')} className={`px-3 py-2 text-xs font-bold rounded-t-xl transition-all whitespace-nowrap ${viewTab === 'form_allowed' ? 'bg-green-600 text-white' : 'bg-white text-slate-600 border border-slate-200 border-b-0'}`}>📋 नोंदणी सुरू ({teamsList.filter(t => !t.isDeleted && t.allowInAppForm !== false).length})</button>
+                <button onClick={() => setViewTab('deactive')} className={`px-3 py-2 text-xs font-bold rounded-t-xl transition-all whitespace-nowrap ${viewTab === 'deactive' ? 'bg-red-600 text-white' : 'bg-white text-slate-600 border border-slate-200 border-b-0'}`}>🔴 बंद केलेले ({teamsList.filter(t => t.isDeleted).length})</button>
               </div>
 
-              <div className="w-full max-w-md relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><Search size={17} /></span>
-                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="UID, संघ किंवा प्रमुख नावाने shoadh..." className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:border-[#ff6600] shadow-sm font-medium transition-all" />
+              {/* 🎯 कडक बदल: सर्चच्या शेजारी कॅटेगरी (All/Men/Women/Both) फिल्टर सिस्टीम */}
+              <div className="flex gap-2 w-full max-w-xl items-center">
+                <div className="w-full relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><Search size={16} /></span>
+                  <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="UID, संघ किंवा प्रमुख नावाने शोध..." className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs md:text-sm focus:outline-none focus:border-[#ff6600] shadow-sm font-medium transition-all h-[38px]" />
+                </div>
+                
+                {/* 🎯 कॅटेगरी फिल्टर ड्रॉपडाउन */}
+                <div className="relative flex-shrink-0">
+                  <span className="absolute inset-y-0 left-2.5 flex items-center pointer-events-none text-slate-500"><Filter size={13} /></span>
+                  <select 
+                    value={categoryFilter} 
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl pl-7 pr-7 py-2 text-xs font-bold text-slate-700 outline-none focus:border-[#ff6600] shadow-sm h-[38px] appearance-none cursor-pointer"
+                  >
+                    <option value="All">All Category</option>
+                    <option value="Men">👨‍👦 पुरुष (Men)</option>
+                    <option value="Women">👩‍👧 महिला (Women)</option>
+                    <option value="Both">👨‍👩‍👦 दोन्ही (Both)</option>
+                  </select>
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -628,14 +666,18 @@ export default function Dashboard({ user, onLogout }) {
                     </thead>
                     <tbody className="text-sm divide-y divide-slate-100">
                       {filteredTeams.length === 0 ? (
-                        <tr><td colSpan="6" className="p-8 text-center text-slate-400 text-xs font-medium">या टॅबमध्ये कोणताही संघ उपलब्ध नाही.</td></tr>
+                        <tr><td colSpan="6" className="p-8 text-center text-slate-400 text-xs font-medium">या फिल्टरमध्ये कोणताही संघ उपलब्ध नाही.</td></tr>
                       ) : (
                         filteredTeams.map((t, idx) => {
                           const secureLink = generateSecureLink(t);
                           return (
                             <tr key={idx} className="hover:bg-slate-50/50 transition-all text-slate-700">
                               <td className="p-4 font-mono text-xs font-bold text-slate-600 bg-slate-50/50">{t.uid || '—'}</td>
-                              <td className="p-4 font-black text-slate-900 uppercase tracking-wide">{t.teamName} <span className="text-[11px] text-slate-400 font-normal">({t.currentYear})</span></td>
+                              <td className="p-4 font-black text-slate-900 uppercase tracking-wide">
+                                {t.teamName} 
+                                <span className="ml-1.5 text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold">{t.teamCategory || 'Men'}</span>
+                                <span className="ml-1 text-[11px] text-slate-400 font-normal">({t.currentYear})</span>
+                              </td>
                               <td className="p-4 font-medium">{t.name}</td>
                               <td className="p-4">
                                 {t.allowInAppForm !== false && !t.isDeleted ? (
@@ -652,7 +694,6 @@ export default function Dashboard({ user, onLogout }) {
                                 </span>
                               </td>
                               <td className="p-4 flex items-center justify-center space-x-1">
-                                {/* 🎯 १-Read सेव्ह इंजिन सेफ प्रोफाईल बटण */}
                                 <button 
                                   onClick={() => setSelectedTeam(t)} 
                                   className="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
@@ -676,7 +717,7 @@ export default function Dashboard({ user, onLogout }) {
                 {/* 📱 मोबाईल कॉम्पॅक्ट लिस्ट */}
                 <div className="block md:hidden space-y-2">
                   {filteredTeams.length === 0 ? (
-                    <div className="bg-white rounded-2xl p-6 text-center text-slate-400 text-xs border border-slate-100">या टॅबमध्ये कोणताही संघ उपलब्ध नाही.</div>
+                    <div className="bg-white rounded-2xl p-6 text-center text-slate-400 text-xs border border-slate-100">या फिल्टरमध्ये कोणताही संघ उपलब्ध नाही.</div>
                   ) : (
                     filteredTeams.map((t, idx) => {
                       const secureLink = generateSecureLink(t);
@@ -685,6 +726,7 @@ export default function Dashboard({ user, onLogout }) {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
                               <span className={`font-mono text-[9px] font-black px-1.5 py-0.5 rounded-md ${t.isDeleted ? 'bg-red-50 text-red-600' : 'bg-[#ff6600]/10 text-[#ff6600]'}`}>{t.uid || 'No UID'}</span>
+                              <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wide">{t.teamCategory || 'Men'}</span>
                               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${t.isDeleted ? 'bg-red-50 text-red-500' : (t.isProfileComplete ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600')}`}>
                                 {t.isDeleted ? 'बंद' : (t.isProfileComplete ? 'पूर्ण' : 'प्रलंबित')}
                               </span>
@@ -694,8 +736,7 @@ export default function Dashboard({ user, onLogout }) {
                           </div>
                           
                           <div className="flex items-center space-x-1 flex-shrink-0">
-                            {/* 🎯 मोबाईल व्ह्यू सेफ प्रोफाईल बटण */}
-                            <button onClick={() => setSelectedTeam(t)} className="p-2 text-slate-700 bg-slate-50 active:bg-slate-100 rounded-lg border border-slate-100">
+                            <button onClick={() => setSelectedTeam(t)} className="p-2 text-slate-700 bg-slate-50 active:bg-slate-100 rounded-lg border border-slate-100" title="पब्लिक व्ह्यू">
                               <Eye size={13} />
                             </button>
                             {t.allowInAppForm !== false && !t.isDeleted && (
@@ -731,7 +772,7 @@ export default function Dashboard({ user, onLogout }) {
         </button>
       )}
 
-      {/* 📱 Bottom Navigation বার */}
+      {/* 📱 Bottom Navigation बार */}
       <div className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] z-40 flex justify-around items-center py-2 px-1">
         <button onClick={() => setActiveMenu('teams')} className={`flex flex-col items-center justify-center space-y-0.5 py-1 px-3 rounded-xl transition-all ${activeMenu === 'teams' ? 'text-[#ff6600] font-black' : 'text-slate-400 font-bold'}`}>
           <Layers size={18} />
@@ -824,7 +865,7 @@ export default function Dashboard({ user, onLogout }) {
         </div>
       )}
 
-      {/* 🎯 कडक बदल: सुपरॲडमीनसाठी ओरिजिनल 'PublicTeamProfile' रिव्ह्यू मोडल पॉपअप */}
+      {/* 🎯 सुपरॲडमीनसाठी ओरिजिनल 'PublicTeamProfile' रिव्ह्यू मोडल पॉपअप */}
       {selectedTeam && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative p-6 animate-in fade-in zoom-in-95 duration-150">

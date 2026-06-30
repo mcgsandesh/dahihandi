@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import Papa from 'papaparse';
+
 import { db } from '../firebase';
-import { collection, doc, serverTimestamp, updateDoc, query, where, onSnapshot, setDoc } from 'firebase/firestore'; 
-import { LayoutDashboard, LogOut, Shield, Shirt, Users, Search, Plus, User, Image as ImageIcon, X, Edit2, Trash2, Check, Copy, CheckCircle, FileText, Phone, MessageSquare, MoreVertical, Package, Menu ,Settings as SettingsIcon} from 'lucide-react';
+import { collection, doc, serverTimestamp, updateDoc, query, where, onSnapshot, setDoc, getDocs, getDocsFromCache } from 'firebase/firestore'; 
+import { LayoutDashboard, LogOut, Shield, Shirt, Users, Search, Plus, User, Image as ImageIcon, X, Edit2, Trash2, Check, Copy, CheckCircle, FileText, Phone, MessageSquare, MoreVertical, Package, Menu ,Settings as SettingsIcon, RotateCcw } from 'lucide-react';
 import Swal from 'sweetalert2';
 import Reports from '../components/Reports';
 import TshirtForm from '../components/TshirtForm'; 
 import TeamProfile from '../components/TeamProfile'; 
 import PlayersList from '../components/PlayersList'; 
 import ManageInventory from '../components/ManageInventory';
-import Settings from '../components/Settings'; // 👈 वरती जिथे रिपोर्ट इम्पोर्ट केलाय तिथे जोडा
+import Settings from '../components/Settings'; 
 
 // 🎯 नवीन पॅच इम्पोर्ट्स: हे ३ कॉम्पोनेंट्स वर जोडून घ्या
 import PublicDirectory from '../components/PublicDirectory';
 import PublicStats from '../components/PublicStats';
 import PublicInfo from '../components/PublicInfo';
-
 
 export default function TeamDashboard({ user, onLogout }) {
   
@@ -112,9 +113,8 @@ export default function TeamDashboard({ user, onLogout }) {
     } catch (e) { return '—'; }
   };
 
-// 🔄 Master User Data Sync Listener (Team UID पॅटर्ननुसार परफेक्ट लाईव्ह सिंक)
+  // 🔄 Master User Data Sync Listener (Team UID पॅटर्ननुसार परफेक्ट लाईव्ह सिंक)
   useEffect(() => {
-    // 🎯 कडक दुरुस्ती: ईमेलऐवजी थेट फिक्स teamUID वरून लिसनर लावणे
     const teamIdentifier = user.teamUID || user.uid;
     if (!teamIdentifier) return;
 
@@ -147,29 +147,40 @@ export default function TeamDashboard({ user, onLogout }) {
     return () => unsubscribeUser();
   }, [user]);
 
-  // 🔄 Players Real-time Listener (मल्टिपल ॲडमीन डेटा गायब होण्याचा प्रॉब्लेम १००% फिक्स)
-  useEffect(() => {
+  // 🔄 Players Optimized Real-time Fetch Function (Reads वाचवणारे कडक कॅश इंजिन 🎯)
+  const fetchTeamPlayers = async (forceServer = false) => {
     const teamIdentifier = user.teamUID || user.uid;
     if (!teamIdentifier || !hasFormAccess) return;
-    
+
     const playersRef = collection(db, "players");
-    // 🎯 कडक दुरुस्ती: 'teamName' ऐवजी फिक्स 'teamUID' वर क्वेरी मारल्यामुळे दोन्ही ॲडमिन्सना सर्व खेळाडू अचूक दिसणार!
     const q = query(playersRef, where("teamUID", "==", teamIdentifier));
+    let querySnapshot;
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const players = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.isDeleted !== true) {
-          players.push({ id: doc.id, ...data });
-        }
-      });
-      setPlayersList(players);
-    }, (err) => {
-      console.error("डेटा लाईव्ह आणताना एरर आला:", err);
+    try {
+      if (forceServer) {
+        throw new Error("Force Server Request");
+      }
+      // पहिल्यांदा डेटा सर्व्हरऐवजी थेट लोकल कॅशमधून वाचणे (Zero Reads)
+      querySnapshot = await getDocsFromCache(q);
+      console.log(`✓ [Team Admin] ${querySnapshot.size} खेळाडू कॅशमधून यशस्वी लोड झाले!`);
+    } catch (err) {
+      // कॅश नसेल किंवा फोर्स रिफ्रेश बटन दाबले असेल तरच सर्व्हरवरून ओढणे
+      querySnapshot = await getDocs(q);
+      console.log(`🌍 [Team Admin] सर्व्हरवरून फ्रेश ${querySnapshot.size} खेळाडू लोड झाले!`);
+    }
+
+    const players = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.isDeleted !== true) {
+        players.push({ id: doc.id, ...data });
+      }
     });
+    setPlayersList(players);
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    fetchTeamPlayers(false); // बाय-डिफॉल्ट कॅशमधून लोड करणे
   }, [user, hasFormAccess]);
 
   // ==========================================
@@ -179,7 +190,9 @@ export default function TeamDashboard({ user, onLogout }) {
     const nextStatus = currentStatus === 'Done' || currentStatus === 'झालेले' ? 'Pending' : 'Done';
     try {
       await updateDoc(doc(db, "players", id), { insurance: nextStatus });
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `विма स्थिती: ${nextStatus === 'Done' ? 'झालेले' : 'प्रलंबित'}`, showConfirmButton: false, timer: 1500 });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `विमा स्थिती: ${nextStatus === 'Done' ? 'झालेले' : 'प्रलंबित'}`, showConfirmButton: false, timer: 1500 });
+      // यादी मेमरीमध्येच तात्काळ रिफ्रेश करणे (नो सर्व्हर रीड)
+      setPlayersList(prev => prev.map(p => p.id === id ? { ...p, insurance: nextStatus } : p));
     } catch (err) { console.error(err); }
   };
 
@@ -231,7 +244,7 @@ export default function TeamDashboard({ user, onLogout }) {
     setIsModalOpen(true);
   };
 
- const handleSavePlayer = async (e) => {
+  const handleSavePlayer = async (e) => {
     e.preventDefault();
     if (user && user.isDeleted === true) {
       Swal.fire({ icon: 'error', title: 'प्रवेश नाकारला!', text: 'तुमचे Account बंद करण्यात आले आहे.', confirmButtonColor: '#ff6600' });
@@ -247,8 +260,6 @@ export default function TeamDashboard({ user, onLogout }) {
 
     const finalTshirt = tshirtSize === 'Custom' ? customTshirt.trim() : tshirtSize;
     const finalShorts = shortsSize === 'Custom' ? customShorts.trim() : shortsSize;
-
-    // 🎯 युनिक संघ ओळख मिळवणे
     const teamIdentifier = user.teamUID || user.uid;
 
     if (!teamIdentifier) {
@@ -259,26 +270,22 @@ export default function TeamDashboard({ user, onLogout }) {
     }
 
     try {
-      // 🎯 अ) जर एडिट मोड चालू असेल (Update Mode)
       if (editingPlayerId) {
         await updateDoc(doc(db, "players", editingPlayerId), {
           name: playerName.trim(), gender, dob: birthDate, mobile: mobileNumber.trim(),
           blood: bloodGroup, tshirt: finalTshirt, shorts: finalShorts, belt: needBelt, towel: needTowel,
           pyramidPlace, insurance: insuranceStatus, tshirtGiven: tshirtGiven,
-          teamUID: teamIdentifier, // 👈 एडिट करताना देखील सेफर साईड म्हणून आयडी अपडेट ठेवला
+          teamUID: teamIdentifier, 
           updatedAt: serverTimestamp()
         });
         Swal.fire({ icon: 'success', title: 'यशस्वी!', text: 'खेळाडूची माहिती सुधारली!', confirmButtonColor: '#0b132b' });
       } 
-      // 🎯 ब) जर नवीन खेळाडू जोडायचा असेल (Create Mode)
       else {
         const playerId = `PLY_${Date.now()}`;
         await setDoc(doc(db, "players", playerId), {
           name: playerName.trim(), gender, dob: birthDate, mobile: mobileNumber.trim(),
           blood: bloodGroup, tshirt: finalTshirt, shorts: finalShorts, belt: needBelt, towel: needTowel,
           pyramidPlace, insurance: insuranceStatus, tshirtGiven: tshirtGiven,
-          
-          // 🚨 कडक बदल: मॅन्युअल एंट्रीमध्ये देखील 'teamUID' कडक लॉक केला!
           teamUID: teamIdentifier, 
           teamName: user.teamName, 
           year: user.currentYear || "2026", 
@@ -287,6 +294,7 @@ export default function TeamDashboard({ user, onLogout }) {
         Swal.fire({ icon: 'success', title: 'नोंदणी पूर्ण!', text: 'खेळाडू यशस्वी जोडला गेला.', confirmButtonColor: '#ff6600' });
       }
       setIsModalOpen(false);
+      fetchTeamPlayers(false); // सेव्ह झाल्यावर लोकल यादी अपडेट करणे
     } catch (err) { 
       console.error(err);
       Swal.fire({ icon: 'error', title: 'त्रुटी!', text: 'अडचण आली. कृपया पुन्हा प्रयत्न करा.' }); 
@@ -297,14 +305,8 @@ export default function TeamDashboard({ user, onLogout }) {
     const nextStatus = currentStatus === 'Yes' ? 'No' : 'Yes';
     try {
       await updateDoc(doc(db, "players", id), { tshirtGiven: nextStatus });
-      Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'success',
-        title: `टी-शर्ट वाटप: ${nextStatus === 'Yes' ? 'दिलेला आहे' : 'बाकी आहे'}`,
-        showConfirmButton: false,
-        timer: 1500
-      });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `टी-शर्ट वाटप: ${nextStatus === 'Yes' ? 'दिलेला आहे' : 'बाकी आहे'}`, showConfirmButton: false, timer: 1500 });
+      setPlayersList(prev => prev.map(p => p.id === id ? { ...p, tshirtGiven: nextStatus } : p));
     } catch (err) { console.error(err); }
   };
 
@@ -322,14 +324,13 @@ export default function TeamDashboard({ user, onLogout }) {
       if (result.isConfirmed) {
         try {
           await updateDoc(doc(db, "players", id), { isDeleted: true, deletedAt: serverTimestamp() });
-          Swal.fire({ icon: 'success', title: 'काढून टाकले!', text: 'खेळाडू यादीतून काढला गेला आहे.', confirmButtonColor: '#0b132b' });
+          Swal.fire({ icon: 'success', title: 'काढून टाकले!', text: 'खेळाडू यादीतून निकाला गेला आहे.', confirmButtonColor: '#0b132b' });
+          setPlayersList(prev => prev.filter(p => p.id !== id));
         } catch (err) { Swal.fire('त्रुटी!', 'अडचण आली.', 'error'); }
       }
     });
   };
 
-
-// 🛑 फॉर्म ऑन/ऑफ स्टेटस हँडलर (No Document to Update एरर फिक्स)
   const handleToggleFormStatus = async () => {
     const nextStatus = !isFormActive;
     setIsFormActive(nextStatus);
@@ -343,7 +344,6 @@ export default function TeamDashboard({ user, onLogout }) {
 
   const filteredPlayers = playersList.filter(p => p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || p.mobile?.includes(searchTerm));
 
-  // डेस्कटॉप साइडबार मेनू (इन्व्हेंटरीसह ५ पूर्ण टॅब फिक्स)
   const sidebarTabs = [
     { id: 'dashboard', label: 'डॅशबोर्ड', icon: <LayoutDashboard size={18} />, show: hasFormAccess },
     { id: 'players', label: 'खेळाडू यादी', icon: <Users size={18} />, show: hasFormAccess },
@@ -351,13 +351,11 @@ export default function TeamDashboard({ user, onLogout }) {
     { id: 'reports', label: 'रिपोर्ट पॅनेल', icon: <FileText size={18} />, show: hasFormAccess },
     { id: 'profile', label: 'संघ प्रोफाईल', icon: <User size={18} />, show: true },
     { id: 'settings', label: 'सेटिंग्ज', icon: <SettingsIcon size={18} />, show: hasFormAccess },
-    // 🎯 नवीन पॅच: ३ स्वतंत्र प्रिमियम पब्लिक मेनू फक्त साईडबारसाठी
     { id: 'govinda_katta', label: '🚩 गोविंदा कट्टा', icon: <Users size={18} />, show: true },
     { id: 'public_stats', label: '📊 उत्सव आकडेवारी', icon: <FileText size={18} />, show: hasFormAccess },
     { id: 'public_info', label: '📜 उत्सव नियमावली', icon: <FileText size={18} />, show: true }
   ].filter(tab => tab.show);
 
-  // 🎯 नियम १: मोबाईल बॉटम बारवर फक्त ४ मुख्य मेनू फिक्स (संघ प्रोफाईल आणि लॉगआऊटसह)
   const mobileTabs = [
     { id: 'dashboard', label: 'डॅशबोर्ड', icon: <LayoutDashboard size={18} />, show: hasFormAccess },
     { id: 'players', label: 'खेळाडू यादी', icon: <Users size={18} />, show: hasFormAccess },
@@ -368,10 +366,9 @@ export default function TeamDashboard({ user, onLogout }) {
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans antialiased pb-16 md:pb-0 text-slate-800">
       
-{/* 📱 मोबाईल टॉप हेडर */}
+      {/* 📱 मोबाईल टॉप हेडर */}
       <div className="md:hidden bg-[#0b132b] text-white px-4 py-3 flex items-center justify-between shadow-md z-30 sticky top-0">
         <div className="flex items-center space-x-2.5 min-w-0">
-          {/* 🎯 नियम ३: साइडबार उघडणारे ☰ मेनू बटण एकदम डावीकडे लावले */}
           <button 
             onClick={() => setIsDrawerOpen(true)} 
             className="p-1.5 hover:bg-white/10 rounded-xl text-white transition-all active:scale-95 flex-shrink-0"
@@ -381,7 +378,6 @@ export default function TeamDashboard({ user, onLogout }) {
           </button>
           
           <div className="flex flex-col min-w-0">
-            {/* 🎯 मोबाईल हेडर ब्रँडिंग फिक्स */}
             <span className="text-[10px] font-black tracking-wide text-slate-400">
               महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
             </span>
@@ -391,23 +387,20 @@ export default function TeamDashboard({ user, onLogout }) {
           </div>
         </div>
         
-        {/* 🎯 नियम ४: उजव्या कोपऱ्यात टीमचा अधिकृत UID बॅज जसाच्या तसा सुरक्षित */}
         <div className="bg-[#ff6600]/10 border border-[#ff6600]/30 text-[#ff6600] px-2.5 py-1 rounded-xl text-[10px] font-black font-mono shadow-sm">
           {user.uid || 'MCG1206'}
         </div>
       </div>
 
-      {/* 📱 मोबाईल कडक स्लाईड-इन ड्रॉवर (डावीकडून - Left Side उघडणारा) */}
+      {/* 📱 मोबाईल कडक स्लाईड-इन ड्रॉवर */}
       {isDrawerOpen && (
         <div className="fixed inset-0 z-50 md:hidden animate-in fade-in duration-150">
           <div onClick={() => setIsDrawerOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm"></div>
           
-          {/* 🎯 नियम ३: 'left-0' लावून मोबाईल ड्रॉवर डावीकडे परफेक्ट सेट केला */}
           <div className="fixed left-0 top-0 bottom-0 w-64 bg-[#0b132b] text-white p-5 shadow-2xl flex flex-col justify-between z-50 animate-in slide-in-from-left duration-200">
             <div className="w-full">
               <div className="flex justify-between items-start pb-4 border-b border-slate-800 mb-5">
                 <div>
-                  {/* 🎯 हुबेहूब डेस्कटॉप सारखं कडक मोबाईल ड्रॉवर हेडर (Uppercase + Orange Branded) */}
                   <h2 className="text-base font-black tracking-wide text-white">
                     महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
                   </h2>
@@ -418,7 +411,6 @@ export default function TeamDashboard({ user, onLogout }) {
                 <button onClick={() => setIsDrawerOpen(false)} className="text-slate-400 hover:text-white p-1 text-sm font-bold mt-0.5">✕</button>
               </div>
               
-              {/* 🎯 कडक लूप मॅपिंग दुरुस्ती: मोबाईल ड्रॉवरमध्ये आता इन्व्हेंटरी आणि सेटिंग्ससह सर्व ५-६ ऑप्शन्स व्यवस्थित दिसतील! */}
               <div className="space-y-1">
                 {sidebarTabs.map((tab) => (
                   <button 
@@ -433,7 +425,6 @@ export default function TeamDashboard({ user, onLogout }) {
               </div>
             </div>
 
-            {/* 🚪 ड्रॉवरच्या बॉटमला सुरक्षित लॉगआऊट */}
             <button 
               onClick={() => { setIsDrawerOpen(false); onLogout(); }} 
               className="w-full flex items-center justify-center space-x-2 bg-red-600/10 text-red-400 py-2.5 rounded-xl text-xs font-bold border border-red-500/10 hover:bg-red-600 hover:text-white transition-all mb-2"
@@ -445,8 +436,7 @@ export default function TeamDashboard({ user, onLogout }) {
         </div>
       )}
 
-
-      {/* 🏢 डेस्कटॉप साइडबार (इन्व्हेंटरी आणि लॉगआऊटसह फिक्स) */}
+      {/* 🏢 डेस्कटॉप साइडबार */}
       <div className="hidden md:flex w-64 bg-[#0b132b] text-white p-6 flex-col justify-between z-40">
         <div>
           <div className="mb-8 border-b border-slate-800 pb-4">
@@ -513,9 +503,19 @@ export default function TeamDashboard({ user, onLogout }) {
                     </span>
                   </div>
                   
-                  <button onClick={() => openPlayerModal()} className="hidden sm:flex bg-[#ff6600] hover:bg-[#e65c00] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md items-center space-x-2 transition-all">
-                    <Plus size={16} /><span>खेळाडू जोडा</span>
-                  </button>
+                  {/* 🎯 फोर्स रिफ्रेश बटन टीम ॲडमीन पॅनेलसाठी वाढवले */}
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={() => fetchTeamPlayers(true)} 
+                      className="p-2.5 text-slate-600 bg-white hover:bg-slate-50 rounded-xl border border-slate-200 shadow-sm transition-all"
+                      title="यादी रिफ्रेश करा"
+                    >
+                      <RotateCcw size={15} />
+                    </button>
+                    <button onClick={() => openPlayerModal()} className="hidden sm:flex bg-[#ff6600] hover:bg-[#e65c00] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md items-center space-x-2 transition-all">
+                      <Plus size={16} /><span>खेळाडू जोडा</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 md:grid-cols-5 gap-3 md:gap-5">
@@ -650,10 +650,11 @@ export default function TeamDashboard({ user, onLogout }) {
               setActiveTab={setActiveTab}
               playersList={playersList}
               inventoryData={teamData?.inventory} 
+              forceRefreshList={() => fetchTeamPlayers(true)} // 🎯 प्लेयर्स यादीत थेट फोर्स रिफ्रेश पाठवला
             />
           )}
 
-          {/* 📦 नियम ५ व ६: स्वतंत्र इन्व्हेंटरी मॉड्यूल फुल व्ह्यू */}
+          {/* 📦 स्वतंत्र इन्व्हेंटरी मॉड्यूल फुल व्ह्यू */}
           {activeTab === 'inventory' && hasFormAccess && (
             <ManageInventory 
               user={user}
@@ -683,10 +684,9 @@ export default function TeamDashboard({ user, onLogout }) {
             </div>
           )}
 
-          {/* PROFILE VIEW - 🎯 क्लीन आणि सेंटर्ड डिझाईन */}
+          {/* PROFILE VIEW */}
           {activeTab === 'profile' && (
             <div className="w-full  mx-auto animate-in fade-in duration-200 space-y-6">              
-              {/* मुख्य संघ प्रोफाईल कार्ड */}
               <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm relative">
                 <div className="absolute top-6 right-6">
                   <button 
@@ -705,19 +705,10 @@ export default function TeamDashboard({ user, onLogout }) {
                   setIsEditMode={setIsEditMode} 
                 />
               </div>
-
-              {/* मोबाईल लॉगआऊट - हे फक्त मोबाईलवर दिसेल 
-              {!isEditMode && (
-                <div className="pb-8 pt-2 px-2 md:hidden">
-                  <button onClick={onLogout} className="w-full bg-red-500/10 text-red-500 border border-red-500/20 py-3 rounded-2xl font-black text-xs tracking-wide shadow-sm flex items-center justify-center space-x-2">
-                    <span>अकाउंट लॉगआऊट करा</span>
-                  </button>
-                </div>
-              )}*/}
             </div>
           )}
 
-        {/* ⚙️ 🎯 नवीन सेटिंग्स कॉम्पोनंट व्ह्यू (सेम लाईक रिपोर्ट पॅनेल स्ट्रक्चर) */}
+          {/* ⚙️ सेटिंग्स कॉम्पोनेंट व्ह्यू */}
           {activeTab === 'settings' && hasFormAccess && (
             <Settings 
               user={user}
@@ -732,7 +723,7 @@ export default function TeamDashboard({ user, onLogout }) {
             />
           )}
 
-          {/* 🎯 नवीन पॅच: ३ स्वतंत्र व्ह्यूज रेंडरिंग लॉजिक (नो डबल हेडर घोळ) */}
+          {/* 🎯 ३ स्वतंत्र व्ह्यूज रेंडरिंग लॉजिक */}
           {activeTab === 'govinda_katta' && (
             <div className="animate-in fade-in duration-150 space-y-4">
               <div className="border-b border-slate-200 pb-3 hidden md:block">
@@ -762,12 +753,11 @@ export default function TeamDashboard({ user, onLogout }) {
               <PublicInfo />
             </div>
           )}
-
           
         </div>
       </div>
 
-      {/* 📱 मोबाईल बार आयटम्स (नियम १: फिक्स ४ मुख्य आयकॉन्स - गर्दी क्लोज) */}
+      {/* 📱 मोबाईल बार आयटम्स */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-2 flex justify-around items-center shadow-lg z-30">
         {mobileTabs.map((btn) => (
           <button 
@@ -786,7 +776,7 @@ export default function TeamDashboard({ user, onLogout }) {
         <button onClick={() => openPlayerModal()} className="sm:hidden fixed bottom-20 right-5 bg-[#ff6600] text-white p-4 rounded-full shadow-xl z-20"><Plus size={22} /></button>
       )}
 
-{/* 🗟 प्रगत संपादन मॉडेल */}
+      {/* 🗟 प्रगत संपादन मॉडेल */}
       {isModalOpen && hasFormAccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
@@ -798,16 +788,11 @@ export default function TeamDashboard({ user, onLogout }) {
               setFormData={(callback) => {
                 const updated = callback({ playerName, gender, bloodGroup, pyramidPlace, birthDate, mobileNumber, tshirtSize, shortsSize, customTshirt, customShorts, needBelt, needTowel, insuranceStatus, tshirtGiven });
                 
-                console.log("🔄 TshirtForm Event Callback Triggered. Updated Fields:", updated);
-                
                 if(updated.playerName !== undefined) setPlayerName(updated.playerName);
                 if(updated.gender !== undefined) setGender(updated.gender);
                 if(updated.bloodGroup !== undefined) setBloodGroup(updated.bloodGroup);
                 if(updated.pyramidPlace !== undefined) setPyramidPlace(updated.pyramidPlace);
-                if(updated.birthDate !== undefined) {
-                  console.log("📅 BirthDate changing inside Form to:", updated.birthDate);
-                  setBirthDate(updated.birthDate);
-                }
+                if(updated.birthDate !== undefined) setBirthDate(updated.birthDate);
                 if(updated.mobileNumber !== undefined) setMobileNumber(updated.mobileNumber);
                 if(updated.tshirtSize !== undefined) setTshirtSize(updated.tshirtSize);
                 if(updated.shortsSize !== undefined) setShortsSize(updated.shortsSize);
@@ -816,10 +801,9 @@ export default function TeamDashboard({ user, onLogout }) {
                 if(updated.needBelt !== undefined) setNeedBelt(updated.needBelt);
                 if(updated.needTowel !== undefined) setNeedTowel(updated.needTowel);
                 if(updated.insuranceStatus !== undefined) setInsuranceStatus(updated.insuranceStatus);
-                // 🎯 दुरुस्ती: 'tshirtGiven' चा महत्त्वाचा चेक इथे जोडला जेणेकरून स्टेट्स टिकून राहील
                 if(updated.tshirtGiven !== undefined) setTshirtGiven(updated.tshirtGiven);
               }}
-              teamData={teamData} // 👈 हा प्रॉप इथे जोड!
+              teamData={teamData} 
               onSubmit={handleSavePlayer} 
               loading={loading} 
               buttonText={editingPlayerId ? 'बदल जतन करा' : 'नोंदणी करा'} 

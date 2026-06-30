@@ -245,11 +245,22 @@ export default function Reports({ userTeamName, onBack }) {
     printWindow.print();
   };
 
-  // --- INSURANCE PRINT FUNCTION ---
+ // --- INSURANCE PRINT FUNCTION (🎯 वय १४ वर्षे पूर्ण पॅच) ---
   const handleInsurancePrint = () => {
-    const pendingPlayers = players.filter(p => !p.insurance || p.insurance === 'Pending');
-    const totalPending = pendingPlayers.length;
     const currentYear = new Date().getFullYear();
+
+    // 🎯 कडक बदल: विमा Pending असणारे आणि वय १४ किंवा त्याहून अधिक असणारे खेळाडू फिल्टर करणे
+    const pendingPlayers = players.filter(p => {
+      const isPending = !p.insurance || p.insurance === 'Pending';
+      const age = calculateAge(p.dob || p.birthDate || p.dobString);
+      
+      // जर वय आकड्यात असेल, तर ते १४ किंवा मोठे असावे
+      const isAgeValid = age !== '—' && !isNaN(age) ? age >= 14 : false;
+      
+      return isPending && isAgeValid;
+    });
+
+    const totalPending = pendingPlayers.length;
 
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
@@ -270,7 +281,7 @@ export default function Reports({ userTeamName, onBack }) {
         </head>
         <body>
           <h1>${userTeamName} - INSURANCE LIST (${currentYear})</h1>
-          <div class="count-summary">Total Players: ${totalPending}</div>
+          <div class="count-summary">Total Eligible Players (Age 14+): ${totalPending}</div>
           <table>
             <thead>
               <tr>
@@ -288,7 +299,7 @@ export default function Reports({ userTeamName, onBack }) {
                     <td class="text-center">${calculateAge(p.dob || p.birthDate || p.dobString)}</td>
                   </tr>
                 `).join('') 
-                : `<tr><td colspan="3" class="text-center" style="padding: 20px; font-weight: bold; color: green;">सर्व खेळाडूंचा विमा पूर्ण झाला आहे! (No Pending Players)</td></tr>`
+                : `<tr><td colspan="3" class="text-center" style="padding: 20px; font-weight: bold; color: green;">यादीत १४ वर्षांवरील एकही प्रलंबित खेळाडू नाही! (All Sorted)</td></tr>`
               }
             </tbody>
           </table>

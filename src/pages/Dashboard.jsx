@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 
 import { db } from '../firebase';
 import { collection, doc, setDoc, updateDoc, getDocs, getDocsFromCache, serverTimestamp, query, where, writeBatch } from 'firebase/firestore'; 
-import { Users, PlusCircle, LogOut, Menu, X, Plus, Search, Edit2, Trash2, Link2, RotateCcw, CheckSquare, Square, Bell, Layers, BarChart3, BookOpen, Eye, UploadCloud, Send, Filter } from 'lucide-react'; // 🎯 नवीन आयकॉन्स इम्पोर्ट केले
+import { Users, PlusCircle, LogOut, Menu, X, Plus, Search, Edit2, Trash2, Link2, RotateCcw, CheckSquare, Square, Bell, Layers, BarChart3, BookOpen, Eye, UploadCloud, Send, Filter,Settings,Megaphone,Calendar ,Trophy  } from 'lucide-react'; // 🎯 नवीन आयकॉन्स इम्पोर्ट केले
 import Swal from 'sweetalert2';
 
 // 🎯 ३ स्वतंत्र सब-कॉम्पोनेंट्स इम्पॉर्ट केले
@@ -11,6 +11,14 @@ import PublicDirectory from '../components/PublicDirectory';
 import PublicStats from '../components/PublicStats';
 import PublicInfo from '../components/PublicInfo';
 import PublicTeamProfile from '../components/PublicTeamProfile'; 
+// 🆕 नवीन जोडलेले मेंटेनन्स आधारित पब्लिक कॉम्पोनेंट्स
+import PublicNews from '../components/PublicNews';
+import PublicEvents from '../components/PublicEvents';
+import PublicRecords from '../components/PublicRecords';
+
+// 🎯 नवीन मेंटेनन्स मॅनेजमेंट कॉम्पोनंट इम्पॉर्ट (Superadmin साठी)
+import ManageMaintenance from '../components/ManageMaintenance';
+
 
 export default function Dashboard({ user, onLogout }) {
   // Form input states
@@ -464,7 +472,7 @@ export default function Dashboard({ user, onLogout }) {
         </button>
       </div>
 
-      {/* 🏢 डावा साइडबार */}
+{/* 🏢 डावा साइडबार */}
       <div className={`fixed inset-y-0 left-0 w-64 bg-[#0b132b] text-white p-6 flex flex-col justify-between z-50 transform transition-transform duration-300 ease-in-out md:relative md:transform-none ${isMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div>
           <div className="mb-8 border-b border-slate-800 pb-4">
@@ -472,7 +480,7 @@ export default function Dashboard({ user, onLogout }) {
             <p className="text-[10px] text-[#ff6600] font-bold tracking-widest uppercase mt-0.5">⚙️ Superadmin Panel</p>
           </div>
           
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 overflow-y-auto max-h-[calc(100vh-200px)] scrollbar-none pr-1">
             <button 
               onClick={() => { setActiveMenu('teams'); setIsMenuOpen(false); }}
               className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all text-left ${
@@ -507,6 +515,52 @@ export default function Dashboard({ user, onLogout }) {
               }`}
             >
               <BookOpen size={18} /><span className="text-yellow-400">📜 उत्सव नियमावली</span>
+            </button>
+
+            {/* 🎯 नवीन विभाग सेपरेटर: सिस्टीम पब्लिक फीड मॉड्यूल्स */}
+            <div className="border-t border-slate-800/80 my-3 pt-3">
+              <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest pl-3 mb-1">📢 सिस्टीम फीड व्ह्यू</p>
+            </div>
+
+            <button 
+              onClick={() => { setActiveMenu('public_news'); setIsMenuOpen(false); }}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all text-left ${
+                activeMenu === 'public_news' ? 'bg-[#ff6600]/10 border-l-4 border-[#ff6600] text-[#ff6600]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <Megaphone size={18} /><span className="text-teal-400">📢 ताज्या घडामोडी</span>
+            </button>
+
+            <button 
+              onClick={() => { setActiveMenu('public_events'); setIsMenuOpen(false); }}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all text-left ${
+                activeMenu === 'public_events' ? 'bg-[#ff6600]/10 border-l-4 border-[#ff6600] text-[#ff6600]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <Calendar size={18} /><span className="text-blue-400">📅 उत्सव व सराव कट्टा</span>
+            </button>
+
+            <button 
+              onClick={() => { setActiveMenu('public_records'); setIsMenuOpen(false); }}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all text-left ${
+                activeMenu === 'public_records' ? 'bg-[#ff6600]/10 border-l-4 border-[#ff6600] text-[#ff6600]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <Trophy size={18} /><span className="text-purple-400">🏆 ऐतिहासिक रेकॉर्ड्स</span>
+            </button>
+
+            {/* 🛠️ कोअर मॅनेजमेंट विभाग */}
+            <div className="border-t border-slate-800/80 my-3 pt-3">
+              <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest pl-3 mb-1">⚙️ कोअर सिस्टीम</p>
+            </div>
+
+            <button 
+              onClick={() => { setActiveMenu('manage_maintenance'); setIsMenuOpen(false); }}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all text-left ${
+                activeMenu === 'manage_maintenance' ? 'bg-[#ff6600]/10 border-l-4 border-[#ff6600] text-[#ff6600]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <Settings size={18} /><span className="text-orange-500">⚙️ सिस्टीम मेंटेनन्स</span>
             </button>
 
             <button 
@@ -568,8 +622,54 @@ export default function Dashboard({ user, onLogout }) {
             <PublicInfo />
           </div>
         ) : 
+
+        /* 🆕 ड) नवीन जोडलेला सार्वजनिक ताज्या घडामोडी व्ह्यू */
+        activeMenu === 'public_news' ? (
+          <div className="p-4 md:p-6 w-full animate-in fade-in duration-150">
+            <div className="border-b border-slate-200 pb-3 mb-5 hidden md:block">
+              <h1 className="text-xl md:text-2xl font-black text-slate-800">📢 ताज्या घडामोडी व सूचना</h1>
+              <p className="text-xs text-slate-500 mt-0.5">सिस्टीम द्वारे प्रसारित केलेल्या सर्व अधिकृत सूचना.</p>
+            </div>
+            <PublicNews />
+          </div>
+        ) :
+
+        /* 🆕 इ) नवीन जोडलेला उत्सव व सराव कट्टा व्ह्यू */
+        activeMenu === 'public_events' ? (
+          <div className="p-4 md:p-6 w-full animate-in fade-in duration-150">
+            <div className="border-b border-slate-200 pb-3 mb-5 hidden md:block">
+              <h1 className="text-xl md:text-2xl font-black text-slate-800">📅 उत्सव व सराव कट्टा</h1>
+              <p className="text-xs text-slate-500 mt-0.5">मंडळांची भव्य सराव शिबिरे आणि दहीहंडीचे अचूक नकाशे / ठिकाणे.</p>
+            </div>
+            <PublicEvents />
+          </div>
+        ) :
+
+        /* 🆕 फ) नवीन जोडलेला ऐतिहासिक रेकॉर्ड्स व्ह्यू */
+        activeMenu === 'public_records' ? (
+          <div className="p-4 md:p-6 w-full animate-in fade-in duration-150">
+            <div className="border-b border-slate-200 pb-3 mb-5 hidden md:block">
+              <h1 className="text-xl md:text-2xl font-black text-slate-800">🏆 ऐतिहासिक रेकॉर्ड्स आणि गॅलरी</h1>
+              <p className="text-xs text-slate-500 mt-0.5">सर्वोच्च मानवी मनोरे रचणाऱ्या वीर गोविंदा पथकांची यशोगाथा.</p>
+            </div>
+            <PublicRecords />
+          </div>
+        ) :
+
+        
+        /* 🎯 ड) सिस्टीम मेंटेनन्स (News, Events, Records Management) */
+        activeMenu === 'manage_maintenance' ? (
+          <div className="p-4 md:p-6 w-full animate-in fade-in duration-150">
+            <div className="border-b border-slate-200 pb-3 mb-5 hidden md:block">
+              <h1 className="text-xl md:text-2xl font-black text-slate-800">⚙️ सिस्टीम मेंटेनन्स पॅनल</h1>
+              <p className="text-xs text-slate-500 mt-0.5">बातम्या, सराव शिबिरे आणि ऐतिहासिक विश्वविक्रम यांचे थेट नियंत्रण.</p>
+            </div>
+            <ManageMaintenance />
+          </div>
+        ) :
         
         /* ड) मंजुरी कक्ष व्ह्यू */
+        
         activeMenu === 'approvals' ? (
           <div className="p-4 md:p-6 text-center mt-12 w-full animate-in fade-in duration-150">
             <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm max-w-md mx-auto">

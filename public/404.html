@@ -4,12 +4,18 @@
     <meta charset="utf-8">
     <title>Maharashtracha Govinda</title>
     <script type="text/javascript">
-      var segmentCount = 0;
+      // 🎯 गिटहब सब-फोल्डर आणि तुमच्या App.jsx च्या रचनेसाठी परफेक्ट मॅच
       var l = window.location;
+      var repoName = 'dahihandi'; 
+      var repoPath = '/' + repoName;
+      
+      // युझरने उघडलेल्या लिंकमधून राऊट पाथ वेगळा करणे
+      var routePath = l.pathname.slice(repoPath.length);
+      
+      // रिडायरेक्ट करताना '/dahihandi/' च्या आतच index.html कडे पाथ सुरक्षित पाठवणे
       l.replace(
         l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        l.pathname.split('/').slice(0, 1 + segmentCount).join('/') +
-        '/?p=' + l.pathname.slice(1).split('/').slice(segmentCount).join('/').replace(/&/g, '~and~') +
+        repoPath + '/?p=' + routePath.replace(/&/g, '~and~') +
         (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
         l.hash
       );

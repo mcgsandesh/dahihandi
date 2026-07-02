@@ -1,20 +1,35 @@
 import React, { useState } from 'react';
-import { Users, BarChart3, BookOpen, Menu, X, ArrowLeft } from 'lucide-react';
+import { Users, BarChart3, BookOpen, Menu, X, ArrowLeft, Megaphone, Calendar, Trophy } from 'lucide-react';
 
 // 🎯 कॉम्पोनेंट्स यशस्वीरित्या इम्पोर्ट केले
 import PublicDirectory from '../components/PublicDirectory';
 import PublicStats from '../components/PublicStats';
 import PublicInfo from '../components/PublicInfo';
+// 🆕 नवीन जोडलेले मेंटेनन्स आधारित पब्लिक कॉम्पोनेंट्स
+import PublicNews from '../components/PublicNews';
+import PublicEvents from '../components/PublicEvents';
+import PublicRecords from '../components/PublicRecords';
 
 export default function PublicDashboard({ onBackToAdmin }) {
   const [currentTab, setCurrentTab] = useState('directory');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // 📋 मेनूची यादी
+  // 📋 १. मुख्य डेस्कटॉप साइडबार मेनूची पूर्ण यादी (सर्व ६ पर्याय)
   const menuItems = [
     { id: 'directory', label: 'गोविंदा कट्टा', icon: <Users size={18} /> },
     { id: 'stats', label: 'उत्सव आकडेवारी', icon: <BarChart3 size={18} /> },
     { id: 'rules', label: 'उत्सव नियमावली', icon: <BookOpen size={18} /> },
+    { id: 'public_news', label: '📢 ताज्या घडामोडी', icon: <Megaphone size={18} /> },
+    { id: 'public_events', label: '📅 उत्सव व सराव कट्टा', icon: <Calendar size={18} /> },
+    { id: 'public_records', label: '🏆 ऐतिहासिक रेकॉर्ड्स', icon: <Trophy size={18} /> }
+  ];
+
+  // 📱 २. मोबाईल बॉटम बारसाठी तुम्ही सांगितलेले फक्त ४ स्पेसिफिक प्रिमियम मेनू
+  const mobileBottomItems = [
+    { id: 'directory', label: 'गोविंदा कट्टा', icon: <Users size={18} /> },
+    { id: 'stats', label: 'आकडेवारी', icon: <BarChart3 size={18} /> },
+    { id: 'public_events', label: 'सराव कट्टा', icon: <Calendar size={18} /> },
+    { id: 'public_records', label: 'रेकॉर्ड्स', icon: <Trophy size={18} /> }
   ];
 
   // 🔄 टॅब बदलल्यावर अचूक कॉम्पोनेंट रेंडर करणे
@@ -26,6 +41,12 @@ export default function PublicDashboard({ onBackToAdmin }) {
         return <PublicStats />;
       case 'rules':
         return <PublicInfo />;
+      case 'public_news':
+        return <PublicNews />;
+      case 'public_events':
+        return <PublicEvents />;
+      case 'public_records':
+        return <PublicRecords />;
       default:
         return <PublicDirectory />;
     }
@@ -36,7 +57,7 @@ export default function PublicDashboard({ onBackToAdmin }) {
       
       {/* 📱 १. मोबाईल हेडर (Premium Dynamic Look) */}
       <div className="md:hidden bg-[#0b132b] text-white px-4 py-3 flex items-center justify-between shadow-md z-30">
-        <div className="flex flex-col">
+        <div className="flex flex-col text-left">
           <span className="text-base font-black tracking-wide">
             महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
           </span>
@@ -50,6 +71,7 @@ export default function PublicDashboard({ onBackToAdmin }) {
               <ArrowLeft size={20} />
             </button>
           )}
+          {/* मेनू उघडण्याचे बटन */}
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-1 text-slate-300 hover:text-white">
             {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
@@ -59,8 +81,7 @@ export default function PublicDashboard({ onBackToAdmin }) {
       {/* 🏢 २. डावा साइडबार (डेस्कटॉप आणि मोबाईल ड्रॉवरसाठी) */}
       <div className={`fixed inset-y-0 left-0 w-64 bg-[#0b132b] text-white p-6 flex flex-col justify-between z-40 transform transition-transform duration-300 ease-in-out md:relative md:transform-none ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div>
-          {/* 🎯 कडक बदल: डेस्कटॉप आणि मोबाईल ड्रॉवर दोन्हीमध्ये ब्रँडिंग आणि टॅगलाईन सेट केली */}
-          <div className="mb-8 border-b border-slate-800/60 pb-4">
+          <div className="mb-8 border-b border-slate-800/60 pb-4 text-left">
             <h2 className="text-lg font-black tracking-wide text-white">
               महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
             </h2>
@@ -69,7 +90,7 @@ export default function PublicDashboard({ onBackToAdmin }) {
             </p>
           </div>
 
-          {/* मेनू बटन्स */}
+          {/* मेनू बटन्स - यात ६ चे ६ पर्याय नेहमी नीट दिसतील */}
           <div className="space-y-1.5">
             {menuItems.map((item) => (
               <button
@@ -107,7 +128,7 @@ export default function PublicDashboard({ onBackToAdmin }) {
         <div className="w-full space-y-4">
           
           {/* हेडर टायटल (Desktop) */}
-          <div className="border-b border-slate-200 pb-3 hidden md:block">
+          <div className="border-b border-slate-200 pb-3 hidden md:block text-left">
             <h1 className="text-xl md:text-2xl font-black text-slate-800">
               {menuItems.find(m => m.id === currentTab)?.label}
             </h1>
@@ -122,19 +143,19 @@ export default function PublicDashboard({ onBackToAdmin }) {
         </div>
       </div>
 
-      {/* 📱 ४. मोबाईल स्क्रीनसाठी बॉटम नेव्हिगेशन बार */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-40 flex justify-around items-center py-2 px-1">
-        {menuItems.map((item) => (
+{/* 📱 ४. मोबाईल स्क्रीनसाठी सुधारित बॉटम नेव्हिगेशन बार (Clean 4 Menu Setup) */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] z-40 flex justify-around items-center py-2 px-1">
+        {mobileBottomItems.map((item) => (
           <button
             key={item.id}
             onClick={() => setCurrentTab(item.id)}
-            className={`flex flex-col items-center justify-center space-y-0.5 py-1 px-3 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center space-y-0.5 py-1 px-2.5 rounded-xl transition-all ${
               currentTab === item.id 
                 ? 'text-[#ff6600] font-black' 
                 : 'text-slate-400 font-bold'
             }`}
           >
-            <div className={`p-1 rounded-lg ${currentTab === item.id ? 'bg-[#ff6600]/10' : ''}`}>
+            <div className={`p-1 rounded-lg transition-colors ${currentTab === item.id ? 'bg-[#ff6600]/10' : ''}`}>
               {item.icon}
             </div>
             <span className="text-[10px] tracking-tight">{item.label}</span>

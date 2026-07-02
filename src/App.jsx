@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import TeamDashboard from './pages/TeamDashboard';
 import PublicRegister from './pages/PublicRegister.jsx';
 import SplashScreen from './pages/SplashScreen'; 
+import LandingPage from './pages/LandingPage';
 
 // 🎯 पब्लिक डॅशबोर्ड इम्पॉर्ट
 import PublicDashboard from './pages/PublicDashboard';
@@ -33,6 +34,38 @@ export default function App() {
 
   // 🎯 कडक बदल १: थेट लिंकवरून आलेल्या विना-लॉगिन युझरचा स्लॅग ट्रॅक करण्यासाठी स्टेट
   const [directViewSlug, setDirectViewSlug] = useState(null);
+
+  // ==========================================
+  // 🔍 DEEP ROUTING DIAGNOSTICS & CORE LOGGER
+  // ==========================================
+  useEffect(() => {
+    const rawPath = window.location.pathname;
+    const rawSearch = window.location.search;
+    const rawHash = window.location.hash;
+    
+    console.log("🔥 [APP INITIAL LOAD] --------------------------------");
+    console.log("📊 Full URL:", window.location.href);
+    console.log("📁 Pathname:", rawPath);
+    console.log("❓ Search Query:", rawSearch);
+    console.log("🔑 Token Detected:", rawSearch.includes('t=') ? "YES (Valid Token)" : "NO");
+    
+    // 🎯 चेक १: गिटहब पेजेसचा रीडायरेक्ट पॅरामीटर आला आहे का?
+    if (rawSearch.includes('p=')) {
+      console.log("🚀 [ROUTING DETECTED] GitHub Pages 404 Redirect Hook Active!");
+      const urlParams = new URLSearchParams(rawSearch);
+      console.log("📦 Parsed 'p' Parameter Route:", urlParams.get('p'));
+    }
+
+    // 🎯 चेक २: पब्लिक रजिस्टर रूट अचूक ट्रिगर होतोय का?
+    if (rawPath.includes('/register')) {
+      console.log("🚩 [ROUTE MATCH] Render Target: <PublicRegister /> Component triggered!");
+    } else if (rawPath.includes('/view')) {
+      console.log("👀 [ROUTE MATCH] Render Target: Profile View Mode triggered!");
+    } else {
+      console.log("🏠 [ROUTE MATCH] Render Target: Standard Auth / Admin View Flow.");
+    }
+    console.log("-----------------------------------------------------");
+  }, []);
 
   // स्प्लॅश स्क्रीन टायमर (३ सेकंद)
   useEffect(() => {
@@ -311,70 +344,81 @@ const checkUserStatus = async (googleUser) => {
     );
   }
 
-  // मूळ कडक लॉगिन स्क्रीन UI
-  return (
-    <div className="min-h-screen bg-[#080d1a] flex flex-col justify-between items-center p-6 text-center relative overflow-hidden font-sans select-none">
-      <div className="absolute inset-0 bg-cover bg-center opacity-[0.25] pointer-events-none mix-blend-color-dodge" 
-        style={{ backgroundImage: `url(${loginBgImg})` }}
-      ></div>      
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 bg-orange-600 opacity-10 blur-[120px] rounded-full pointer-events-none"></div>
-      <div></div>
+   // मूळ कडक लॉगिन स्क्रीन UI 
+  // return (
+  //   <div className="min-h-screen bg-[#080d1a] flex flex-col justify-between items-center p-6 text-center relative overflow-hidden font-sans select-none">
+  //     <div className="absolute inset-0 bg-cover bg-center opacity-[0.25] pointer-events-none mix-blend-color-dodge" 
+  //       style={{ backgroundImage: `url(${loginBgImg})` }}
+  //     ></div>      
+  //     <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 bg-orange-600 opacity-10 blur-[120px] rounded-full pointer-events-none"></div>
+  //     <div></div>
       
-      {/* मधला ब्रँडिंग विभाग */}
-      <div className="flex flex-col items-center space-y-3 z-10">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center p-2 shadow-lg shadow-orange-500/20 mb-2 overflow-hidden transform hover:scale-105 transition-all">
-          <img src={logoIcon} alt="Logo" className="w-full h-full object-contain rounded-xl select-none" />
-        </div>
-        <h1 className="text-4xl md:text-5xl font-black text-white tracking-wide leading-tight">
-          महाराष्ट्राचा <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-400">गोविंदा</span>
-        </h1>
-        <p className="text-orange-500/80 text-xs font-bold tracking-[0.2em] uppercase">— डिजिटल व्यवस्थापन प्रणाली —</p>
-        <p className="text-slate-400 text-[10px] tracking-wide uppercase">Maintain Your Team T-shirt and Insurance Data</p>
-      </div>
+  //     {/* मधला ब्रँडिंग विभाग */}
+  //     <div className="flex flex-col items-center space-y-3 z-10">
+  //       <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center p-2 shadow-lg shadow-orange-500/20 mb-2 overflow-hidden transform hover:scale-105 transition-all">
+  //         <img src={logoIcon} alt="Logo" className="w-full h-full object-contain rounded-xl select-none" />
+  //       </div>
+  //       <h1 className="text-4xl md:text-5xl font-black text-white tracking-wide leading-tight">
+  //         महाराष्ट्राचा <br />
+  //         <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-400">गोविंदा</span>
+  //       </h1>
+  //       <p className="text-orange-500/80 text-xs font-bold tracking-[0.2em] uppercase">— डिजिटल व्यवस्थापन प्रणाली —</p>
+  //       <p className="text-slate-400 text-[10px] tracking-wide uppercase">Maintain Your Team T-shirt and Insurance Data</p>
+  //     </div>
 
-      {/* लॉगिन ॲक्शन BOX */}
-      <div className="w-full max-w-xs flex flex-col items-center space-y-4 z-10 mb-4">
-        {error && (
-          <div className="w-full bg-red-500/10 border border-red-500/30 text-red-400 text-xs py-2.5 px-3 rounded-xl font-medium">
-            {error}
-          </div>
-        )}
+  //     {/* लॉगिन ॲक्शन BOX */}
+  //     <div className="w-full max-w-xs flex flex-col items-center space-y-4 z-10 mb-4">
+  //       {error && (
+  //         <div className="w-full bg-red-500/10 border border-red-500/30 text-red-400 text-xs py-2.5 px-3 rounded-xl font-medium">
+  //           {error}
+  //         </div>
+  //       )}
         
-        {/* प्रिमियम "Sign in with Google" बटण */}
-        <button 
-          onClick={handleLogin} 
-          disabled={loading} 
-          className="w-full bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm py-3 px-4 rounded-xl border border-slate-200/80 transition-all transform active:scale-[0.98] flex items-center justify-center space-x-3 shadow-md disabled:opacity-50"
-        >
-          {loading ? (
-            <span className="text-xs text-slate-500 font-bold animate-pulse">सुरक्षा तपासत आहे...</span>
-          ) : (
-            <>
-              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-                <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l3.227-3.107C18.416 1.421 15.586 0 12.24 0 5.58 0 0 5.37 0 12s5.58 12 12.24 12c6.96 0 11.57-4.83 11.57-11.79 0-.79-.085-1.4-.195-1.925H12.24z"/>
-              </svg>
-              <span className="tracking-wide">Sign in with Google</span>
-            </>
-          )}
-        </button>
+  //       {/* प्रिमियम "Sign in with Google" बटण */}
+  //       <button 
+  //         onClick={handleLogin} 
+  //         disabled={loading} 
+  //         className="w-full bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm py-3 px-4 rounded-xl border border-slate-200/80 transition-all transform active:scale-[0.98] flex items-center justify-center space-x-3 shadow-md disabled:opacity-50"
+  //       >
+  //         {loading ? (
+  //           <span className="text-xs text-slate-500 font-bold animate-pulse">सुरक्षा तपासत आहे...</span>
+  //         ) : (
+  //           <>
+  //             <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+  //               <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l3.227-3.107C18.416 1.421 15.586 0 12.24 0 5.58 0 0 5.37 0 12s5.58 12 12.24 12c6.96 0 11.57-4.83 11.57-11.79 0-.79-.085-1.4-.195-1.925H12.24z"/>
+  //             </svg>
+  //             <span className="tracking-wide">Sign in with Google</span>
+  //           </>
+  //         )}
+  //       </button>
 
-        {/* 🎯 विना-लॉगिन बटण */}
-        <button 
-          type="button"
-          onClick={handleExploreAsGuest}
-          disabled={loading}
-          className="w-full bg-transparent hover:bg-white/5 text-slate-300 hover:text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-slate-700 hover:border-slate-500 tracking-wide transition-all transform active:scale-[0.98] flex items-center justify-center space-x-2 disabled:opacity-50"
-        >
-          <span>विना-लॉगिन थेट पुढे जा</span>
-          <span className="text-[#ff6600]">🚩</span>
-        </button>
+  //       {/* 🎯 विना-लॉगिन बटण */}
+  //       <button 
+  //         type="button"
+  //         onClick={handleExploreAsGuest}
+  //         disabled={loading}
+  //         className="w-full bg-transparent hover:bg-white/5 text-slate-300 hover:text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-slate-700 hover:border-slate-500 tracking-wide transition-all transform active:scale-[0.98] flex items-center justify-center space-x-2 disabled:opacity-50"
+  //       >
+  //         <span>विना-लॉगिन थेट पुढे जा</span>
+  //         <span className="text-[#ff6600]">🚩</span>
+  //       </button>
 
-        <div className="pt-4">
-          <p className="text-slate-600 text-[9px] tracking-widest uppercase font-bold">An Initiative by</p>
-          <p className="text-slate-400 text-xs font-bold tracking-wide mt-0.5">Sandesh Mahadik</p>
-        </div>
-      </div>
-    </div>
+  //       <div className="pt-4">
+  //         <p className="text-slate-600 text-[9px] tracking-widest uppercase font-bold">An Initiative by</p>
+  //         <p className="text-slate-400 text-xs font-bold tracking-wide mt-0.5">Sandesh Mahadik</p>
+  //       </div>
+  //     </div>
+  //   </div>
+  // ); 
+
+  // 🟢 जुना प्रदीर्घ UI काढून त्याजागी फक्त हा कॉम्पोनंट रिटर्न करा:
+  return (
+    <LandingPage 
+      handleLogin={handleLogin} 
+      handleExploreAsGuest={handleExploreAsGuest} 
+      loading={loading} 
+      error={error} 
+    />
   );
+  
 }

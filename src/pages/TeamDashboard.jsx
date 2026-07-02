@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 
 import { db } from '../firebase';
 import { collection, doc, serverTimestamp, updateDoc, query, where, onSnapshot, setDoc, getDocs, getDocsFromCache } from 'firebase/firestore'; 
-import { LayoutDashboard, LogOut, Shield, Shirt, Users, Search, Plus, User, Image as ImageIcon, X, Edit2, Trash2, Check, Copy, CheckCircle, FileText, Phone, MessageSquare, MoreVertical, Package, Menu ,Settings as SettingsIcon, RotateCcw } from 'lucide-react';
+import { LayoutDashboard, LogOut, Shield, Shirt, Users, Search, Plus, User, Image as ImageIcon, X, Edit2, Trash2, Check, Copy, CheckCircle, FileText, Phone, MessageSquare, MoreVertical, Package, Menu ,Settings as SettingsIcon, RotateCcw ,Megaphone,Calendar ,Trophy } from 'lucide-react';
 import Swal from 'sweetalert2';
 import Reports from '../components/Reports';
 import TshirtForm from '../components/TshirtForm'; 
@@ -16,6 +16,10 @@ import Settings from '../components/Settings';
 import PublicDirectory from '../components/PublicDirectory';
 import PublicStats from '../components/PublicStats';
 import PublicInfo from '../components/PublicInfo';
+// 🆕 नवीन जोडलेले मेंटेनन्स आधारित पब्लिक कॉम्पोनेंट्स
+import PublicNews from '../components/PublicNews';
+import PublicEvents from '../components/PublicEvents';
+import PublicRecords from '../components/PublicRecords';
 
 export default function TeamDashboard({ user, onLogout }) {
   
@@ -344,6 +348,7 @@ export default function TeamDashboard({ user, onLogout }) {
 
   const filteredPlayers = playersList.filter(p => p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || p.mobile?.includes(searchTerm));
 
+// 📋 टीम ॲडमिनसाठी सुधारित मेनू यादी (३ नवीन सिस्टीम फीडसह)
   const sidebarTabs = [
     { id: 'dashboard', label: 'डॅशबोर्ड', icon: <LayoutDashboard size={18} />, show: hasFormAccess },
     { id: 'players', label: 'खेळाडू यादी', icon: <Users size={18} />, show: hasFormAccess },
@@ -351,9 +356,14 @@ export default function TeamDashboard({ user, onLogout }) {
     { id: 'reports', label: 'रिपोर्ट पॅनेल', icon: <FileText size={18} />, show: hasFormAccess },
     { id: 'profile', label: 'संघ प्रोफाईल', icon: <User size={18} />, show: true },
     { id: 'settings', label: 'सेटिंग्ज', icon: <SettingsIcon size={18} />, show: hasFormAccess },
+    
+    // 📢 सिस्टीम फीड विभागाचे मॉड्यूल्स (सर्वांसाठी चालू - show: true)
     { id: 'govinda_katta', label: '🚩 गोविंदा कट्टा', icon: <Users size={18} />, show: true },
-    { id: 'public_stats', label: '📊 उत्सव आकडेवारी', icon: <FileText size={18} />, show: hasFormAccess },
-    { id: 'public_info', label: '📜 उत्सव नियमावली', icon: <FileText size={18} />, show: true }
+    { id: 'public_stats', label: '📊 उत्सव आकडेवारी', icon: <FileText size={18} />, show: true },
+    { id: 'public_info', label: '📜 उत्सव नियमावली', icon: <FileText size={18} />, show: true },
+    { id: 'public_news', label: '📢 ताज्या घडामोडी', icon: <Megaphone size={18} />, show: true },
+    { id: 'public_events', label: '📅 उत्सव व सराव कट्टा', icon: <Calendar size={18} />, show: true },
+    { id: 'public_records', label: '🏆 ऐतिहासिक रेकॉर्ड्स', icon: <Trophy size={18} />, show: true }
   ].filter(tab => tab.show);
 
   const mobileTabs = [
@@ -751,6 +761,39 @@ export default function TeamDashboard({ user, onLogout }) {
                 <p className="text-xs text-slate-500 mt-0.5">समन्वय समितीचे नियम व मार्गदर्शक तत्त्वे.</p>
               </div>
               <PublicInfo />
+            </div>
+          )}
+
+          {/* 🆕 ४. टीम ॲडमिन सार्वजनिक ताज्या घडामोडी व्ह्यू */}
+          {activeTab === 'public_news' && (
+            <div className="animate-in fade-in duration-150 space-y-4">
+              <div className="border-b border-slate-200 pb-3 hidden md:block">
+                <h1 className="text-xl md:text-2xl font-black text-slate-800">📢 ताज्या घडामोडी व सूचना</h1>
+                <p className="text-xs text-slate-500 mt-0.5">सिस्टीम द्वारे प्रसारित केलेल्या सर्व अधिकृत सूचना.</p>
+              </div>
+              <PublicNews />
+            </div>
+          )}
+
+          {/* 🆕 ५. टीम ॲडमिन उत्सव व सराव कट्टा व्ह्यू */}
+          {activeTab === 'public_events' && (
+            <div className="animate-in fade-in duration-150 space-y-4">
+              <div className="border-b border-slate-200 pb-3 hidden md:block">
+                <h1 className="text-xl md:text-2xl font-black text-slate-800">📅 उत्सव व सराव कट्टा</h1>
+                <p className="text-xs text-slate-500 mt-0.5">मंडळांची भव्य सराव शिबिरे आणि दहीहंडीचे अचूक नकाशे / ठिकाणे.</p>
+              </div>
+              <PublicEvents />
+            </div>
+          )}
+
+          {/* 🆕 ६. टीम ॲडमिन ऐतिहासिक रेकॉर्ड्स व्ह्यू */}
+          {activeTab === 'public_records' && (
+            <div className="animate-in fade-in duration-150 space-y-4">
+              <div className="border-b border-slate-200 pb-3 hidden md:block">
+                <h1 className="text-xl md:text-2xl font-black text-slate-800">🏆 ऐतिहासिक रेकॉर्ड्स आणि गॅलरी</h1>
+                <p className="text-xs text-slate-500 mt-0.5">सर्वोच्च मानवी मनोरे रचणाऱ्या वीर गोविंदा पथकांची यशोगाथा.</p>
+              </div>
+              <PublicRecords />
             </div>
           )}
           

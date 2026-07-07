@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, BarChart3, BookOpen, Menu, X, ArrowLeft, Megaphone, Calendar, Trophy } from 'lucide-react';
 
 // 🎯 कॉम्पोनेंट्स यशस्वीरित्या इम्पोर्ट केले
@@ -10,9 +10,32 @@ import PublicNews from '../components/PublicNews';
 import PublicEvents from '../components/PublicEvents';
 import PublicRecords from '../components/PublicRecords';
 
-export default function PublicDashboard({ onBackToAdmin }) {
-  const [currentTab, setCurrentTab] = useState('directory');
+// initialTab प्रोप लँडिंग पेजवरून डायरेक्ट नेव्हिगेशनसाठी अत्यंत महत्त्वाचा आहे
+export default function PublicDashboard({ onBackToAdmin, initialTab = 'directory' }) {
+  
+  // 🔄 सुरुवातीचा टॅब सेट करताना प्रोप आणि लोकल स्टोरेज दोन्ही सुरक्षितपणे तपासणे
+  const [currentTab, setCurrentTab] = useState(() => {
+    const savedTab = localStorage.getItem('active_public_tab');
+    if (savedTab) {
+      localStorage.removeItem('active_public_tab');
+      return savedTab;
+    }
+    return initialTab;
+  });
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // 🎯 मॅजिक सिंक पॅच: जसं लँडिंग पेजवरून 'initialTab' बदलेल किंवा नवीन क्लीक होऊन ॲप री-माउंट होईल,
+  // तशी ही सिस्टीम जुन्या कोडिंगला धक्का न लावता लाइव्ह टॅब तात्काळ सिंक्रोनाइझ करेल!
+  useEffect(() => {
+    const savedTab = localStorage.getItem('active_public_tab');
+    if (savedTab) {
+      setCurrentTab(savedTab);
+      localStorage.removeItem('active_public_tab'); // मेमरी लगेच साफ करा
+    } else if (initialTab) {
+      setCurrentTab(initialTab);
+    }
+  }, [initialTab]);
 
   // 📋 १. मुख्य डेस्कटॉप साइडबार मेनूची पूर्ण यादी (सर्व ६ पर्याय)
   const menuItems = [
@@ -135,7 +158,7 @@ export default function PublicDashboard({ onBackToAdmin }) {
             <p className="text-xs text-slate-500 mt-0.5">महाराष्ट्रातील अधिकृत आणि नोंदणीकृत दहीहंडी मंडळांची माहिती.</p>
           </div>
 
-          {/* कॉम्पोनेंट लोड एरिया */}
+          {/* कॉम्पोनेंट लोड AREA */}
           <div className="w-full animate-in fade-in duration-200">
             {renderTabContent()}
           </div>
@@ -143,7 +166,7 @@ export default function PublicDashboard({ onBackToAdmin }) {
         </div>
       </div>
 
-{/* 📱 ४. मोबाईल स्क्रीनसाठी सुधारित बॉटम नेव्हिगेशन बार (Clean 4 Menu Setup) */}
+      {/* 📱 ४. मोबाईल स्क्रीनसाठी सुधारित बॉटम नेव्हिगेशन बार (फक्त ४ फिक्स मेनू) */}
       <div className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] z-40 flex justify-around items-center py-2 px-1">
         {mobileBottomItems.map((item) => (
           <button

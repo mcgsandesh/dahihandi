@@ -32,6 +32,9 @@ export default function App() {
   // 🎯 विना-लॉगिन युझर ट्रॅक करण्यासाठी स्टेट
   const [isGuest, setIsGuest] = useState(false);
 
+ // 🎯 लँडिंग पेजवरून येणारा नेमका टॅब ट्रॅक करण्यासाठी नवीन स्टेट
+  const [publicActiveTab, setPublicActiveTab] = useState('directory');
+
   // 🎯 कडक बदल १: थेट लिंकवरून आलेल्या विना-लॉगिन युझरचा स्लॅग ट्रॅक करण्यासाठी स्टेट
   const [directViewSlug, setDirectViewSlug] = useState(null);
 
@@ -258,10 +261,17 @@ const checkUserStatus = async (googleUser) => {
     loading_status_set(false);
   };
 
-  // विना-लॉगिन क्लिक हँडलर
-  const handleExploreAsGuest = () => {
+// 🚀 सुधारित फंक्शन: जे टॅबचे नाव स्वीकारून युझरला थेट तिथेच घेऊन जाईल
+  const handleExploreAsGuest = (targetTab = 'directory') => {
+    console.log(`🎯 [App.jsx] युझरला थेट टॅबवर नेव्हिगेट करत आहे: ${targetTab}`);
+    
+    // १. रिॲक्ट स्टेट तात्काळ अपडेट करा
+    setPublicActiveTab(targetTab);
     setIsGuest(true);
+    
+    // २. बॅकअप म्हणून लोकल स्टोरेजमध्ये लॉक करा
     localStorage.setItem('govinda_guest', 'true');
+    localStorage.setItem('active_public_tab', targetTab);
   };
 
   // गेस्ट मोडमधून बाहेर पडणे
@@ -292,12 +302,13 @@ const checkUserStatus = async (googleUser) => {
     return <SplashScreen onFinished={() => setShowSplash(false)} />;
   }
 
-  // 🎯 कडक बदल ३: जर मुख्य ॲडमीन लॉगिन नसेल आणि गेस्ट मोड सक्रिय असेल (थेट लिंक किंवा बटन दोन्हीसाठी काम करेल)
+// 🎯 कडक बदल ३: जर मुख्य ॲडमीन लॉगिन नसेल आणि गेस्ट मोड सक्रिय असेल
   if (!user && isGuest) {
     return (
       <PublicDashboard 
         onBackToAdmin={handleExitGuestMode} 
         directSlug={directViewSlug} 
+        initialTab={publicActiveTab} 
       />
     );
   }

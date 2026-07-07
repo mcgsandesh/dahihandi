@@ -53,7 +53,7 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
       // अ) ताज्या बातम्या सेट करणे
       if (allData.newsData) setLatestNews(allData.newsData);
 
-      // ब) रेकॉर्ड्स मॅनेजमेंट (२०२५ आणि २०२६ चे एकत्र करून टॉप ३ दाखवणे)
+      // ब) रेkॉर्ड्स मॅनेजमेंट (२०२५ आणि २०२६ चे एकत्र करून टॉप ३ दाखवणे)
       if (allData.recordsData) {
         const rList = allData.recordsData;
         const filteredRecords = rList.filter(r => r.year === "2025" || r.year === "2026").slice(0, 3);
@@ -88,13 +88,11 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
       const cachedTime = localStorage.getItem(LANDING_CACHE_TIME_KEY);
       const now = Date.now();
 
-      // 🧠 जर लोकल कॅश उपलब्ध असेल, तर तिथूनच डेटा लोड करून Reads वाचवा!
       if (cachedData && cachedTime && (now - cachedTime < CACHE_DURATION)) {
-        console.log("⚡ [LandingPage] लोकल कॅशमधून डेटा लोड झाला! (Reads सेव्ह झाले 💸)");
+        console.log("⚡ [LandingPage] लोकल कॅश डेटा ओढला.");
         const parsed = JSON.parse(cachedData);
         processLandingData(parsed);
 
-        // 🔄 बॅकग्राउंड सिंक: युझरला विना-लोडिंग फ्रेश डेटा देण्यासाठी समांतर सिंक चालवणे
         setTimeout(async () => {
           try {
             const newsSnap = await getDocs(query(collection(db, "news"), orderBy("createdAt", "desc"), limit(3)));
@@ -108,19 +106,16 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
             };
 
             if (JSON.stringify(freshBundle) !== cachedData) {
-              console.log("🔄 [LandingPage Sync] नवीन डेटाबेसमधील बदल सापडले! कॅश अपडेट झाली.");
               localStorage.setItem(LANDING_CACHE_KEY, JSON.stringify(freshBundle));
               localStorage.setItem(LANDING_CACHE_TIME_KEY, Date.now().toString());
               processLandingData(freshBundle);
             }
-          } catch (e) { console.log("बॅकग्राउंड सिंक एरर:", e); }
+          } catch (e) { console.log("सिंक अडचण:", e); }
         }, 1200);
 
         return;
       }
 
-      // 🛑 जर कॅश नसेल, तर पहिल्यांदा डेटाबेस मधून लोड करा
-      console.log("🔄 [LandingPage] पहिली वेळ किंवा एक्सपायर्ड! डेटाबेस कॉल सुरू...");
       try {
         const newsSnap = await getDocs(query(collection(db, "news"), orderBy("createdAt", "desc"), limit(3)));
         const recordsSnap = await getDocs(query(collection(db, "records"), orderBy("createdAt", "desc")));
@@ -136,7 +131,7 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
         localStorage.setItem(LANDING_CACHE_TIME_KEY, now.toString());
         processLandingData(freshBundle);
       } catch (err) {
-        console.error("❌ [LANDING FETCH ERROR LOG]:", err);
+        console.error("❌ Fetch error:", err);
       }
     };
 
@@ -147,7 +142,7 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
     mr: {
       title: "महाराष्ट्राचा गोविंदा", subtitle: "प्रत्येक गोविंदासाठी 🚩",
       mainHeading: "दहीहंडी प्रेमींचं सर्वात आवडतं पेज",
-      aboutDesc: "लहान-मोठ्या सर्व गोविंदापथकांचे कौशल्य संपूर्ण देशातील आणि विदेशातील लोकांपर्यंत पोहोचवण्याचे काम आम्ही निस्वार्थीपणे करत आहोत. महाराष्ट्रासह गुजरात राज्यातील आणि गावागावातील सर्व गोविंदांचे फोटो व व्हिडिओ पोहोचवणारे आम्ही पहिले अधिकृत डिजिटल माध्यम आहोत.",
+      aboutDesc: "लहान-मोठ्या सर्व गोविंदापथकांचे कौशल्य संपूर्ण देशातील आणि विदेशातील लोकांपर्यंत पोहोचवण्याचे काम आम्ही निस्वार्थीपणे करत आहोत. महाराष्ट्रासह गुजरात राज्यातील आणि गावागावातील सर्व गोविंदांचे photo व व्हिडिओ पोहोचवणारे आम्ही पहिले अधिकृत डिजिटल माध्यम आहोत.",
       exploreBtn: "डिजिटल गोविंदा कट्टा पहा 🚩", adminCorner: "मंडळ लॉगिन 🔐",
       statsHeading: "📊 उत्सव संक्षिप्त आकडेवारी", recordsHeading: "🏆 ऐतिहासिक रेकॉर्ड्स (२०२५-२०२६)",
       newsHeading: "📢 ताज्या घडामोडी / सूचना", galleryTitle: "📸 Photo Gallery",
@@ -203,7 +198,7 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
       {/* 2️⃣ मुख्य ३-कॉलम लेआउट */}
       <main className="max-w-[1600px] w-full mx-auto px-4 md:px-8 py-6 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6 items-start z-10">
         
-        {/* 🔥 डावा कॉलम */}
+        {/* 🔥 डावा कॉलम (6 Columns) */}
         <div className="lg:col-span-6 space-y-6 text-left">
           <div className="space-y-3">
             <h2 className="text-2xl md:text-3xl font-black text-white tracking-wide">{c.mainHeading}</h2>
@@ -211,7 +206,7 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button onClick={handleExploreAsGuest} className="bg-white hover:bg-slate-100 text-slate-950 font-black text-xs md:text-sm py-3.5 px-6 rounded-xl shadow-lg transition-all transform active:scale-[0.98]">{c.exploreBtn}</button>
+            <button onClick={() => handleExploreAsGuest('directory')} className="bg-white hover:bg-slate-100 text-slate-950 font-black text-xs md:text-sm py-3.5 px-6 rounded-xl shadow-lg transition-all transform active:scale-[0.98]">{c.exploreBtn}</button>
             <div className="flex bg-slate-950/80 border border-slate-900 rounded-xl p-1 text-[11px] font-bold space-x-1">
               <a href="https://www.facebook.com/maharashtrachagovinda" target="_blank" rel="noreferrer" className="px-2.5 py-1.5 rounded-md bg-[#1877F2]/10 text-[#1877F2] border border-[#1877F2]/20">FB {c.fbFollowers}</a>
               <a href="https://www.instagram.com/maharashtrachagovinda" target="_blank" rel="noreferrer" className="px-2.5 py-1.5 rounded-md bg-[#E1306C]/10 text-[#E1306C] border border-[#E1306C]/20">Insta {c.instaFollowers}</a>
@@ -220,7 +215,7 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
             </div>
           </div>
 
-          {/* आकडेवारी */}
+          {/* उत्सव संक्षिप्त आकडेवारी */}
           <div className="space-y-3 border border-slate-900 bg-slate-950/40 p-5 rounded-2xl backdrop-blur-sm">
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider">{c.statsHeading}</h3>
             <div className="grid grid-cols-4 gap-2">
@@ -231,9 +226,25 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
             </div>
           </div>
 
-          {/* 🏆 ऐतिहासिक रेकॉर्ड्स (वर्ष २०२५ आणि २०२६ समाविष्ट) */}
+          {/* 📢 कडक बदल: ताज्या घडामोडी / सूचना विभाग वरती घेतला (UX Optimization 🔥) */}
+          <div className="space-y-3 border border-slate-900 bg-slate-950/40 p-5 rounded-2xl">
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider">{c.newsHeading}</h3>
+            <div className="space-y-2.5">
+              {latestNews.map((n, i) => (
+                <div key={i} className="p-3 bg-slate-900/40 border border-slate-900 rounded-xl text-xs text-slate-300 text-left">
+                  {n.text_mr}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 🏆 ऐतिहासिक रेकॉर्ड्स (आता मोड्स न्यूजनंतर खाली येईल जे मोबाईलवर परफेक्ट मॅच होईल) */}
           <div className="space-y-3 border border-slate-900 bg-slate-950/40 p-5 rounded-2xl relative">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider">{c.recordsHeading}</h3>
+            <div className="flex justify-between items-center mb-1">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider">{c.recordsHeading}</h3>
+              <button onClick={() => handleExploreAsGuest('public_records')} className="text-[10px] font-black text-orange-500 hover:underline">सर्व पहा ➡️</button>
+            </div>
+            
             <div className="space-y-2">
               {latestRecords.map((rec, i) => (
                 <div key={i} className="bg-slate-900/30 border border-slate-900 p-3 rounded-xl flex justify-between items-center text-xs">
@@ -265,35 +276,34 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
               </div>
             )}
           </div>
-
-          {/* 📢 ताज्या घडामोडी */}
-          <div className="space-y-3 border border-slate-900 bg-slate-950/40 p-5 rounded-2xl">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider">{c.newsHeading}</h3>
-            <div className="space-y-2.5">{latestNews.map((n, i) => <div key={i} className="p-3 bg-slate-900/40 border border-slate-900 rounded-xl text-xs text-slate-300 text-left">{n.text_mr}</div>)}</div>
-          </div>
         </div>
 
-        {/* 📸 मधला कॉलम: Photo Gallery */}
+        {/* 📸 मधला कॉलम: Photo Gallery (3 Columns) */}
         <div className="lg:col-span-3 space-y-4">
           <div className="border border-slate-900 bg-slate-950/40 p-4 rounded-3xl flex flex-col justify-between h-full">
             <h3 className="text-xs font-black text-slate-300 uppercase tracking-wider text-left mb-3">{c.galleryTitle}</h3>
             <div className="relative w-full aspect-[2/3] rounded-2xl overflow-hidden border border-slate-900 shadow-2xl">
-              {galleryImages.map((img, idx) => <img key={idx} src={img} alt="Gallery" className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${idx === currentGallerySlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`} />)}
+              {galleryImages.map((img, idx) => (
+                <img key={idx} src={img} alt="Gallery" className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${idx === currentGallerySlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`} />
+              ))}
             </div>
             <div className="flex justify-center space-x-1 mt-3">
-              {galleryImages.map((_, idx) => <button key={idx} className={`w-1 h-1 rounded-full ${idx === currentGallerySlide ? 'bg-orange-500 w-2' : 'bg-slate-700'}`}></button>)}
+              {galleryImages.map((_, idx) => (
+                <button key={idx} className={`w-1 h-1 rounded-full ${idx === currentGallerySlide ? 'bg-orange-500 w-2' : 'bg-slate-700'}`}></button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* 🎯 उजवा कॉलम: सराव पोस्टर्स + आगामी इव्हेंट्स */}
+        {/* 🎯 उजवा कॉलम: सराव पोस्टर्स + आगामी इव्हेंट्स सोशल हब (3 Columns) */}
         <div className="lg:col-span-3 space-y-4 text-left">
           <div className="border border-slate-900 bg-slate-950/40 p-4 rounded-3xl flex flex-col justify-between h-full space-y-4">
             
+            {/* सराव पोस्टर्स विभाग */}
             <div>
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-xs font-black text-slate-300 uppercase tracking-wider">{c.eventsTitle}</h3>
-                <button onClick={() => alert("Events Menu वर नेव्हिगेट करा")} className="text-[10px] font-black text-orange-500 hover:underline">सर्व पहा ➡️</button>
+                <button onClick={() => handleExploreAsGuest('public_events')} className="text-[10px] font-black text-orange-500 hover:underline">सर्व पहा ➡️</button>
               </div>
               
               <div className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden border border-slate-900 shadow-2xl bg-slate-950 flex items-center justify-center group cursor-pointer">
@@ -307,7 +317,7 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
                       <a href={targetLink} target="_blank" rel="noreferrer" className="w-full h-full block relative">
                         <img src={currentImg} alt="Event Poster" className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-102" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <span className="bg-orange-600 text-white font-black text-[10px] px-3 py-1.5 rounded-xl shadow-lg">🚩 पेजवर मूळ पोस्ट पहा</span>
+                          <span className="bg-orange-600 text-white font-black text-[10px] px-3 py-1.5 rounded-xl shadow-lg">🚩 पेजवर मूळ貼 पोस्ट पहा</span>
                         </div>
                       </a>
                     );
@@ -318,10 +328,14 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
               </div>
             </div>
 
+            {/* आगामी इव्हेंट्स यादी विभाग */}
             <div className="flex-grow flex flex-col relative">
-              <h4 className="text-[11px] font-black text-orange-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                <Calendar size={12} /> {c.upcomingTitle}
-              </h4>
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="text-[11px] font-black text-orange-400 uppercase tracking-wider flex items-center gap-1">
+                  <Calendar size={12} /> {c.upcomingTitle}
+                </h4>
+                <button onClick={() => handleExploreAsGuest('public_events')} className="text-[10px] font-black text-orange-500 hover:underline">सर्व पहा ➡️</button>
+              </div>
               
               <div className="space-y-2 max-h-[190px] overflow-y-auto scrollbar-none pr-1">
                 {upcomingEvents.length > 0 ? upcomingEvents.map((evt) => {

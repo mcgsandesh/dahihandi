@@ -117,7 +117,41 @@ export default function TeamDashboard({ user, onLogout }) {
     } catch (e) { return '—'; }
   };
 
-  // 🔄 Master User Data Sync Listener (Team UID पॅटर्ननुसार परफेक्ट लाईव्ह सिंक)
+  // // 🔄 Master User Data Sync Listener (Team UID पॅटर्ननुसार परफेक्ट लाईव्ह सिंक)
+  // useEffect(() => {
+  //   const teamIdentifier = user.teamUID || user.uid;
+  //   if (!teamIdentifier) return;
+
+  //   const userDocRef = doc(db, "users", teamIdentifier);
+  //   const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+  //     if (docSnap.exists()) {
+  //       const data = docSnap.data();
+  //       console.log("📥 Firebase Live Data Synced to Dashboard:", data);
+        
+  //       setTeamData({
+  //         teamCategory: data.teamCategory || 'Men',
+  //         address: data.address || '',
+  //         establishedYear: data.establishedYear || '',
+  //         slogan: data.slogan || '',
+  //         logoUrl: data.logoUrl || '',
+  //         aboutTeam: data.aboutTeam || '',
+  //         bestPerformance: data.bestPerformance || '',          
+  //         inventory: data.inventory || {},
+          
+  //         areaName: data.areaName || '',
+  //         pincode: data.pincode || '',
+  //         city: data.city || '',
+  //         district: data.district || '',
+  //         state: data.state || ''
+  //       });
+  //       setIsFormActive(data.isFormActive !== false);
+  //     }
+  //   });
+
+  //   return () => unsubscribeUser();
+  // }, [user]);
+
+  // 🔄 Master User Data Sync Listener (Team UID पॅटर्ननुसार परफेक्ट लाईव्ह सिंक - दुरुस्त केला 🚀)
   useEffect(() => {
     const teamIdentifier = user.teamUID || user.uid;
     if (!teamIdentifier) return;
@@ -135,15 +169,34 @@ export default function TeamDashboard({ user, onLogout }) {
           slogan: data.slogan || '',
           logoUrl: data.logoUrl || '',
           aboutTeam: data.aboutTeam || '',
-          bestPerformance: data.bestPerformance || '',
+          bestPerformance: data.bestPerformance || '',          
           inventory: data.inventory || {},
           
           areaName: data.areaName || '',
           pincode: data.pincode || '',
           city: data.city || '',
           district: data.district || '',
-          state: data.state || ''
+          state: data.state || '',
+
+          // 👥 नवीन जोडलेले मार्गदर्शक आणि कर्णधार
+          coachName: data.coachName || '',
+          captainName: data.captainName || '',
+
+          // 🏆 नवीन ऐतिहासिक थर माइलस्टोन्स (🎯 इथे मॅप केले!)
+          milestone7: data.milestone7 || '',
+          milestone8: data.milestone8 || '',
+          milestone9: data.milestone9 || '',
+          milestone10: data.milestone10 || '',
+
+          // 📸 सलामी फोटो आणि सोशल मीडिया लिंक्स
+          bestPerformanceUrl: data.bestPerformanceUrl || '',
+          socialLinks: {
+            facebook: data.socialLinks?.facebook || data.facebook || '',
+            instagram: data.socialLinks?.instagram || data.instagram || '',
+            youtube: data.socialLinks?.youtube || data.youtube || ''
+          }
         });
+        
         setIsFormActive(data.isFormActive !== false);
       }
     });

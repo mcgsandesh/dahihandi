@@ -1,26 +1,45 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   ArrowLeft, MapPin, Trophy, Users, Shield, Calendar, Share2, 
-  User, Award, Link as LinkIcon, Info, FileText, Image as ImageIcon 
+  User, Award, Link as LinkIcon, Info, FileText, Image as ImageIcon, Edit2 
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
-export default function PublicTeamProfile({ team, onBack }) {
+// 🎯 कडक अपग्रेड: प्रॉप्समध्ये isSuperAdminView आणि onEditClick स्वीकारले 🚀
+export default function PublicTeamProfile({ team, onBack, isSuperAdminView, onEditClick }) {
   
-  // शेअर लिंक तयार करणे
-  const shareLink = `${window.location.origin}${import.meta.env.BASE_URL}${(team.teamName || '').toLowerCase().trim().replace(/\s+/g, '-')}/view`;
+// 🔍 १. कडक कन्सोल डेबगिंग लॉग्स (एडिट बटण का लपले आहे ते तपासण्यासाठी 📡)
+  useEffect(() => {
+    console.log("=== 📜 [PUBLIC TEAM PROFILE DEBUG START] ===");
+    console.log("📥 आलेला संपूर्ण संघ डेटा (team Object):", team);
+    
+    // 🚨 हा लॉग आपल्याला मूळ उत्तर देईल भाऊ की प्रॉप पास झालाय की नाही:
+    console.log("⚙️ [PROPS CHECK] isSuperAdminView ची सद्यस्थिती:", isSuperAdminView);
+    console.log("🖱️ [PROPS CHECK] onEditClick फंक्शन उपलब्ध आहे का?:", typeof onEditClick === 'function' ? "होय (Available)" : "नाही (Missing)");
+
+    if (team) {
+      console.log("🏆 थरांचे मूळ रेकॉर्ड्स -> M7:", team.milestone7, " | M8:", team.milestone8, " | M9:", team.milestone9, " | M10:", team.milestone10);
+      console.log("📸 सलामी फोटो लिंक (bestPerformanceUrl):", team.bestPerformanceUrl);
+    }
+    console.log("=== 📜 [PUBLIC TEAM PROFILE DEBUG END] ===");
+  }, [team, isSuperAdminView, onEditClick]);
+
+  // शेअर लिंक तयार करणे (सुरक्षित जसेच्या तसे)
+  const shareLink = `${window.location.origin}${import.meta.env.BASE_URL}${(team?.teamName || '').toLowerCase().trim().replace(/\s+/g, '-')}/view`;
 
   const handleShare = () => {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareLink);
       Swal.fire({
-        toast: true, position: 'top-end', icon: 'success', title: 'प्रोफाइल लिंक कॉपी झाली!', showConfirmButton: false, timer: 2000
+        toast: true, position: 'top-end', icon: 'success', title: 'प्रोफाइल link कॉपी झाली!', showConfirmButton: false, timer: 2000
       });
     }
   };
 
+  if (!team) return null;
+
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 w-full p-0 m-0">
+    <div className="space-y-5 animate-in fade-in duration-200 w-full p-0 m-0 text-left">
       
       {/* 🔙 बॅक आणि शेअर बार */}
       <div className="flex items-center justify-between bg-white p-3 rounded-2xl border border-slate-100 shadow-sm w-full">
@@ -29,7 +48,7 @@ export default function PublicTeamProfile({ team, onBack }) {
           className="flex items-center space-x-2 text-xs font-black text-slate-700 hover:text-[#ff6600] transition-all bg-slate-50 px-3 py-2 rounded-xl active:scale-95"
         >
           <ArrowLeft size={16} />
-          <span>मंडळ यादीकडे मागे जा</span>
+          <span>मडंळ यादीकडे मागे जा</span>
         </button>
 
         <button 
@@ -44,6 +63,21 @@ export default function PublicTeamProfile({ team, onBack }) {
       {/* 🚩 मुख्य ब्रँडिंग कार्ड (भव्य डार्क लूक) */}
       <div className="bg-gradient-to-br from-[#0b132b] to-[#1c2541] text-white p-6 rounded-3xl shadow-md relative overflow-hidden w-full">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-[#ff6600] opacity-15 blur-3xl rounded-full"></div>
+        
+        {/* 🎯 कडक मॅपिंग: जर सुपरॲडमीन पाहत असेल, तरच उजव्या कोपऱ्यात प्रिमियम एडिट बटण दिसेल 🚀 */}
+        {isSuperAdminView && (
+          <div className="absolute top-4 right-4 z-20">
+            <button 
+              onClick={onEditClick}
+              className="bg-white/10 hover:bg-white/20 border border-white/25 text-white px-3 py-2 rounded-xl transition-all shadow-md flex items-center space-x-1.5 backdrop-blur-sm group active:scale-95 cursor-pointer"
+              title="मंडळाची संपूर्ण माहिती दुरुस्त करा"
+            >
+              <Edit2 size={13} className="group-hover:rotate-12 transition-transform text-orange-400" />
+              <span className="text-[11px] font-black tracking-wide hidden sm:inline">संपूर्ण माहिती सुधारा</span>
+              <span className="text-[11px] font-black tracking-wide sm:hidden">Edit</span>
+            </button>
+          </div>
+        )}
         
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 relative z-10 text-center sm:text-left">
           {/* मंडळाचा भव्य लोगो */}
@@ -62,7 +96,7 @@ export default function PublicTeamProfile({ team, onBack }) {
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 justify-center sm:justify-start">
               <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide text-white">{team.teamName || "संघ उपलब्ध नाही"}</h2>
               <span className={`text-[9px] font-black px-2 py-0.5 rounded-md self-center sm:self-auto ${team.teamCategory === 'Women' ? 'bg-pink-500/20 text-pink-300' : team.teamCategory === 'Both' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'}`}>
-                {team.teamCategory === 'Women' ? '👩‍👧 महिला पथक' : team.teamCategory === 'Both' ? '👨‍👩‍👦 पुरुष व महिला' : '👨‍👦 पुरुष पथक'}
+                {team.teamCategory === 'Women' ? '👩‍👧  महिला पथक' : team.teamCategory === 'Both' ? '👨‍👩‍👦  पुरुष व महिला' : '👨‍👦  पुरुष पथक'}
               </span>
             </div>
             {team.slogan && <p className="text-xs text-slate-300 italic font-medium">"{team.slogan}"</p>}
@@ -74,14 +108,14 @@ export default function PublicTeamProfile({ team, onBack }) {
         </div>
       </div>
 
-      {/* 📊 कडक अपग्रेड: ३ बॉक्स मॅट्रिक्स लेआउट (४-४-४ स्प्लिट डेस्कटॉपवर) */}
+      {/* 📊 ३ बॉक्स मॅट्रिक्स लेआउट */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 w-full items-stretch">
         
         {/* 📦 बॉक्स १: मंडळाची कुंडली व संपर्क (४ कॉलम्स) */}
         <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-4 flex flex-col justify-between w-full">
           <div className="space-y-4">
             <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide border-b pb-2 flex items-center space-x-1">
-              <FileText size={13} className="text-slate-400" /> <span>📋 मंडळाची माहिती</span>
+              <FileText size={13} className="text-slate-400" /> <span>📋  मंडळाची माहिती</span>
             </h3>
             
             <div className="space-y-4 text-xs font-bold text-slate-600">
@@ -108,7 +142,7 @@ export default function PublicTeamProfile({ team, onBack }) {
                 </div>
               )}
 
-              {/* 👥 मार्गदर्शक आणि कर्णधार डिस्प्ले */}
+              {/* मार्गदर्शक आणि कर्णधार */}
               <div className="grid grid-cols-2 gap-2 pt-1 border-t border-dashed">
                 <div>
                   <p className="text-[9px] text-slate-400 font-black uppercase flex items-center space-x-1"><User size={10}/> <span>मार्गदर्शक (Coach)</span></p>
@@ -143,7 +177,7 @@ export default function PublicTeamProfile({ team, onBack }) {
         <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-4 w-full flex flex-col justify-between">
           <div className="space-y-3.5 flex-1 flex flex-col">
             <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide border-b pb-2 flex items-center space-x-1 flex-shrink-0">
-              <Trophy size={13} className="text-amber-500" /> <span>📊 उत्सव कामगिरी व इतिहास</span>
+              <Trophy size={13} className="text-amber-500" /> <span>📊  उत्सव कामगिरी व इतिहास</span>
             </h3>
 
             <div className="bg-orange-50/40 p-2.5 rounded-xl border border-orange-100 text-xs flex-shrink-0">
@@ -159,27 +193,40 @@ export default function PublicTeamProfile({ team, onBack }) {
               </div>
             </div>
 
-            {/* थरांचे ऐतिहासिक माइलस्टोन्स */}
+            {/* 🏆 थरांचे ऐतिहासिक माइलस्टोन्स */}
             <div className="pt-2 border-t border-dashed space-y-1.5 flex-shrink-0">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">🏆 ऐतिहासिक थर रेकॉर्ड्स</span>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">🏆  ऐतिहासिक थर रेकॉर्ड्स</span>
               <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-                <div className="bg-slate-50 p-1.5 rounded-lg border"><span className="text-slate-400 font-medium">७ थर:</span> <span className="text-slate-800 font-black block truncate">{team.milestone7 || '—'}</span></div>
-                <div className="bg-slate-50 p-1.5 rounded-lg border"><span className="text-slate-400 font-medium">८ थर:</span> <span className="text-slate-800 font-black block truncate">{team.milestone8 || '—'}</span></div>
-                <div className="bg-slate-50 p-1.5 rounded-lg border"><span className="text-slate-400 font-medium">९ थर:</span> <span className="text-slate-800 font-black block truncate">{team.milestone9 || '—'}</span></div>
-                <div className="bg-slate-50 p-1.5 rounded-lg border"><span className="text-slate-400 font-medium">१० थर:</span> <span className="text-slate-800 font-black block truncate">{team.milestone10 || '—'}</span></div>
+                <div className="bg-slate-50 p-1.5 rounded-lg border">
+                  <span className="text-slate-400 font-medium">{team.teamCategory === 'Women' ? '५ थर:' : '७ थर:'}</span> 
+                  <span className="text-slate-800 font-black block truncate">{team.milestone7 || '—'}</span>
+                </div>
+                <div className="bg-slate-50 p-1.5 rounded-lg border">
+                  <span className="text-slate-400 font-medium">{team.teamCategory === 'Women' ? '६ थर:' : '८ थर:'}</span> 
+                  <span className="text-slate-800 font-black block truncate">{team.milestone8 || '—'}</span>
+                </div>
+                <div className="bg-slate-50 p-1.5 rounded-lg border">
+                  <span className="text-slate-400 font-medium">{team.teamCategory === 'Women' ? '७ थर:' : '९ थर:'}</span> 
+                  <span className="text-slate-800 font-black block truncate">{team.milestone9 || '—'}</span>
+                </div>
+                {team.teamCategory !== 'Women' && (
+                  <div className="bg-slate-50 p-1.5 rounded-lg border">
+                    <span className="text-slate-400 font-medium">१० थर:</span> 
+                    <span className="text-slate-800 font-black block truncate">{team.milestone10 || '—'}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* 📦 BOX 3: भव्य व्हर्टिकल सलामी क्षणचित्र (४ कॉलम्स - High Dynamic View 🚀) */}
+        {/* 📦 BOX 3: भव्य व्हर्टिकल सलामी क्षणचित्र */}
         <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between w-full h-full min-h-[460px] lg:min-h-[520px]">
           <div className="w-full h-full flex flex-col flex-1">
             <span className="block font-black text-slate-800 uppercase tracking-wider text-[10px] border-b pb-2 mb-3 flex-shrink-0">
-              📸 सलामी क्षणचित्र (Vertical Format)
+              📸  सलामी क्षणचित्र (Vertical Format)
             </span>
             
-            {/* उंच मानवी मनोऱ्यासाठी गडद पार्श्वभूमी आणि आस्पेक्ट रेशो लॉक */}
             <div className="flex-1 w-full rounded-2xl border border-slate-900/10 overflow-hidden bg-slate-950 shadow-inner relative min-h-[380px] lg:min-h-[440px]">
               {team.bestPerformanceUrl ? (
                 <img 

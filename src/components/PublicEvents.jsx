@@ -43,27 +43,47 @@ export default function PublicEvents() {
   // =========================================================================
   // 📡 SECTION 3: युझरचे लाईव्ह लोकेशन मिळवणे आणि LocalStorage मध्ये सेव्ह करणे
   // =========================================================================
+// =========================================================================
+  // 📡 SECTION 1: युझरचे रिअल-टाइम लाईव्ह लोकेशन ट्रॅक करणे (watchPosition 🚀)
+  // =========================================================================
   const requestUserLocation = () => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
+      console.log("🔄 [GPS] रिअल-टाइम ट्रॅकिंग सुरू झाले...");
+      
+      // watchPosition युझर हलला की आपोआप नवीन लोकेशन पुश करेल
+      const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const locData = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
             timestamp: Date.now()
           };
+          
+          // लोकल स्टोरेज आणि स्टेट दोन्ही रिअल-टाइम अपडेट होणार
           localStorage.setItem('user_current_location', JSON.stringify(locData));
-          setUserLoc(locData); // स्टेट अपडेट
-          console.log("📍 युझरचे लोकेशन लोकल स्टोरेजमध्ये सेव्ह झाले:", locData);
+          setUserLoc(locData);
+          console.log("📍 [GPS Update] युझर हलला, नवीन स्थान मिळाले:", locData);
         },
         (error) => {
-          console.log("लोकेशन परमिशन नाकारली किंवा डिव्हाइस सपोर्ट करत नाही.");
+          console.log("⚠️ लोकेशन परमिशन नाकारली किंवा GPS सिग्नल कमजोर आहे.");
+        },
+        {
+          enableHighAccuracy: true, // अचूक अंतरासाठी (GPS High Accuracy)
+          maximumAge: 10000,        // १० सेकंदांपेक्षा जुना डेटा वापरू नका
+          timeout: 5000             // ५ सेकंदात रिस्पॉन्स न आल्यास बॅकअप घ्या
         }
       );
+
+      // भविष्यात कंपोनंट अनमाऊंट झाल्यावर ट्रॅकर बंद करण्यासाठी ID विंडो लेव्हलला सेव्ह केला
+      window.currentWatchId = watchId;
     }
   };
 
+  // =========================================================================
+  // 🔄 SECTION 2: डेटा लोड आणि ऑटो-ट्रॅकर इनिशियलायझेशन (useEffect Hub)
+  // =========================================================================
   useEffect(() => {
+    // अ) सुरुवातीला लोकल स्टोरेजमध्ये आधीच सेव्ह असलेले शेवटचे स्थान लोड करा
     const savedLoc = localStorage.getItem('user_current_location');
     if (savedLoc) {
       try {
@@ -71,6 +91,12 @@ export default function PublicEvents() {
       } catch (e) { console.log("लोकेशन रिडिंग एरर:", e); }
     }
 
+    // ब) ॲप सुरू होताच बॅकग्राउंडला लाईव्ह ट्रॅकर ऑटो-स्टार्ट करणे (आधी परमिशन दिली असल्यास)
+    if (navigator.geolocation && savedLoc) {
+      requestUserLocation();
+    }
+
+    // क) मुख्य इव्हेंट्स डेटा लोड करण्याचे फंक्शन (कॅश लॉजिक जसाच्या तसा सुरक्षित)
     const fetchEvents = async () => {
       const cachedData = localStorage.getItem(CACHE_KEY);
       const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
@@ -92,7 +118,7 @@ export default function PublicEvents() {
               localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
               setEvents(freshEvents);
             }
-          } catch (e) { console.log("सिंक अडчण:", e); }
+          } catch (e) { console.log("सिंक अडचण:", e); }
         }, 1000);
         return;
       }
@@ -109,7 +135,15 @@ export default function PublicEvents() {
         setLoading(false);
       }
     };
+    
     fetchEvents();
+
+    // ड) क्लिनअप: कंपोनंट बंद झाल्यावर (Page Change झाल्यावर) बॅकग्राउंड ट्रॅकर थांबवणे
+    return () => {
+      if (window.currentWatchId) {
+        navigator.geolocation.clearWatch(window.currentWatchId);
+      }
+    };
   }, []);
 
   const getCategorizedEvents = (typeKey) => {
@@ -136,7 +170,7 @@ export default function PublicEvents() {
   };
 
   const sections = [
-    { key: 'practice_start', label: '🚀 सराव प्रारंभ इव्हेंट्स', icon: <Sparkles size={14} className="text-amber-500" /> },
+    { key: 'practice_start', label: '🚀 सराव प्रारंभ इव्हents', icon: <Sparkles size={14} className="text-amber-500" /> },
     { key: 'practice_session', label: '🎯 भव्य सराव शिबिरे', icon: <Flame size={14} className="text-orange-500" /> },
     { key: 'dahihandi_venue', label: '🏰 दहीहंडी उत्सव ठिकाणे', icon: <Award size={14} className="text-blue-500" /> },
     { key: 'competition', label: '🏆 भव्य दहिहंडी स्पर्धा', icon: <ShieldAlert size={14} className="text-yellow-500" /> }
@@ -150,9 +184,10 @@ export default function PublicEvents() {
     );
   }
 
-  // 📐 मिनी कार्ड लेआउट
+  // =========================================================================
+  // 📐 SECTION 3: मिनी कार्ड लेआउट (UI Rendering)
+  // =========================================================================
   const renderEventCard = (e, isToday) => {
-    // 🎯 बदल ४: जर पोस्टर इमेज नसेल, तर कॅटेगरीनुसार डिफॉल्ट प्रिमियम इमेज दाखवली जाईल
     const finalImg = e.posterUrl || e.photoUrl || DEFAULT_IMAGES[e.type] || DEFAULT_IMAGES.practice_session;
     return (
       <div 

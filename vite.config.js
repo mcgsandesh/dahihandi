@@ -4,7 +4,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/dahihandi/', // 👈 १. सर्वात महत्त्वाचं: हा बेस पाथ इथे हवाच!
+ // base: '/dahihandi/', // 👈 १. सर्वात महत्त्वाचं: हा बेस पाथ इथे हवाच!
+   base: '/',
   plugins: [
     react(),
     VitePWA({
@@ -19,8 +20,10 @@ export default defineConfig({
         background_color: '#f8fafc',
         display: 'standalone',
         orientation: 'portrait',
-        scope: '/dahihandi/',      // 👈 २. PWA चा एरिया ठरवण्यासाठी
-        start_url: '/dahihandi/',  // 👈 ३. ॲप ओपन झाल्यावर कोणत्या पाथने सुरू व्हावे यासाठी
+        //scope: '/dahihandi/',      // 👈 २. PWA चा एरिया ठरवण्यासाठी
+        scope: '/',      // 👈 २. PWA चा एरिया ठरवण्यासाठी
+        //start_url: '/dahihandi/',  // 👈 ३. ॲप ओपन झाल्यावर कोणत्या पाथने सुरू व्हावे यासाठी
+        start_url: '/',
         icons: [
           {
             src: 'icon-192.png',

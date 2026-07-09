@@ -168,19 +168,56 @@ export default function Dashboard({ user, onLogout }) {
   };
 
   // डेटा ओढण्याचे कोअर फंक्शन
+// =========================================================================
+  // ⚡ SMART HYBRID ENGINE: IndexedDB कॅश मेमरी + सर्व्हेर बॅकअप (Reads सेव्हर 🚀)
+  // =========================================================================
   const fetchTeams = async () => {
     try {
+      console.log("🔍 [Smart Fetch]: आधी ब्राउझरच्या IndexedDB कॅशमध्ये डेटा शोधत आहे...");
+      
       const adminQuery = query(collection(db, "users"), where("role", "==", "admin"));
       let querySnapshot;
+
       try {
+        // १. आधी स्थानिक IndexedDB ऑफलाइन कॅशमधून डेटा ओढण्याचा प्रयत्न करणे (0 Reads ⚡)
         querySnapshot = await getDocsFromCache(adminQuery);
+        
+        if (querySnapshot.empty) {
+          throw new Error("लोकल कॅश रिकामा आहे");
+        }
+        console.log("⚡ [IndexedDB Match]: सर्व संघांचा डेटा स्थानिक कॅशमधून यशस्वीरित्या ओढला!");
+        
       } catch (cacheErr) {
-        querySnapshot = await getDocs(adminQuery);
+        // २. जर लोकल कॅश रिकामा असेल किंवा पहिल्यांदा लॉगिन केले असेल, तरच थेट सर्व्हेरवरून फ्रेश डेटा आणणे
+        console.warn("🌐 [Cache Missing/First Login]: लोकल कॅशमध्ये डेटा नाही. सर्व्हेरवरून फ्रेश कॉपी आणत आहे...");
+        
+        querySnapshot = await getDocs(adminQuery); // 👈 यामुळे एकदाच सर्व्हेर रीड्स होतील आणि डेटा IndexedDB मध्ये सेव्ह होईल
+        console.log("📥 [Server Sync Success]: सर्व्हेरचा फ्रेश डेटा ब्राउझरच्या IndexedDB ऑफलाइन मेमरीमध्ये सुरक्षित साठवला!");
       }
+
       const teams = [];
-      querySnapshot.forEach((doc) => { teams.push({ id: doc.id, ...doc.data() }); });
+      querySnapshot.forEach((doc) => { 
+        teams.push({ id: doc.id, ...doc.data() }); 
+      });
+
       setTeamsList(teams);
-    } catch (err) { console.error("❌ डेटा लोड करताना एरर आला:", err); }
+      console.log(`📊 एकूण ${teams.length} संघ डॅशबोर्ड मेमरीमध्ये रेडी आहेत.`);
+
+    } catch (err) { 
+      console.error("❌ डेटा लोड करताना कडक एरर आला भाऊ:", err);
+      
+      // 🚨 लाईव्ह वेबसाईटवर डेटा न दिसण्याचे मूळ कारण शोधण्यासाठी अलर्ट
+      if (err.message.includes("permission-denied")) {
+        Swal.fire({
+          icon: 'error',
+          title: 'सुरक्षा नियम लॉक आहेत! 🔐',
+          text: 'फायरबेस Firestore Rules मध्ये सुपरॲडमीनला "read" ची परवानगी नाहीये भाऊ. नियम तपासा.',
+          confirmButtonColor: '#ff6600'
+        });
+      } else if (err.message.includes("index")) {
+        console.log("🔗 फायरबेस इंडेक्स लिंक कन्सोलमध्ये तपासा.");
+      }
+    }
   };
 
   useEffect(() => { fetchTeams(); }, []);

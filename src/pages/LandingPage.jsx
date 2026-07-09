@@ -26,7 +26,54 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
   const [currentEventSlide, setCurrentEventSlide] = useState(0);
   const [hoveredPhoto, setHoveredPhoto] = useState(null); 
   
-  const [stats] = useState({ totalTeams: 472, menTeams: 459, womenTeams: 13, districts: 28 });
+// 📊 तुमच्या PublicStats चा थेट उपयोग करणारे लँडिंग पेज स्टेट्स इंजिन ⚡
+  const [stats, setStats] = useState({ totalTeams: 0, menTeams: 0, womenTeams: 0, districts: 0 });
+
+  useEffect(() => {
+    const calculateStatsFromCache = async () => {
+      try {
+        const CACHE_KEY = 'govinda_public_directory';
+        const cachedData = localStorage.getItem(CACHE_KEY);
+
+        // 🎯 १. जर 'गोविंदा कट्टा' किंवा 'PublicStats' ने आधीच डेटा आणून ठेवला असेल, तर तिथूनच उचल (0 Reads!)
+        if (cachedData) {
+          const allTeams = JSON.parse(cachedData);
+          
+          const total = allTeams.length;
+          const men = allTeams.filter(t => t.teamCategory === 'Men' || t.teamCategory === 'Both').length;
+          const women = allTeams.filter(t => t.teamCategory === 'Women').length;
+          const uniqueDistricts = [...new Set(allTeams.map(t => t.district).filter(Boolean))].length;
+
+          setStats({ totalTeams: total, menTeams: men, womenTeams: women, districts: uniqueDistricts });
+        } 
+        // 🎯 २. जर लोकल स्टोरेज पूर्णपणे रिकामा असेल, तरच सर्व्हेरच्या लाईव्ह कॅशमधून फक्त १ सुरक्षित Read मारणे
+        else {
+          const cacheDocRef = doc(db, "public_site_cache", "live_directory");
+          const docSnap = await getDoc(cacheDocRef);
+
+          if (docSnap.exists()) {
+            const cacheData = docSnap.data();
+            const allTeams = cacheData.teams || [];
+
+            const total = allTeams.length;
+            const men = allTeams.filter(t => t.teamCategory === 'Men' || t.teamCategory === 'Both').length;
+            const women = allTeams.filter(t => t.teamCategory === 'Women').length;
+            const uniqueDistricts = [...new Set(allTeams.map(t => t.district).filter(Boolean))].length;
+
+            setStats({ totalTeams: total, menTeams: men, womenTeams: women, districts: uniqueDistricts });
+
+            // लगेच डेटा लोकल स्टोरेजमध्ये साठवून ठेवणे जेणेकरून पुढच्या वेळी Reads वाचतील
+            localStorage.setItem(CACHE_KEY, JSON.stringify(allTeams));
+            localStorage.setItem('govinda_directory_time', Date.now().toString());
+          }
+        }
+      } catch (err) {
+        console.error("❌ लँडिंग पेजवर कॅश रीड करताना एरर आला भाऊ:", err);
+      }
+    };
+
+    calculateStatsFromCache();
+  }, []);
 
   // 🔄 १. ऑटो-स्क्रोल टायमर्स
   useEffect(() => {
@@ -169,13 +216,21 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
     <div className="min-h-screen bg-[#050811] text-white font-sans flex flex-col justify-between selection:bg-orange-600 overflow-x-hidden relative">
       <div className="absolute inset-0 bg-cover bg-center opacity-[0.05] pointer-events-none mix-blend-color-dodge" style={{ backgroundImage: `url(${loginBgImg})` }}></div>
 
-      {/* 1️⃣ हेडर विभाग */}
+ {/* 1️⃣ हेडर विभाग (वेलांटी आणि अनुस्वार कटिंग फिक्स 🚀) */}
       <header className="w-full border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 px-4 md:px-8 py-4 flex justify-between items-center">
-        <div className="flex items-center space-x-3">
-          <img src={logoIcon} alt="Logo" className="w-9 h-9 object-contain rounded-xl" />
-          <div className="text-left">
-            <h1 className="text-lg md:text-xl font-black bg-gradient-to-r from-white via-slate-100 to-orange-500 bg-clip-text text-transparent leading-none">{c.title}</h1>
-            <span className="text-[10px] font-bold text-orange-500 tracking-wider mt-1 block">{c.subtitle}</span>
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+          {/* मंडळाचा लोगो */}
+          <img src={logoIcon} alt="Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-xl flex-shrink-0" />
+          
+          <div className="text-left py-0.5 min-w-0">
+            {/* 🎯 फिक्स: text-sm (मोबाईलवर लहान) आणि md:text-xl (डेस्कटॉपवर मोठा) केला. 
+                whitespace-nowrap मुळे नाव मोबाईलवर कधीच दोन ओळीत तुटणार नाही आणि एकाच लाईनमध्ये बसेल! */}
+            <h1 className="text-sm md:text-xl font-black bg-gradient-to-r from-white via-slate-100 to-orange-500 bg-clip-text text-transparent leading-normal tracking-wide whitespace-nowrap">
+              {c.title}
+            </h1>
+            <span className="text-[9px] md:text-[10px] font-bold text-orange-500 tracking-wider mt-0.5 block truncate">
+              {c.subtitle}
+            </span>
           </div>
         </div>
 
@@ -184,7 +239,9 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
             <button onClick={() => setLang('mr')} className={`px-2.5 py-0.5 rounded-lg transition-all ${lang === 'mr' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}>मराठी</button>
             <button onClick={() => setLang('en')} className={`px-2.5 py-0.5 rounded-lg transition-all ${lang === 'en' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}>EN</button>
           </div>
-          <button onClick={handleLogin} className="text-slate-400 hover:text-orange-500 text-[11px] font-black transition-all border border-slate-800 bg-slate-900/50 px-3 py-1.5 rounded-xl">{c.adminCorner}</button>
+          <button onClick={handleLogin} className="text-slate-400 hover:text-orange-500 text-[11px] font-black transition-all border border-slate-800 bg-slate-900/50 px-3 py-1.5 rounded-xl flex items-center space-x-1">
+            <span>{c.adminCorner}</span>
+          </button>
         </div>
       </header>
 
@@ -317,7 +374,7 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
                       <a href={targetLink} target="_blank" rel="noreferrer" className="w-full h-full block relative">
                         <img src={currentImg} alt="Event Poster" className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-102" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <span className="bg-orange-600 text-white font-black text-[10px] px-3 py-1.5 rounded-xl shadow-lg">🚩 पेजवर मूळ貼 पोस्ट पहा</span>
+                          <span className="bg-orange-600 text-white font-black text-[10px] px-3 py-1.5 rounded-xl shadow-lg">🚩 पेजवर मूळ पोस्ट पहा</span>
                         </div>
                       </a>
                     );

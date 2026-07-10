@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, BarChart3, BookOpen, Menu, X, ArrowLeft, Megaphone, Calendar, Trophy } from 'lucide-react';
+import { Users, BarChart3, BookOpen, Menu, X, ArrowLeft, Megaphone, Calendar, Trophy, LogOut } from 'lucide-react';
 
 // 🎯 कॉम्पोनेंट्स यशस्वीरित्या इम्पोर्ट केले
 import PublicDirectory from '../components/PublicDirectory';
@@ -11,9 +11,9 @@ import PublicEvents from '../components/PublicEvents';
 import PublicRecords from '../components/PublicRecords';
 
 // initialTab प्रोप लँडिंग पेजवरून डायरेक्ट नेव्हिगेशनसाठी अत्यंत महत्त्वाचा आहे
-export default function PublicDashboard({ onBackToAdmin, initialTab = 'directory' }) {
+export default function PublicDashboard({ handleLogin, onBackToAdmin, initialTab = 'directory' }) {
   
-  // 🔄 सुरुवातीचा टॅब सेट करताना प्रोप आणि लोकल स्टोरेज दोन्ही सुरक्षितपणे तपासणे
+  // 🔄 सुरुवातीचा टॅबसेट करताना प्रोप आणि लोकल स्टोरेज दोन्ही सुरक्षितपणे तपासणे
   const [currentTab, setCurrentTab] = useState(() => {
     const savedTab = localStorage.getItem('active_public_tab');
     if (savedTab) {
@@ -42,12 +42,12 @@ export default function PublicDashboard({ onBackToAdmin, initialTab = 'directory
     { id: 'directory', label: 'गोविंदा कट्टा', icon: <Users size={18} /> },
     { id: 'stats', label: 'उत्सव आकडेवारी', icon: <BarChart3 size={18} /> },
     { id: 'rules', label: 'उत्सव नियमावली', icon: <BookOpen size={18} /> },
-    { id: 'public_news', label: '📢 ताज्या घडामोडी', icon: <Megaphone size={18} /> },
-    { id: 'public_events', label: '📅 उत्सव व सराव कट्टा', icon: <Calendar size={18} /> },
-    { id: 'public_records', label: '🏆 ऐतिहासिक रेकॉर्ड्स', icon: <Trophy size={18} /> }
+    { id: 'public_news', label: 'ताज्या घडामोडी', icon: <Megaphone size={18} /> },
+    { id: 'public_events', label: 'उत्सव व सराव कट्टा', icon: <Calendar size={18} /> },
+    { id: 'public_records', label: 'ऐतिहासिक रेकॉर्ड्स', icon: <Trophy size={18} /> }
   ];
 
-  // 📱 २. मोबाईल बॉटम बारसाठी तुम्ही सांगितलेले फक्त ४ स्पेसिफिक प्रिमियम मेनू
+  // 📱 २. मोबाईल बॉटम बारसाठी तुम्ही सांगितलेले फक्त ४專 प्रिमियम मेनू
   const mobileBottomItems = [
     { id: 'directory', label: 'गोविंदा कट्टा', icon: <Users size={18} /> },
     { id: 'stats', label: 'आकडेवारी', icon: <BarChart3 size={18} /> },
@@ -55,11 +55,27 @@ export default function PublicDashboard({ onBackToAdmin, initialTab = 'directory
     { id: 'public_records', label: 'रेकॉर्ड्स', icon: <Trophy size={18} /> }
   ];
 
+  // 🚪 कॉमन सुरक्षित लॉगआऊट मॅकेनिझम (Code Duplication टाळण्यासाठी)
+  const handleSystemLogout = () => {
+    // १. लोकल स्टोरेज पूर्ण क्लीनअप 🧹
+    localStorage.removeItem('govinda_user');
+    localStorage.removeItem('govinda_guest');
+    localStorage.removeItem('active_public_tab');
+    
+    // २. फायरबेस अधिकृत साईन आऊट 🔐
+    import('../firebase').then(({ auth }) => {
+      auth.signOut().then(() => {
+        // ३. ॲप पूर्ण रिफ्रेश करून होम स्क्रीनवर नेणे
+        window.location.href = window.location.origin + import.meta.env.BASE_URL;
+      });
+    });
+  };
+
   // 🔄 टॅब बदलल्यावर अचूक कॉम्पोनेंट रेंडर करणे
   const renderTabContent = () => {
     switch (currentTab) {
       case 'directory':
-        return <PublicDirectory />;
+        return <PublicDirectory handleLogin={handleLogin} />;
       case 'stats':
         return <PublicStats />;
       case 'rules':
@@ -71,15 +87,15 @@ export default function PublicDashboard({ onBackToAdmin, initialTab = 'directory
       case 'public_records':
         return <PublicRecords />;
       default:
-        return <PublicDirectory />;
+        return <PublicDirectory handleLogin={handleLogin} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f6f9] flex flex-col md:flex-row font-sans antialiased select-none">
+    <div className="min-h-screen bg-[#f4f6f9] flex flex-col md:flex-row font-sans antialiased select-none relative">
       
-      {/* 📱 १. मोबाईल हेडर (Premium Dynamic Look) */}
-      <div className="md:hidden bg-[#0b132b] text-white px-4 py-3 flex items-center justify-between shadow-md z-30">
+      {/* 📱 १. मोबाईल हेडर (Premium Dynamic Look - No Autologout Fix आवृत्ती) */}
+      <div className="md:hidden bg-[#0b132b] text-white px-4 py-3 flex items-center justify-between shadow-md z-30 sticky top-0">
         <div className="flex flex-col text-left">
           <span className="text-base font-black tracking-wide">
             महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
@@ -89,8 +105,13 @@ export default function PublicDashboard({ onBackToAdmin, initialTab = 'directory
           </span>
         </div>
         <div className="flex items-center space-x-2">
+          {/* 🎯 फिक्स: युझर जर लॉगिन असेल तर मोबाईल बॅक अ‍ॅरो दाबल्यावर तो लॉगआऊट होणार नाही, थेट सामान्य बॅक होईल! */}
           {onBackToAdmin && (
-            <button onClick={onBackToAdmin} className="p-1 text-slate-300 hover:text-white" title="डॅशबोर्डवर परत जा">
+            <button 
+              onClick={localStorage.getItem('govinda_user') ? onBackToAdmin : onBackToAdmin} 
+              className="p-1 text-slate-300 hover:text-white transition-transform active:scale-90" 
+              title="मागे जा"
+            >
               <ArrowLeft size={20} />
             </button>
           )}
@@ -101,10 +122,10 @@ export default function PublicDashboard({ onBackToAdmin, initialTab = 'directory
         </div>
       </div>
 
-      {/* 🏢 २. डावा साइडबार (डेस्कटॉप आणि मोबाईल ड्रॉवरसाठी) */}
-      <div className={`fixed inset-y-0 left-0 w-64 bg-[#0b132b] text-white p-6 flex flex-col justify-between z-40 transform transition-transform duration-300 ease-in-out md:relative md:transform-none ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div>
-          <div className="mb-8 border-b border-slate-800/60 pb-4 text-left">
+      {/* 🏢 २. डावा साइडबार (🎯 डेस्कटॉप स्टिकी टॉप फिक्स: h-screen आणि sticky मुळे बटण कधीच खाली जाणार नाही) */}
+      <div className={`fixed inset-y-0 left-0 w-64 bg-[#0b132b] text-white p-6 flex flex-col justify-between z-40 transform transition-transform duration-300 ease-in-out md:sticky md:top-0 md:h-screen md:transform-none ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <div className="flex flex-col flex-grow overflow-y-auto scrollbar-none">
+          <div className="mb-6 border-b border-slate-800/60 pb-4 text-left flex-shrink-0">
             <h2 className="text-lg font-black tracking-wide text-white">
               महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
             </h2>
@@ -114,12 +135,12 @@ export default function PublicDashboard({ onBackToAdmin, initialTab = 'directory
           </div>
 
           {/* मेनू बटन्स - यात ६ चे ६ पर्याय नेहमी नीट दिसतील */}
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 flex-grow">
             {menuItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => { setCurrentTab(item.id); setIsMobileMenuOpen(false); }}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-bold text-sm transition-all text-left ${
+                className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl font-bold text-sm transition-all text-left ${
                   currentTab === item.id 
                     ? 'bg-[#ff6600] text-white shadow-md shadow-[#ff6600]/20' 
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
@@ -132,22 +153,48 @@ export default function PublicDashboard({ onBackToAdmin, initialTab = 'directory
           </div>
         </div>
 
-        {/* डॅशबोर्डवर बॅक जाण्यासाठी बटण */}
-        {onBackToAdmin && (
-          <button 
-            onClick={onBackToAdmin} 
-            className="w-full flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-white py-2.5 rounded-xl text-xs font-bold transition-all border border-slate-700"
-          >
-            <ArrowLeft size={14} /><span>डॅशबोर्डवर परत जा</span>
-          </button>
-        )}
+{/* 🎯 डेस्कटॉप आणि मोबाईल ड्रॉवर तळाचा बटन विभाग (Session Kill फिक्स आवृत्ती 🚀) */}
+        <div className="pt-4 border-t border-slate-800/60 flex-shrink-0 mt-auto bg-[#0b132b]">
+          {localStorage.getItem('govinda_user') ? (
+            <div className="space-y-2">
+              {/* १. लॉगआऊट बटन - हे सेशन किल करेल (जसेच्या तसे सुरक्षित) */}
+              <button 
+                onClick={handleSystemLogout} 
+                className="w-full flex items-center justify-center space-x-2 bg-red-600/90 hover:bg-red-700 text-white py-2.5 rounded-xl text-xs font-black transition-all shadow-md shadow-red-600/10 active:scale-98"
+              >
+                <LogOut size={13} />
+                <span>🚪 लॉगआऊट (Logout)</span>
+              </button>
+              
+              {/* २. होम पेजवर जा बटन - 🎯 फिक्स: यावर क्लिक केल्यास सेशन किल होणार नाही, युझर लॉगिनच राहील! */}
+              {onBackToAdmin && (
+                <button 
+                  onClick={onBackToAdmin} 
+                  className="w-full flex items-center justify-center space-x-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white py-2 rounded-xl text-[11px] font-black transition-all border border-slate-800/80 active:scale-98"
+                >
+                  <ArrowLeft size={12} /><span>होम पेजवर जा</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            // जर तो विना-लॉगिन नॉर्मल गेस्ट म्हणून आला असेल, तर तुमचे नेहमीचे बटन
+            onBackToAdmin && (
+              <button 
+                onClick={onBackToAdmin} 
+                className="w-full flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-white py-2.5 rounded-xl text-xs font-bold transition-all border border-slate-700 active:scale-98"
+              >
+                <ArrowLeft size={14} /><span>डॅशबोर्डवर परत जा</span>
+              </button>
+            )
+          )}
+        </div>
       </div>
 
       {/* मोबाईल साइडबार बॅकग्राउंड लेयर */}
-      {isMobileMenuOpen && <div onClick={() => setIsMobileMenuOpen(false)} className="fixed inset-0 bg-black/50 z-30 md:hidden"></div>}
+      {isMobileMenuOpen && <div onClick={() => setIsMobileMenuOpen(false)} className="fixed inset-0 bg-black/60 z-30 md:hidden backdrop-blur-sm"></div>}
 
       {/* 🖥️ ३. मुख्य कार्यक्षेत्र */}
-      <div className="flex-1 p-4 md:p-6 overflow-y-auto z-10 w-full pb-24 md:pb-6">
+      <div className="flex-1 p-4 md:p-6 overflow-y-auto z-10 w-full pb-24 md:pb-6 max-h-screen">
         <div className="w-full space-y-4">
           
           {/* हेडर टायटल (Desktop) */}
@@ -185,6 +232,12 @@ export default function PublicDashboard({ onBackToAdmin, initialTab = 'directory
           </button>
         ))}
       </div>
+
+      {/* अतिरिक्त CSS पॅच (इन्जेक्टेड स्क्रोलबार हाइडिंग) */}
+      <style>{`
+        .scrollbar-none::-webkit-scrollbar { display: none; }
+        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
 
     </div>
   );

@@ -1,9 +1,9 @@
 {
   "name": "dahihandi",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.2",
   "type": "module",
-  "homepage": "https://sandeshmahadik.github.io/dahihandi/",
+  "homepage": "https://mcgsandesh.github.io/dahihandi/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

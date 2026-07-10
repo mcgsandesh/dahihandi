@@ -8,6 +8,12 @@ import PublicRegister from './pages/PublicRegister.jsx';
 import SplashScreen from './pages/SplashScreen'; 
 import LandingPage from './pages/LandingPage';
 
+import AboutUs from './pages/AboutUs';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsAndConditions from './pages/TermsAndConditions';
+import FAQAndManual from './pages/FAQAndManual';
+
+
 // 🎯 पब्लिक डॅशबोर्ड इम्पॉर्ट
 import PublicDashboard from './pages/PublicDashboard';
 
@@ -16,6 +22,8 @@ import loginBgImg from '/login-bg.png';
 
 import Reports from './components/Reports';
 import TeamProfile from './components/TeamProfile';
+
+
 
 export default function App() {
   // 🌐 पब्लिक लिंक डिटेक्शन (सुरक्षित जसेच्या तसे)
@@ -32,11 +40,14 @@ export default function App() {
   // 🎯 विना-लॉगिन युझर ट्रॅक करण्यासाठी स्टेट
   const [isGuest, setIsGuest] = useState(false);
 
- // 🎯 लँडिंग पेजवरून येणारा नेमका टॅब ट्रॅक करण्यासाठी नवीन स्टेट
+  // 🎯 लँडिंग पेजवरून येणारा नेमका टॅब ट्रॅक करण्यासाठी नवीन स्टेट
   const [publicActiveTab, setPublicActiveTab] = useState('directory');
 
   // 🎯 कडक बदल १: थेट लिंकवरून आलेल्या विना-लॉगिन युझरचा स्लॅग ट्रॅक करण्यासाठी स्टेट
   const [directViewSlug, setDirectViewSlug] = useState(null);
+
+  // 🎯 लँडिंग पेजवरून ही पेजेस उघडण्यासाठी स्टेट
+const [currentPublicPage, setCurrentPublicPage] = useState(null); // 'about', 'privacy', 'terms', 'faq' किंवा null
 
   // ==========================================
   // 🔍 DEEP ROUTING DIAGNOSTICS & CORE LOGGER
@@ -52,14 +63,12 @@ export default function App() {
     console.log("❓ Search Query:", rawSearch);
     console.log("🔑 Token Detected:", rawSearch.includes('t=') ? "YES (Valid Token)" : "NO");
     
-    // 🎯 चेक १: गिटहब पेजेसचा रीडायरेक्ट पॅरामीटर आला आहे का?
     if (rawSearch.includes('p=')) {
       console.log("🚀 [ROUTING DETECTED] GitHub Pages 404 Redirect Hook Active!");
       const urlParams = new URLSearchParams(rawSearch);
       console.log("📦 Parsed 'p' Parameter Route:", urlParams.get('p'));
     }
 
-    // 🎯 चेक २: पब्लिक रजिस्टर रूट अचूक ट्रिगर होतोय का?
     if (rawPath.includes('/register')) {
       console.log("🚩 [ROUTE MATCH] Render Target: <PublicRegister /> Component triggered!");
     } else if (rawPath.includes('/view')) {
@@ -74,23 +83,19 @@ export default function App() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 3000);
+    }, 1500);
     return () => clearTimeout(timer);
   }, []);
 
-  // 🎯 कडक बदल २: ॲप सुरू होताच यूआरएल मध्ये '/view' आहे का हे तपासणे
-  // जर लॉगिन नसलेला युझर थेट लिंकवरून आला, तर त्याला 'Guest Mode' मध्ये डॅशबोर्डकडे पाठवणे
-// 🎯 कडक बदल: जर लॉगिन नसलेला युझर थेट लिंकवरून प्रोफाइल उघडायचा प्रयत्न करेल
+  // यूआरएल मध्ये '/view' आहे का हे तपासणे
   useEffect(() => {
     const path = window.location.pathname;
     if (path.includes('/view')) {
       const isUserLoggedIn = localStorage.getItem('govinda_user');
       
       if (!isUserLoggedIn) {
-        // जर तो लॉगिन नसेल, तर त्याला थेट होम स्क्रीनवर (लॉगिन) हाकलून लावणे आणि अलर्ट देणे
         localStorage.removeItem('govinda_guest');
         
-        // १ सेकंदाचा टायमर जेणेकरून स्प्लॅश स्क्रीन संपल्यावर मेसेज दिसेल
         setTimeout(() => {
           Swal.fire({
             icon: 'warning',
@@ -103,7 +108,6 @@ export default function App() {
 
         window.history.pushState({}, '', window.location.origin + import.meta.env.BASE_URL);
       } else {
-        // जर तो ऑलरेडी लॉगिन असेल, तर गेस्ट मोड ऑन करून डायरेक्ट डॅशबोर्डवर नेणे
         const cleanSlug = path.replace('/view', '').replace(/\//g, '');
         if (cleanSlug) {
           setDirectViewSlug(cleanSlug);
@@ -113,23 +117,16 @@ export default function App() {
     }
   }, []);
 
-  // localStorage मधून युजर लोड करणे आणि Real-time ब्लॉक चेक करणे (सुरक्षित जसेच्या तसे)
+  // localStorage मधून युजर लोड करणे आणि Real-time ब्लॉक चेक करणे
   useEffect(() => {
     const savedUser = localStorage.getItem('govinda_user');
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
       setUser(parsedUser);
 
-      // 🛡️ REAL-TIME SECURITY LOCK
-      if (parsedUser.teamUID || parsedUser.info?.email) {
-        let userDocRef;
-        
-        if (parsedUser.teamUID) {
-          userDocRef = doc(db, "users", parsedUser.teamUID);
-        } else {
-          const emailLower = parsedUser.info.email.toLowerCase();
-          userDocRef = doc(db, "users", emailLower);
-        }
+      // 🛡️ REAL-TIME SECURITY LOCK (फक्त जे खरे ॲडमीन आहेत त्यांच्यासाठीच)
+      if (parsedUser.teamUID && parsedUser.role !== 'guest') {
+        let userDocRef = doc(db, "users", parsedUser.teamUID);
         
         const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -138,7 +135,7 @@ export default function App() {
             if (dbData.isDeleted === true) {
               Swal.fire({
                 title: 'अकाउंट बंद केले आहे!',
-                text: 'सुपरॲдमीनने तुमचे अकाउंट डीॲक्टिव्हेट केले आहे. तुम्ही आता सिस्टीम वापरू शकत नाही.',
+                text: 'सुपरॲдमीनने तुमचे account डीॲक्टिव्हेट केले आहे.',
                 icon: 'error',
                 confirmButtonColor: '#ff6600',
                 confirmButtonText: 'ठीक आहे'
@@ -155,7 +152,6 @@ export default function App() {
         return () => unsubscribe();
       }
     } else {
-      // जर मुख्य लॉगिन नसेल, तर लोकल स्टोरेजमधील मूळ गेस्ट स्टेटस तपासणे
       const savedGuestStatus = localStorage.getItem('govinda_guest');
       if (savedGuestStatus === 'true') {
         setIsGuest(true);
@@ -163,20 +159,19 @@ export default function App() {
     }
   }, []);
 
-  // गुगलने लॉगिन झाल्यावर डेटाबेसमधील रोल चेक करणे (सुरक्षित जसेच्या तसे)
-const checkUserStatus = async (googleUser) => {
+  // गुगलने लॉगिन झाल्यावर डेटाबेसमधील रोल चेक करणे
+  const checkUserStatus = async (googleUser) => {
     try {
       const emailLower = googleUser.email.toLowerCase();
       const usersRef = collection(db, "users");
       
-      // 🔒 १. फ्रेश डेटाबेस क्वेरी (जुन्या लोकल स्टोरेजला बायपास करून थेट Firestore मधून शोधणे)
       const q = query(usersRef, where("admins", "array-contains", emailLower));
       const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
         const userDoc = querySnapshot.docs[0];
         const dbData = userDoc.data();
-        const teamUID = userDoc.id; // हा फ्रेश टीमचा आयडी मिळेल (उदा. Team B चा आयडी)
+        const teamUID = userDoc.id;
 
         if (dbData.isDeleted === true) {
           Swal.fire({
@@ -194,7 +189,6 @@ const checkUserStatus = async (googleUser) => {
 
         const isSuper = dbData.role === "superadmin";
 
-        // 🎯 २. नवीन फ्रेश ऑब्जेक्ट तयार करणे
         const freshUserObj = {
           ...dbData, 
           teamUID: teamUID, 
@@ -207,10 +201,7 @@ const checkUserStatus = async (googleUser) => {
           teamName: dbData.teamName || (isSuper ? "मुख्य सुपरॲडमीन पॅनल" : "नॉन-रजिस्टर संघ"),
           uid: dbData.uid || teamUID,
           currentYear: dbData.currentYear || '2026',
-          
-          // 🛑 कडक बदल: फक्त सुपरॲडमीनला सक्ती बंद (true), सामान्य ॲडमीनला डेटाबेसनुसार (false/true) सक्ती दिसेल!
           isProfileComplete: isSuper ? true : (dbData.isProfileComplete || false),
-          
           allowInAppForm: dbData.allowInAppForm !== false, 
           teamCategory: dbData.teamCategory || 'Men',
           address: dbData.address || '',
@@ -220,21 +211,27 @@ const checkUserStatus = async (googleUser) => {
           isDeleted: dbData.isDeleted || false 
         };
 
-        // 🔥 ३. लोकल स्टोरेजला नवीन टीमच्या डेटाने सक्तीने रिप्लेस करणे! (कॅश मेमरी फिक्स ⚡)
         localStorage.setItem('govinda_user', JSON.stringify(freshUserObj));
-
         return freshUserObj;
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'प्रवेश नाकारला! 🛑',
-          text: 'तुमचा ईमेल आयडी सिस्टीममध्ये नोंदणीकृत नाही. कृपया सुपरॲडमीनकडून तुमचा संघ रजिस्टर करून घ्या!',
-          confirmButtonColor: '#ff6600',
-          customClass: { popup: 'rounded-3xl' }
-        });
-        await auth.signOut();
-        localStorage.removeItem('govinda_user');
-        return null;
+      } 
+      
+      // 🎯 मूळ फिक्स: ईमेल आयडी डेटाबेसमध्ये नसेल, तर एरर न दाखवता त्याला थेट गेस्ट म्हणून आत सोडा!
+      else {
+        console.log("🚩 [GUEST ROUTE] External email logged in. Routing to Guest session.");
+        
+        localStorage.setItem('govinda_guest', 'true');
+        
+        const guestUserObj = {
+          role: "guest",
+          info: {
+            displayName: googleUser.displayName,
+            email: googleUser.email,
+            photoURL: googleUser.photoURL
+          }
+        };
+        
+        localStorage.setItem('govinda_user', JSON.stringify(guestUserObj));
+        return guestUserObj;
       }
     } catch (err) {
       console.error("Status check error:", err);
@@ -252,8 +249,24 @@ const checkUserStatus = async (googleUser) => {
       if (fullUserData) {
         setUser(fullUserData);
         localStorage.setItem('govinda_user', JSON.stringify(fullUserData));
-        localStorage.removeItem('govinda_guest');
-        setIsGuest(false);
+        
+        if (fullUserData.role === "guest") {
+          setIsGuest(true);
+          localStorage.setItem('govinda_guest', 'true');
+        } else {
+          localStorage.removeItem('govinda_guest');
+          setIsGuest(false);
+        }
+
+        const path = window.location.pathname;
+        if (path.includes('/view')) {
+          const cleanSlug = path.replace('/view', '').replace(/\//g, '');
+          if (cleanSlug) {
+            setDirectViewSlug(cleanSlug);
+            setIsGuest(true);
+            localStorage.setItem('govinda_guest', 'true');
+          }
+        }
       }
     } else {
       setError(result.error || 'लॉगिन करताना काहीतरी त्रुटी आली.');
@@ -261,26 +274,72 @@ const checkUserStatus = async (googleUser) => {
     loading_status_set(false);
   };
 
-// 🚀 सुधारित फंक्शन: जे टॅबचे नाव स्वीकारून युझरला थेट तिथेच घेऊन जाईल
-  const handleExploreAsGuest = (targetTab = 'directory') => {
-    console.log(`🎯 [App.jsx] युझरला थेट टॅबवर नेव्हिगेट करत आहे: ${targetTab}`);
+const handleExploreAsGuest = (targetTab = 'directory') => {
+    console.log("=== 🔍 GOVINDA KATTA EXPLORE LOG START ===");
+    console.log(`1. Target Tab received: ${targetTab}`);
+    console.log("2. Current isGuest state before reset:", isGuest);
+
+    // 🎯 री-रेंडर फोर्स करण्यासाठी आधी स्टेट तात्पुरती false केली
+    setIsGuest(false);
     
-    // १. रिॲक्ट स्टेट तात्काळ अपडेट करा
     setPublicActiveTab(targetTab);
-    setIsGuest(true);
-    
-    // २. बॅकअप म्हणून लोकल स्टोरेजमध्ये लॉक करा
     localStorage.setItem('govinda_guest', 'true');
     localStorage.setItem('active_public_tab', targetTab);
+    console.log("3. LocalStorage values updated safely.");
+
+    // 🎯 मायक्रो-टाईमआऊट देऊन स्टेट पुन्हा true केली जेणेकरून रिॲक्ट रेंडर ट्रिगर करेल
+    setTimeout(() => {
+      setIsGuest(true);
+      console.log("4. isGuest state forced to TRUE for screen re-render.");
+      console.log("=== 🔍 GOVINDA KATTA EXPLORE LOG END ===");
+    }, 10);
   };
 
-  // गेस्ट मोडमधून बाहेर पडणे
   const handleExitGuestMode = () => {
+    console.log("=== 🛠️ GOVINDA APP FINAL FIX EXECUTION ===");
+    
+    // १. गेस्ट स्टेट आणि तात्पुरते स्टोरेज साफ
     setIsGuest(false);
     setDirectViewSlug(null);
     localStorage.removeItem('govinda_guest');
-    // यूआरएल पुन्हा मूळ होम रूटवर क्लीन करणे
-    window.history.pushState({}, '', window.location.origin + import.meta.env.BASE_URL);
+
+    const isActualUser = localStorage.getItem('govinda_user');
+    
+    if (!isActualUser) {
+      // जर लॉगिन नसेल तर पूर्ण क्लीनअप
+      localStorage.removeItem('govinda_user');
+      setUser(null);
+    } else {
+      console.log("🚩 युझर लॉगिन आहे, रोल अपडेट करून बाहेर काढत आहे...");
+      
+      try {
+        const parsedUser = JSON.parse(isActualUser);
+        
+        // 🎯 मॅजिक फिक्स १: युझर ऑब्जेक्टमधील 'role' बदलून तो रिकामी किंवा 'viewer' करा!
+        // यामुळे App.jsx मधील (user.role === 'guest') ही अट तात्काळ ब्रेक (False) होईल!
+        parsedUser.role = 'authenticated_viewer'; 
+        
+        // लोकल स्टोरेजमध्येही हा बदल अपडेट करा जेणेकरून पुढच्या वेळी अडचण येणार नाही
+        localStorage.setItem('govinda_user', JSON.stringify(parsedUser));
+        
+        // स्टेट अपडेट करा
+        setUser(parsedUser);
+        console.log("🎯 User role updated to clear PublicDashboard block!");
+      } catch (e) {
+        console.error("❌ User parse error:", e);
+      }
+    }
+    
+    // 🎯 मॅजिक फिक्स २: जर तुमच्या सिस्टीममध्ये 'showReports' किंवा इतर कोणतीही डॅशबोर्ड स्टेट असेल,
+    // तर ती इथे फॉल्स (false) करा जेणेकरून युझर थेट मुख्य लँडिंग पेजवर दिसेल!
+    if (typeof setShowReports === 'function') setShowReports(false);
+    if (typeof setIsExploreMode === 'function') setIsExploreMode(false);
+
+    // युआरएल मूळ जागी सेट करा
+    const finalUrl = window.location.origin + import.meta.env.BASE_URL;
+    window.history.pushState({}, '', finalUrl);
+    
+    console.log("=== 🛠️ GOVINDA APP FINAL FIX END ===");
   };
 
   const loading_status_set = (val) => {
@@ -290,6 +349,7 @@ const checkUserStatus = async (googleUser) => {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('govinda_user');
+    localStorage.removeItem('govinda_guest');
     window.location.reload();
   };
 
@@ -302,13 +362,23 @@ const checkUserStatus = async (googleUser) => {
     return <SplashScreen onFinished={() => setShowSplash(false)} />;
   }
 
-// 🎯 कडक बदल ३: जर मुख्य ॲडमीन लॉगिन नसेल आणि गेस्ट मोड सक्रिय असेल
-  if (!user && isGuest) {
+  // 🎯 कडक बदल: जर युझरने फुटरमधील पॉलिसी पेजेसवर क्लिक केले, तर ते पेज इथे रेंडर होईल
+if (currentPublicPage === 'about') return <AboutUs onBack={() => setCurrentPublicPage(null)} setCurrentPublicPage={setCurrentPublicPage} />;
+if (currentPublicPage === 'privacy') return <PrivacyPolicy onBack={() => setCurrentPublicPage(null)} setCurrentPublicPage={setCurrentPublicPage} />;
+if (currentPublicPage === 'terms') return <TermsAndConditions onBack={() => setCurrentPublicPage(null)} setCurrentPublicPage={setCurrentPublicPage} />;
+if (currentPublicPage === 'faq') return <FAQAndManual onBack={() => setCurrentPublicPage(null)} setCurrentPublicPage={setCurrentPublicPage} />;
+
+
+// 🎯 सुधारित रेंडर कंडिशन: युझर विना-लॉगिन आला असेल, 'guest' रोलचा असेल, 
+  // किंवा तो लॉगिन असताना त्याने लँडिंग पेजवरून 'गोविंदा कट्टा' बटणावर क्लिक केले असेल (isGuest === true),
+  // या तिन्ही प्रकारांत त्याला सरळ कट्टा दाखवलाच पाहिजे! 🚀
+  if ((!user && isGuest) || (user && user.role === 'guest') || isGuest) {
     return (
       <PublicDashboard 
         onBackToAdmin={handleExitGuestMode} 
         directSlug={directViewSlug} 
         initialTab={publicActiveTab} 
+        handleLogin={handleLogin}
       />
     );
   }
@@ -355,81 +425,13 @@ const checkUserStatus = async (googleUser) => {
     );
   }
 
-   // मूळ कडक लॉगिन स्क्रीन UI 
-  // return (
-  //   <div className="min-h-screen bg-[#080d1a] flex flex-col justify-between items-center p-6 text-center relative overflow-hidden font-sans select-none">
-  //     <div className="absolute inset-0 bg-cover bg-center opacity-[0.25] pointer-events-none mix-blend-color-dodge" 
-  //       style={{ backgroundImage: `url(${loginBgImg})` }}
-  //     ></div>      
-  //     <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 bg-orange-600 opacity-10 blur-[120px] rounded-full pointer-events-none"></div>
-  //     <div></div>
-      
-  //     {/* मधला ब्रँडिंग विभाग */}
-  //     <div className="flex flex-col items-center space-y-3 z-10">
-  //       <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center p-2 shadow-lg shadow-orange-500/20 mb-2 overflow-hidden transform hover:scale-105 transition-all">
-  //         <img src={logoIcon} alt="Logo" className="w-full h-full object-contain rounded-xl select-none" />
-  //       </div>
-  //       <h1 className="text-4xl md:text-5xl font-black text-white tracking-wide leading-tight">
-  //         महाराष्ट्राचा <br />
-  //         <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-400">गोविंदा</span>
-  //       </h1>
-  //       <p className="text-orange-500/80 text-xs font-bold tracking-[0.2em] uppercase">— डिजिटल व्यवस्थापन प्रणाली —</p>
-  //       <p className="text-slate-400 text-[10px] tracking-wide uppercase">Maintain Your Team T-shirt and Insurance Data</p>
-  //     </div>
-
-  //     {/* लॉगिन ॲक्शन BOX */}
-  //     <div className="w-full max-w-xs flex flex-col items-center space-y-4 z-10 mb-4">
-  //       {error && (
-  //         <div className="w-full bg-red-500/10 border border-red-500/30 text-red-400 text-xs py-2.5 px-3 rounded-xl font-medium">
-  //           {error}
-  //         </div>
-  //       )}
-        
-  //       {/* प्रिमियम "Sign in with Google" बटण */}
-  //       <button 
-  //         onClick={handleLogin} 
-  //         disabled={loading} 
-  //         className="w-full bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm py-3 px-4 rounded-xl border border-slate-200/80 transition-all transform active:scale-[0.98] flex items-center justify-center space-x-3 shadow-md disabled:opacity-50"
-  //       >
-  //         {loading ? (
-  //           <span className="text-xs text-slate-500 font-bold animate-pulse">सुरक्षा तपासत आहे...</span>
-  //         ) : (
-  //           <>
-  //             <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-  //               <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l3.227-3.107C18.416 1.421 15.586 0 12.24 0 5.58 0 0 5.37 0 12s5.58 12 12.24 12c6.96 0 11.57-4.83 11.57-11.79 0-.79-.085-1.4-.195-1.925H12.24z"/>
-  //             </svg>
-  //             <span className="tracking-wide">Sign in with Google</span>
-  //           </>
-  //         )}
-  //       </button>
-
-  //       {/* 🎯 विना-लॉगिन बटण */}
-  //       <button 
-  //         type="button"
-  //         onClick={handleExploreAsGuest}
-  //         disabled={loading}
-  //         className="w-full bg-transparent hover:bg-white/5 text-slate-300 hover:text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-slate-700 hover:border-slate-500 tracking-wide transition-all transform active:scale-[0.98] flex items-center justify-center space-x-2 disabled:opacity-50"
-  //       >
-  //         <span>विना-लॉगिन थेट पुढे जा</span>
-  //         <span className="text-[#ff6600]">🚩</span>
-  //       </button>
-
-  //       <div className="pt-4">
-  //         <p className="text-slate-600 text-[9px] tracking-widest uppercase font-bold">An Initiative by</p>
-  //         <p className="text-slate-400 text-xs font-bold tracking-wide mt-0.5">Sandesh Mahadik</p>
-  //       </div>
-  //     </div>
-  //   </div>
-  // ); 
-
-  // 🟢 जुना प्रदीर्घ UI काढून त्याजागी फक्त हा कॉम्पोनंट रिटर्न करा:
   return (
     <LandingPage 
       handleLogin={handleLogin} 
       handleExploreAsGuest={handleExploreAsGuest} 
       loading={loading} 
       error={error} 
+      setCurrentPublicPage={setCurrentPublicPage} 
     />
   );
-  
 }

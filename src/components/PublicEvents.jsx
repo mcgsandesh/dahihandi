@@ -11,9 +11,9 @@ const CACHE_DURATION = 15 * 60 * 1000; // १५ मिनिटे कॅश
 // 🖼️ SECTION 1: कॅटेगरीनुसार कडक डिफॉल्ट इमेजेस (पोस्टर नसेल तर वापरण्यासाठी)
 // =========================================================================
 const DEFAULT_IMAGES = {
-  practice_start: "https://images2.imgbox.com/f3/2f/AyBLvxeB_o.jpg", 
-  practice_session: "https://images2.imgbox.com/66/fb/xe4zGrd6_o.jpg", 
-  dahihandi_venue: "https://images2.imgbox.com/de/3a/9J1QYyQq_o.jpg",  
+  practice_start: "https://i.ibb.co/ns8bcPJD/Start-PRactice.jpg", 
+  practice_session: "https://i.ibb.co/B5jhSXfN/Sarav-Shibit-events.jpg", 
+  dahihandi_venue: "https://i.ibb.co/6Jf3Dd9v/dahihandi-events.jpg",  
   competition: "https://img.magnific.com/free-photo/colombian-national-soccer-team-concept-still-life_23-2150257157.jpg?semt=ais_hybrid&w=740&q=80" 
 };
 
@@ -170,10 +170,10 @@ export default function PublicEvents() {
   };
 
   const sections = [
-    { key: 'practice_start', label: '🚀 सराव प्रारंभ इव्हents', icon: <Sparkles size={14} className="text-amber-500" /> },
-    { key: 'practice_session', label: '🎯 भव्य सराव शिबिरे', icon: <Flame size={14} className="text-orange-500" /> },
-    { key: 'dahihandi_venue', label: '🏰 दहीहंडी उत्सव ठिकाणे', icon: <Award size={14} className="text-blue-500" /> },
-    { key: 'competition', label: '🏆 भव्य दहिहंडी स्पर्धा', icon: <ShieldAlert size={14} className="text-yellow-500" /> }
+    { key: 'practice_start', label: '🚀 सराव प्रारंभ', icon: <Sparkles size={14} className="text-amber-500" /> },
+    { key: 'practice_session', label: '🎯 सराव शिबिरे', icon: <Flame size={14} className="text-orange-500" /> },
+    { key: 'dahihandi_venue', label: '🏰 भव्य दहीहंडी ठिकाणे', icon: <Award size={14} className="text-blue-500" /> },
+    { key: 'competition', label: '🏆 दहिहंडी स्पर्धा', icon: <ShieldAlert size={14} className="text-yellow-500" /> }
   ];
 
   if (loading) {

@@ -21,6 +21,7 @@ import PublicNews from '../components/PublicNews';
 import PublicEvents from '../components/PublicEvents';
 import PublicRecords from '../components/PublicRecords';
 
+
 export default function TeamDashboard({ user, onLogout }) {
   
   // जर सूपरॲडमीनने फॉर्म बंद केला असेल, तर थेट 'profile' टॅब ओपन होईल
@@ -163,6 +164,7 @@ export default function TeamDashboard({ user, onLogout }) {
         console.log("📥 Firebase Live Data Synced to Dashboard:", data);
         
         setTeamData({
+      
           teamCategory: data.teamCategory || 'Men',
           address: data.address || '',
           establishedYear: data.establishedYear || '',
@@ -412,11 +414,11 @@ export default function TeamDashboard({ user, onLogout }) {
     
     // 📢 सिस्टीम फीड विभागाचे मॉड्यूल्स (सर्वांसाठी चालू - show: true)
     { id: 'govinda_katta', label: '🚩 गोविंदा कट्टा', icon: <Users size={18} />, show: true },
-    { id: 'public_stats', label: '📊 उत्सव आकडेवारी', icon: <FileText size={18} />, show: true },
-    { id: 'public_info', label: '📜 उत्सव नियमावली', icon: <FileText size={18} />, show: true },
-    { id: 'public_news', label: '📢 ताज्या घडामोडी', icon: <Megaphone size={18} />, show: true },
-    { id: 'public_events', label: '📅 उत्सव व सराव कट्टा', icon: <Calendar size={18} />, show: true },
-    { id: 'public_records', label: '🏆 ऐतिहासिक रेकॉर्ड्स', icon: <Trophy size={18} />, show: true }
+    { id: 'public_stats', label: 'उत्सव आकडेवारी', icon: <FileText size={18} />, show: true },
+    { id: 'public_info', label: ' उत्सव नियमावली', icon: <FileText size={18} />, show: true },
+    { id: 'public_news', label: 'ताज्या घडामोडी', icon: <Megaphone size={18} />, show: true },
+    { id: 'public_events', label: 'उत्सव व सराव कट्टा', icon: <Calendar size={18} />, show: true },
+    { id: 'public_records', label: 'ऐतिहासिक रेकॉर्ड्स', icon: <Trophy size={18} />, show: true }
   ].filter(tab => tab.show);
 
   const mobileTabs = [
@@ -466,6 +468,7 @@ export default function TeamDashboard({ user, onLogout }) {
                 <div>
                   <h2 className="text-base font-black tracking-wide text-white">
                     महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
+                    
                   </h2>
                   <p className="text-[11px] text-slate-300 tracking-wide uppercase mt-0.5 font-black truncate max-w-[170px]">
                     {user.teamName}

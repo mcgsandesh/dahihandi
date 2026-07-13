@@ -5,6 +5,11 @@ import logoIcon from '/icon-512.png';
 import loginBgImg from '/login-bg.png';
 import { Image, Calendar, Clock, Megaphone, Trophy, Users, MapPin, ArrowRight, Layers, LogIn, ExternalLink, X } from 'lucide-react';
 
+import AdSenseBanner from '../components/AdSenseBanner';
+
+
+
+
 // Vite मधून डिफाइन केलेला ग्लोबल व्हर्जन नंबर सुरक्षितपणे ओढणे
 const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0';
 const LANDING_CACHE_KEY = 'govinda_landing_cache';
@@ -443,7 +448,8 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
           </div>
         </div>
       )}
-
+      
+<AdSenseBanner />
       {/* ५. फुटर */}
 {/* 5️⃣ ३ लोकांच्या व्हॉट्सॲप सपोर्टसह प्रिमियम फुटर विभाग */}
       <footer className="w-full border-t border-slate-900 bg-slate-950/80 backdrop-blur-md px-4 md:px-8 py-8 z-10 font-sans mt-auto">

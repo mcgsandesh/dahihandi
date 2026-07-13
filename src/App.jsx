@@ -13,7 +13,6 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
 import FAQAndManual from './pages/FAQAndManual';
 
-
 // 🎯 पब्लिक डॅशबोर्ड इम्पॉर्ट
 import PublicDashboard from './pages/PublicDashboard';
 
@@ -22,6 +21,9 @@ import loginBgImg from '/login-bg.png';
 
 import Reports from './components/Reports';
 import TeamProfile from './components/TeamProfile';
+
+// 💸 मोबाईलसाठी तळाची चिकटलेली मॅन्युअल ॲड इम्पॉर्ट केली
+import AdMobileBottom from './components/AdMobileBottom'; // कॉम्पोनंटचा अचूक पाथ तपासून घ्या
 
 
 
@@ -425,13 +427,21 @@ if (currentPublicPage === 'faq') return <FAQAndManual onBack={() => setCurrentPu
     );
   }
 
-  return (
-    <LandingPage 
-      handleLogin={handleLogin} 
-      handleExploreAsGuest={handleExploreAsGuest} 
-      loading={loading} 
-      error={error} 
-      setCurrentPublicPage={setCurrentPublicPage} 
-    />
+return (
+    <div className="min-h-screen bg-[#03060f] text-white">
+      
+      {/* १. तुमचे मुख्य लँडिंग पेज */}
+      <LandingPage 
+        handleLogin={handleLogin} 
+        handleExploreAsGuest={handleExploreAsGuest} 
+        loading={loading} 
+        error={error} 
+        setCurrentPublicPage={setCurrentPublicPage} 
+      />
+
+      {/* २. 💸 मोबाईलसाठी तळाची चिकटलेली ॲड (फक्त लँडिंग पेजवर असताना दिसेल) */}
+      <AdMobileBottom />
+
+    </div>
   );
 }

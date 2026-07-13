@@ -31,6 +31,9 @@ export default function ManageMaintenance() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState(null);
 
+  // 🎯 सिंगल इनपुट कोऑर्डिनेट्ससाठी स्टेट फिक्स
+  const [eventRawCoordinates, setEventRawCoordinates] = useState('');
+
   // 📝 १. न्यूज फॉर्म स्टेट्स
   const [newsTextMr, setNewsTextMr] = useState('');
 
@@ -55,7 +58,7 @@ export default function ManageMaintenance() {
   const [recPhotoUrl, setRecPhotoUrl] = useState('');
   const [showOnDashboard, setShowOnDashboard] = useState(true);
 
-  // 🌍 डेटा लोड करण्याचे फंक्शन
+  // 🌍 डेटा लोड करण्याचे फंक्शन (कोऑर्डिनेट्स सिस्टीमशी सुसंगत) 🚀
   const fetchData = async () => {
     setGlobalLoading(true);
     try {
@@ -63,7 +66,15 @@ export default function ManageMaintenance() {
       setNewsList(newsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
       const eventsSnap = await getDocs(query(collection(db, "events"), orderBy("createdAt", "desc")));
-      setEventsList(eventsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setEventsList(eventsSnap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+          // 📍 जर डेटाबेसमध्ये lat आणि lng असतील, तर ते स्ट्रिंग स्वरूपातही ऑब्जेक्टमध्ये ठेवू
+          rawCoordinates: data.lat && data.lng ? `${data.lat}, ${data.lng}` : ''
+        };
+      }));
 
       const recordsSnap = await getDocs(query(collection(db, "records"), orderBy("createdAt", "desc")));
       setRecordsList(recordsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -78,7 +89,7 @@ export default function ManageMaintenance() {
     fetchData();
   }, []);
 
-  // 🔓 मॉडेल उघडण्याचे लॉजिक
+  // 🔓 मॉडेल उघडण्याचे लॉजिक (सिंगल कोऑर्डिनेट्स फिक्ससह) 🚀
   const openFormModal = (type, data = null) => {
     if (data) {
       setEditId(data.id);
@@ -92,9 +103,17 @@ export default function ManageMaintenance() {
         setPosterUrl(data.posterUrl || '');
         setFromDate(data.fromDate || '');
         setToDate(data.toDate || '');
+        setEventMapLink(data.mapLink || '');
+        
+        // 🎯 डेटा एडिट करताना जुने lat आणि lng एकत्र करून दाखवणे
+        if (data.lat && data.lng) {
+          setEventRawCoordinates(`${data.lat}, ${data.lng}`);
+        } else {
+          setEventRawCoordinates('');
+        }
+        
         setEventLat(data.lat || '');
         setEventLng(data.lng || '');
-        setEventMapLink(data.mapLink || '');
       } else if (type === 'records') {
         setRecTitleMr(data.title_mr || '');
         setRecTeamName(data.team_mr || '');
@@ -114,9 +133,13 @@ export default function ManageMaintenance() {
       setPosterUrl('');
       setFromDate('');
       setToDate('');
+      setEventMapLink('');
+      
+      // 🎯 नवीन नोंदणी वेळी बॉक्स रिकामा करणे
+      setEventRawCoordinates('');
       setEventLat('');
       setEventLng('');
-      setEventMapLink('');
+      
       setRecTitleMr('');
       setRecTeamName('');
       setRecTeamUID('');
@@ -142,6 +165,20 @@ export default function ManageMaintenance() {
         updateData.text_mr = newsTextMr.trim();
       } else if (activeTab === 'events') {
         if (!eventTitleMr.trim() || !fromDate || !toDate) throw new Error("आवश्यक माहिती अपूर्ण आहे!");
+
+        // 🎯 मॅजिक कोऑर्डिनेट्स सेपरेटर लॉजिक
+        let finalLat = null;
+        let finalLng = null;
+
+        if (eventRawCoordinates && eventRawCoordinates.includes(',')) {
+          const [latStr, lngStr] = eventRawCoordinates.split(',');
+          finalLat = latStr ? parseFloat(latStr.trim()) : null;
+          finalLng = lngStr ? parseFloat(lngStr.trim()) : null;
+        } else {
+          finalLat = eventLat ? parseFloat(eventLat) : null;
+          finalLng = eventLng ? parseFloat(eventLng) : null;
+        }
+
         updateData = {
           ...updateData,
           title_mr: eventTitleMr.trim(),
@@ -151,8 +188,8 @@ export default function ManageMaintenance() {
           posterUrl: posterUrl.trim(),
           fromDate,
           toDate,
-          lat: eventLat ? parseFloat(eventLat) : null,
-          lng: eventLng ? parseFloat(eventLng) : null,
+          lat: finalLat,
+          lng: finalLng,
           mapLink: eventMapLink.trim()
         };
       } else if (activeTab === 'records') {
@@ -208,33 +245,31 @@ export default function ManageMaintenance() {
   };
 
   // =========================================================================
-  // 🧠 SECTION 2: डायनॅमिक उत्सव वर्ष शोधण्याचे लॉजिक (No Hardcoding 💸)
+  // 🧠 SECTION 2: डायनॅमिक उत्सव वर्ष शोधण्याचे लॉजिक
   // =========================================================================
   const getUniqueYears = (dataList, dateField = 'fromDate') => {
     const years = dataList.map(item => {
-      if (item.year) return item.year.toString(); // रेकॉर्ड्ससाठी direct string year
-      if (item[dateField]) return item[dateField].split('-')[0]; // इव्हेंट्स तारीखमधून (YYYY)
+      if (item.year) return item.year.toString();
+      if (item[dateField]) return item[dateField].split('-')[0];
       return null;
     }).filter(y => y !== null);
     
-    return ['all', ...new Set(years)].sort((a, b) => b - a); // उतरत्या क्रमाने
+    return ['all', ...new Set(years)].sort((a, b) => b - a);
   };
 
   const dynamicEventYears = getUniqueYears(eventsList, 'fromDate');
   const dynamicRecordYears = getUniqueYears(recordsList);
 
   // =========================================================================
-  // 📋 SECTION 3: प्रोग्रेसिव्ह कम्बाइन फिल्टरिंग मॅच लॉजिक (फिल्टर न होणारा घोळ फिक्स 🚀)
+  // 📋 SECTION 3: प्रोग्रेसिव्ह कम्बाइन फिल्टरिंग मॅच लॉजिक
   // =========================================================================
   const getFilteredData = () => {
     const queryLower = searchQuery.toLowerCase().trim();
 
-    // अ) न्यूज टॅब फिल्टर
     if (activeTab === 'news') {
       return newsList.filter(n => n.text_mr?.toLowerCase().includes(queryLower));
     }
     
-    // ब) इव्हेंट्स टॅब फिल्टर (सर्च + प्रकार + वर्ष एकत्र)
     if (activeTab === 'events') {
       return eventsList.filter(e => {
         const matchesSearch = e.title_mr?.toLowerCase().includes(queryLower) || e.mandalName?.toLowerCase().includes(queryLower);
@@ -247,7 +282,6 @@ export default function ManageMaintenance() {
       });
     }
 
-    // क) ऐतिहासिक रेkॉर्ड्स टॅब फिल्टर (आता १-१ ड्रॉपडाउन अचूक मॅच होईल 🎯)
     if (activeTab === 'records') {
       return recordsList.filter(r => {
         const matchesSearch = r.title_mr?.toLowerCase().includes(queryLower) || 
@@ -270,17 +304,13 @@ export default function ManageMaintenance() {
       
       {/* 📑 अंतर्गत टॅब स्विचर सिस्टीम */}
       <div className="flex space-x-2 border-b border-slate-100 pb-3 mb-4 overflow-x-auto scrollbar-none">
-        <button onClick={() => { setActiveTab('news'); setSearchQuery(''); }} className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-black rounded-xl transition-all whitespace-nowrap ${activeTab === 'news' ? 'bg-[#0b132b] text-white shadow' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><Megaphone size={14} /> <span>📢  बातम्या / सूचना</span></button>
-        <button onClick={() => { setActiveTab('events'); setSearchQuery(''); }} className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-black rounded-xl transition-all whitespace-nowrap ${activeTab === 'events' ? 'bg-[#0b132b] text-white shadow' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><Calendar size={14} /> <span>📅  उत्सव व सराव कट्टा</span></button>
-        <button onClick={() => { setActiveTab('records'); setSearchQuery(''); }} className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-black rounded-xl transition-all whitespace-nowrap ${activeTab === 'records' ? 'bg-[#0b132b] text-white shadow' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><Trophy size={14} /> <span>🏆  ऐतिहासिक रेकॉर्ड्स</span></button>
+        <button onClick={() => { setActiveTab('news'); setSearchQuery(''); }} className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-black rounded-xl transition-all whitespace-nowrap ${activeTab === 'news' ? 'bg-[#0b132b] text-white shadow' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><Megaphone size={14} /> <span>📢   बातम्या / सूचना</span></button>
+        <button onClick={() => { setActiveTab('events'); setSearchQuery(''); }} className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-black rounded-xl transition-all whitespace-nowrap ${activeTab === 'events' ? 'bg-[#0b132b] text-white shadow' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><Calendar size={14} /> <span>📅   उत्सव व सराव कट्टा</span></button>
+        <button onClick={() => { setActiveTab('records'); setSearchQuery(''); }} className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-black rounded-xl transition-all whitespace-nowrap ${activeTab === 'records' ? 'bg-[#0b132b] text-white shadow' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><Trophy size={14} /> <span>🏆   ऐतिहासिक रेकॉर्ड्स</span></button>
       </div>
 
-      {/* =========================================================================
-          🖥️ SECTION 4: प्रिमियम सर्च आणि टॅबनुसार बदलणारे प्रगत फिल्टर्स UI (दुरुस्त 🎯)
-          ========================================================================= */}
+      {/* 🖥️ SECTION 4: सर्च आणि फिल्टर्स UI */}
       <div className="mb-5 flex flex-col md:flex-row gap-3 items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-100">
-        
-        {/* सामायिक सर्च बार */}
         <div className="relative w-full md:max-w-xs">
           <Search className="absolute top-2.5 left-3 text-slate-400" size={14} />
           <input 
@@ -292,26 +322,16 @@ export default function ManageMaintenance() {
           />
         </div>
 
-        {/* उत्सव व सराव कट्टा टॅबचे फिल्टर्स */}
         {activeTab === 'events' && (
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
-            <select 
-              value={eventCategoryFilter} 
-              onChange={(e) => setEventCategoryFilter(e.target.value)}
-              className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none shadow-sm cursor-pointer"
-            >
+            <select value={eventCategoryFilter} onChange={(e) => setEventCategoryFilter(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none shadow-sm cursor-pointer">
               <option value="all">🎯 सर्व प्रकार पहा</option>
               <option value="practice_session">🎯 सराव शिबीर</option>
               <option value="practice_start">🚩 सराव सुरू होणार</option>
               <option value="dahihandi_venue">🏰 दहीहंडी उत्सव ठिकाण</option>
               <option value="competition">🏆 स्पर्धा / सामने</option>
             </select>
-
-            <select 
-              value={eventYearFilter} 
-              onChange={(e) => setEventYearFilter(e.target.value)}
-              className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none shadow-sm cursor-pointer"
-            >
+            <select value={eventYearFilter} onChange={(e) => setEventYearFilter(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none shadow-sm cursor-pointer">
               <option value="all">🗓️ सर्व वर्षे</option>
               {dynamicEventYears.filter(y => y !== 'all').map(yr => (
                 <option key={yr} value={yr}>{yr} चे कार्यक्रम</option>
@@ -320,33 +340,19 @@ export default function ManageMaintenance() {
           </div>
         )}
 
-        {/* ऐतिहासिक रेकॉर्ड्स टॅबचे फिल्टर्स (🎯 onChange स्टेट्स अचूकपणे अपडेट केल्या) */}
         {activeTab === 'records' && (
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
-            
-            {/* १. पुरुष / महिला वर्गीकरण फिल्टर */}
-            <select 
-              value={recGenderFilter} 
-              onChange={(e) => setRecGenderFilter(e.target.value)}
-              className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none shadow-sm cursor-pointer"
-            >
+            <select value={recGenderFilter} onChange={(e) => setRecGenderFilter(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none shadow-sm cursor-pointer">
               <option value="all">👨‍👦‍👧 सर्व पथके एकत्र पहा</option>
-              <option value="men">👨‍👦  पुरुष गोविंदा पथक</option>
-              <option value="women">👩‍👧  महिला गोविंदा पथक</option>
+              <option value="men">👨‍👦   पुरुष गोविंदा पथक</option>
+              <option value="women">👩‍👧   महिला गोविंदा पथक</option>
             </select>
-
-            {/* २. डायनॅमिक उत्सव वर्ष फिल्टर */}
-            <select 
-              value={recYearFilter} 
-              onChange={(e) => setRecYearFilter(e.target.value)}
-              className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none shadow-sm cursor-pointer"
-            >
+            <select value={recYearFilter} onChange={(e) => setRecYearFilter(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none shadow-sm cursor-pointer">
               <option value="all">🗓️ सर्व वर्षे पहा</option>
               {dynamicRecordYears.filter(y => y !== 'all').map(yr => (
                 <option key={yr} value={yr}>{yr} चे रेकॉर्ड्स</option>
               ))}
             </select>
-            
           </div>
         )}
       </div>
@@ -411,7 +417,7 @@ export default function ManageMaintenance() {
       {!globalLoading && activeTab === 'records' && (
         <div className="space-y-4 animate-in fade-in duration-100 text-left">
           <div className="flex justify-between items-center">
-            <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">🏆  ऐतिहासिक विश्वविक्रम यादी ({filteredItems.length})</h4>
+            <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">🏆   ऐतिहासिक विश्वविक्रम यादी ({filteredItems.length})</h4>
             <button onClick={() => openFormModal('records')} className="bg-[#ff6600] hover:bg-[#e65c00] text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center space-x-1.5 shadow-sm active:scale-95 transition-all"><Plus size={14} /> <span>नवीन रेकॉर्ड जोडा</span></button>
           </div>
           <div className="bg-slate-50/50 rounded-2xl p-2 border border-slate-100 space-y-1.5">
@@ -419,14 +425,14 @@ export default function ManageMaintenance() {
               <div key={r.id} className="bg-white p-3 border border-slate-100 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 hover:border-slate-200 transition-all shadow-sm">
                 <div className="flex flex-wrap items-center gap-2 md:w-2/5">
                   <span className={`text-[8px] md:text-[9px] font-black px-2 py-0.5 rounded uppercase ${r.type === 'women' ? 'bg-pink-50 text-pink-600 border border-pink-100' : 'bg-orange-50 text-orange-600 border border-orange-100'}`}>
-                    {r.type === 'women' ? '👩‍👧  महिला' : '👨‍👦  पुरुष'} ({r.year})
+                    {r.type === 'women' ? '👩‍👧   महिला' : '👨‍👦   पुरुष'} ({r.year})
                   </span>
                   <h5 className="text-xs font-black text-slate-800 truncate">{r.title_mr}</h5>
                 </div>
                 <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-6 text-[11px] text-slate-500 font-bold flex-1">
-                  <span className="text-slate-700 truncate max-w-[220px]">🚩  {r.team_mr}</span>
+                  <span className="text-slate-700 truncate max-w-[220px]">🚩   {r.team_mr}</span>
                   {r.teamUID && <span className="text-slate-400 font-mono text-[10px]">[{r.teamUID}]</span>}
-                  {r.showOnDashboard && <span className="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-lg font-black border border-emerald-100/50">🖥️  गॅलरीमध्ये लाइव्ह</span>}
+                  {r.showOnDashboard && <span className="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-lg font-black border border-emerald-100/50">🖥️   गॅलरीमध्ये लाइव्ह</span>}
                 </div>
                 <div className="flex items-center space-x-1 justify-end border-t border-slate-50 md:border-none pt-2 md:pt-0">
                   <button onClick={() => openFormModal('records', r)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"><Edit2 size={13} /></button>
@@ -445,7 +451,7 @@ export default function ManageMaintenance() {
           <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative z-10 border border-slate-100 max-h-[85vh] overflow-y-auto scrollbar-none text-left">
             <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
             <div className="mb-4">
-              <h3 className="text-base font-black text-slate-800">{editId ? '📝  माहिती अपडेट करा' : '➕  नवीन नोंदणी कक्ष'}</h3>
+              <h3 className="text-base font-black text-slate-800">{editId ? '📝   माहिती अपडेट करा' : '➕   नवीन नोंदणी कक्ष'}</h3>
               <p className="text-[11px] text-slate-400 font-bold uppercase mt-1">टॅब वर्गीकरण: {activeTab}</p>
             </div>
 
@@ -489,17 +495,19 @@ export default function ManageMaintenance() {
                     </div>
                   </div>
 
+                  {/* 📍 नवीन सिंगल इनपुट कोऑर्डिनेट्स बॉक्स - डिझाईन जुनीच */}
                   <div className="bg-orange-50/50 p-3 rounded-2xl border border-orange-500/10 space-y-2.5">
-                    <span className="text-[10px] font-black text-orange-600 block uppercase tracking-wide">📍  क्लायंट-साइड मॅपिंग आणि दिशा निर्देशक</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[9px] font-black text-slate-500 uppercase">अक्षांश (Latitude)</label>
-                        <input type="number" step="any" value={eventLat} onChange={(e) => setEventLat(e.target.value)} placeholder="19.1843" className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none bg-white font-mono" />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-black text-slate-500 uppercase">रेखांश (Longitude)</label>
-                        <input type="number" step="any" value={eventLng} onChange={(e) => setEventLng(e.target.value)} placeholder="72.9576" className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none bg-white font-mono" />
-                      </div>
+                    <span className="text-[10px] font-black text-orange-600 block uppercase tracking-wide">📍   लोकेशन मॅपिंग (Google Maps Coordinates)</span>
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">मॅपचे कोऑर्डिनेट्स थेट पेस्ट करा (Lat, Lng)</label>
+                      <input 
+                        type="text" 
+                        value={eventRawCoordinates} 
+                        onChange={(e) => setEventRawCoordinates(e.target.value)} 
+                        placeholder="उदा. 19.138832, 72.870798" 
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white font-mono placeholder:text-slate-300" 
+                      />
+                      <span className="text-[9px] text-slate-400 font-medium block mt-1">💡 गुगल मॅपवरून कॉपी केलेली पूर्ण स्ट्रिंग इथे थेट पेस्ट करा भाऊ.</span>
                     </div>
                     <div>
                       <label className="block text-[9px] font-black text-slate-500 uppercase">गुगल मॅप नेव्हिगेशन लिंक (Google Map Short URL)</label>
@@ -541,7 +549,7 @@ export default function ManageMaintenance() {
                   <div>
                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">पथक वर्गीकरण (Type)</label>
                     <select value={recType} onChange={(e) => setRecType(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none bg-slate-50 font-bold text-slate-700">
-                      <option value="men">👨‍👦  पुरुष गोविंदा पथक</option>
+                      <option value="men">👨‍👦   पुरुष गोविंदा पथक</option>
                       <option value="women">👩‍👧   महिला गोविंदा पथक</option>
                     </select>
                   </div>

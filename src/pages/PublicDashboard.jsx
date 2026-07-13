@@ -10,6 +10,9 @@ import PublicNews from '../components/PublicNews';
 import PublicEvents from '../components/PublicEvents';
 import PublicRecords from '../components/PublicRecords';
 
+// 💸 मोबाईलसाठी तळाची चिकटलेली मॅन्युअल ॲड इम्पॉर्ट केली
+import AdMobileBottom from '../components/AdMobileBottom'; // कॉम्पोनंटचा अचूक पाथ तपासून घ्या
+
 // initialTab प्रोप लँडिंग पेजवरून डायरेक्ट नेव्हिगेशनसाठी अत्यंत महत्त्वाचा आहे
 export default function PublicDashboard({ handleLogin, onBackToAdmin, initialTab = 'directory' }) {
   
@@ -24,6 +27,10 @@ export default function PublicDashboard({ handleLogin, onBackToAdmin, initialTab
   });
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // 🎯 ॲनालिसिस क्लिक लिंक करण्यासाठी नवीन फिल्टर्स स्टेट्स (१००% सुरक्षित)
+  const [statsDistrictFilter, setStatsDistrictFilter] = useState('');
+  const [statsAreaFilter, setStatsAreaFilter] = useState('');
 
   // 🎯 मॅजिक सिंक पॅच: जसं लँडिंग पेजवरून 'initialTab' बदलेल किंवा नवीन क्लीक होऊन ॲप री-माउंट होईल,
   // तशी ही सिस्टीम जुन्या कोडिंगला धक्का न लावता लाइव्ह टॅब तात्काळ सिंक्रोनाइझ करेल!
@@ -75,9 +82,34 @@ export default function PublicDashboard({ handleLogin, onBackToAdmin, initialTab
   const renderTabContent = () => {
     switch (currentTab) {
       case 'directory':
-        return <PublicDirectory handleLogin={handleLogin} />;
+        /* 🎯 आकडेवारीवरून आलेले फिल्टर्स प्रोप्स म्हणून पास केले जेणेकरून 'गोविंदा कट्टा' मध्ये डेटा ऑटो-फिल्टर होईल */
+        return (
+          <PublicDirectory 
+            handleLogin={handleLogin} 
+            initialDistrict={statsDistrictFilter}
+            initialArea={statsAreaFilter}
+            clearFilters={() => {
+              setStatsDistrictFilter('');
+              setStatsAreaFilter('');
+            }}
+          />
+        );
       case 'stats':
-        return <PublicStats />;
+        /* 🎯 आकडेवारी कॉम्पोनंटला क्लिक लिंक्स जोडल्या (जिल्हा आणि परिसर क्लिक वर डायरेक्ट नेव्हिगेशन) */
+        return (
+          <PublicStats 
+            onDistrictClick={(districtName) => {
+              setStatsDistrictFilter(districtName);
+              setStatsAreaFilter('');
+              setCurrentTab('directory'); // थेट कट्ट्यावर रिडायरेक्ट 🚀
+            }}
+            onAreaClick={(districtName, areaName) => {
+              setStatsDistrictFilter(districtName);
+              setStatsAreaFilter(areaName);
+              setCurrentTab('directory'); // थेट कट्ट्यावर रिडायरेक्ट 🚀
+            }}
+          />
+        );
       case 'rules':
         return <PublicInfo />;
       case 'public_news':
@@ -115,14 +147,14 @@ export default function PublicDashboard({ handleLogin, onBackToAdmin, initialTab
               <ArrowLeft size={20} />
             </button>
           )}
-          {/* मेनू उघडण्याचे बटन */}
+          {/* Main Menu Trigger */}
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-1 text-slate-300 hover:text-white">
             {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
       </div>
 
-      {/* 🏢 २. डावा साइडबार (🎯 डेस्कटॉप स्टिकी टॉप फिक्स: h-screen आणि sticky मुळे बटण कधीच खाली जाणार नाही) */}
+      {/* 🏢 २. डावा साइडबार */}
       <div className={`fixed inset-y-0 left-0 w-64 bg-[#0b132b] text-white p-6 flex flex-col justify-between z-40 transform transition-transform duration-300 ease-in-out md:sticky md:top-0 md:h-screen md:transform-none ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="flex flex-col flex-grow overflow-y-auto scrollbar-none">
           <div className="mb-6 border-b border-slate-800/60 pb-4 text-left flex-shrink-0">
@@ -153,11 +185,11 @@ export default function PublicDashboard({ handleLogin, onBackToAdmin, initialTab
           </div>
         </div>
 
-{/* 🎯 डेस्कटॉप आणि मोबाईल ड्रॉवर तळाचा बटन विभाग (Session Kill फिक्स आवृत्ती 🚀) */}
+        {/* 🎯 डेस्कटॉप आणि मोबाईल ड्रॉवर तळाचा बटन विभाग (Session Kill फिक्स आवृत्ती 🚀) */}
         <div className="pt-4 border-t border-slate-800/60 flex-shrink-0 mt-auto bg-[#0b132b]">
           {localStorage.getItem('govinda_user') ? (
             <div className="space-y-2">
-              {/* १. लॉगआऊट बटन - हे सेशन किल करेल (जसेच्या तसे सुरक्षित) */}
+              {/* १. लॉगआऊट बटन */}
               <button 
                 onClick={handleSystemLogout} 
                 className="w-full flex items-center justify-center space-x-2 bg-red-600/90 hover:bg-red-700 text-white py-2.5 rounded-xl text-xs font-black transition-all shadow-md shadow-red-600/10 active:scale-98"
@@ -166,7 +198,7 @@ export default function PublicDashboard({ handleLogin, onBackToAdmin, initialTab
                 <span>🚪 लॉगआऊट (Logout)</span>
               </button>
               
-              {/* २. होम पेजवर जा बटन - 🎯 फिक्स: यावर क्लिक केल्यास सेशन किल होणार नाही, युझर लॉगिनच राहील! */}
+              {/* २. होम पेजवर जा बटन */}
               {onBackToAdmin && (
                 <button 
                   onClick={onBackToAdmin} 
@@ -177,7 +209,6 @@ export default function PublicDashboard({ handleLogin, onBackToAdmin, initialTab
               )}
             </div>
           ) : (
-            // जर तो विना-लॉगिन नॉर्मल गेस्ट म्हणून आला असेल, तर तुमचे नेहमीचे बटन
             onBackToAdmin && (
               <button 
                 onClick={onBackToAdmin} 
@@ -194,9 +225,9 @@ export default function PublicDashboard({ handleLogin, onBackToAdmin, initialTab
       {isMobileMenuOpen && <div onClick={() => setIsMobileMenuOpen(false)} className="fixed inset-0 bg-black/60 z-30 md:hidden backdrop-blur-sm"></div>}
 
       {/* 🖥️ ३. मुख्य कार्यक्षेत्र */}
-      <div className="flex-1 p-4 md:p-6 overflow-y-auto z-10 w-full pb-24 md:pb-6 max-h-screen">
+      <div className="flex-1 p-4 md:p-6 overflow-y-auto z-10 w-full pb-40 md:pb-6 max-h-screen">
         <div className="w-full space-y-4">
-          
+        
           {/* हेडर टायटल (Desktop) */}
           <div className="border-b border-slate-200 pb-3 hidden md:block text-left">
             <h1 className="text-xl md:text-2xl font-black text-slate-800">
@@ -213,7 +244,10 @@ export default function PublicDashboard({ handleLogin, onBackToAdmin, initialTab
         </div>
       </div>
 
-      {/* 📱 ४. मोबाईल स्क्रीनसाठी सुधारित बॉटम नेव्हिगेशन बार (फक्त ४ फिक्स मेनू) */}
+      {/* 💸 मोबाईलसाठी तळाची चिकटलेली ॲड बार */}
+      <AdMobileBottom />
+
+      {/* 📱 ४. मोबाईल स्क्रीनसाठी सुधारित बॉटम नेव्हिगेशन बार */}
       <div className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] z-40 flex justify-around items-center py-2 px-1">
         {mobileBottomItems.map((item) => (
           <button
@@ -233,7 +267,7 @@ export default function PublicDashboard({ handleLogin, onBackToAdmin, initialTab
         ))}
       </div>
 
-      {/* अतिरिक्त CSS पॅच (इन्जेक्टेड स्क्रोलबार हाइडिंग) */}
+      {/* अतिरिक्त CSS पॅच */}
       <style>{`
         .scrollbar-none::-webkit-scrollbar { display: none; }
         .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }

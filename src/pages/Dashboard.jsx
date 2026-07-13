@@ -222,21 +222,29 @@ export default function Dashboard({ user, onLogout }) {
 
   useEffect(() => { fetchTeams(); }, []);
 
-  // 🧹 नवीन फिचर: डेटाबेसमधील विस्कळीत जिल्ह्यांची नावे ऑटो-दुरुस्त करणे
+// 🧹 सुधारित डेटाबेस शुद्धीकरण: विस्कळीत जिल्हे + ईमेलमधील अवतरण चिन्हे ("") ऑटो-दुरुस्त करणे 🚀
   const handleCleanDatabaseDistricts = async () => {
     setLoading(true);
     try {
+      // 🎯 महत्त्वाचा बदल: सर्व ॲडमिन्सचा डेटा स्कॅन करणे
       const adminQuery = query(collection(db, "users"), where("role", "==", "admin"));
       const querySnapshot = await getDocs(adminQuery);
       let updatedCount = 0;
 
       for (const docSnap of querySnapshot.docs) {
         const data = docSnap.data();
+        const docRef = doc(db, "users", docSnap.id);
+        
         let currentDistrict = data.district ? data.district.toString().trim() : "";
+        let currentEmail = data.email ? String(data.email).trim() : "";
+        let currentAdmins = Array.isArray(data.admins) ? data.admins : null;
+        
         let isChanged = false;
+        let updatedFields = {};
 
+        // 1️⃣ 🗺️ जिल्ह्यांची नावे शुद्धीकरण लॉजिक (तुझा मूळ कोड जसाच्या तसा)
         if (currentDistrict) {
-          let original = currentDistrict;
+          let originalDist = currentDistrict;
           const lowerDist = currentDistrict.toLowerCase();
           
           if (lowerDist === "mumbai" || lowerDist === "mumbai city" || lowerDist === "mumbai-city") {
@@ -249,17 +257,62 @@ export default function Dashboard({ user, onLogout }) {
             currentDistrict = currentDistrict.charAt(0).toUpperCase() + currentDistrict.slice(1);
           }
 
-          if (original !== currentDistrict) isChanged = true;
+          if (originalDist !== currentDistrict) {
+            updatedFields.district = currentDistrict;
+            isChanged = true;
+          }
         }
 
+        // 2️⃣ 📧 'email' फील्डमधील अवतरण चिन्हे ("") साफ करणे
+        if (currentEmail) {
+          // सुरुवातीचे आणि शेवटचे कोट्स (" किंवा ') उडवणे
+          let cleanedEmail = currentEmail.replace(/^["']|["']$/g, '').trim();
+          
+          if (currentEmail !== cleanedEmail) {
+            updatedFields.email = cleanedEmail;
+            isChanged = true;
+          }
+        }
+
+        // 3️⃣ 👥 'admins' ॲरेमधील खराब ईमेल आणि रिकाम्या स्ट्रिंग्स ("") उडवणे
+        if (currentAdmins) {
+          const cleanedAdmins = currentAdmins
+            .map(email => {
+              if (typeof email !== 'string') return email;
+              // ॲरेमधील प्रत्येक ईमेलभोवतीचे कोट्स उडवणे
+              return email.trim().replace(/^["']|["']$/g, '').trim();
+            })
+            // 🎯 रिकाम्या कोट्सच्या स्ट्रिंग्स गाळून टाकणे
+            .filter(email => email !== "" && email !== undefined && email !== null);
+
+          // जर मूळ ॲरे आणि स्वच्छ केलेल्या ॲरेमध्ये बदल असेल तरच अपडेट करणे
+          if (JSON.stringify(currentAdmins) !== JSON.stringify(cleanedAdmins)) {
+            updatedFields.admins = cleanedAdmins;
+            isChanged = true;
+          }
+        }
+
+        // 4️⃣ 🎯 जर डॉक्युमेंटमध्ये कोणताही बदल झाला असेल, तरच फायरबेसला हिट मारणे
         if (isChanged) {
-          await updateDoc(doc(db, "users", docSnap.id), { district: currentDistrict });
+          await updateDoc(docRef, updatedFields);
           updatedCount++;
+          console.log(`🧹 [Cleaned] Doc ID: ${docSnap.id} | Changes:`, updatedFields);
         }
       }
-      Swal.fire({ icon: 'success', title: 'डेटाबेस शुद्धीकरण पूर्ण! 🧹', text: `एकूण ${updatedCount} मंडळांचे जिल्ह्यांचे नाव ऑटो-करेक्ट झाले.` });
-      fetchTeams();
-    } catch (err) { console.error(err); } finally { setLoading(false); }
+
+      // चकाचक यशाचा मेसेज!
+      Swal.fire({ 
+        icon: 'success', 
+        title: 'डेटाबेस शुद्धीकरण पूर्ण! 🧹🚩', 
+        text: `एकूण ${updatedCount} मंडळांचा डेटा (जिल्हे + ईमेल कोट्स) यशस्वीरित्या ऑटो-करेक्ट झाला.` 
+      });
+      
+      if (typeof fetchTeams === 'function') fetchTeams();
+    } catch (err) { 
+      console.error("❌ डेटाबेस क्लीन करताना राडा झाला भाऊ:", err); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   // ⚠️ नवीन फिचर: संघ संपादन विनंती मंजूर करणे (Approve)

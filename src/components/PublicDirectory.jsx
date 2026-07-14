@@ -5,7 +5,8 @@ import { Search, MapPin, Trophy, Users, Eye, CheckCircle2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import PublicTeamProfile from './PublicTeamProfile';
 
-export default function PublicDirectory() {
+// 🎯 बदल: पॅरेंट कडून येणारे सर्व डीफॉल्ट फिल्टर्स प्रॉप्स इथे स्वीकारले आहेत (initialCategory सह 🚀)
+export default function PublicDirectory({ handleLogin, initialDistrict, initialArea, initialThara, initialCategory, clearFilters }) {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [teams, setTeams] = useState([]);
   const [filteredTeams, setFilteredTeams] = useState([]);
@@ -13,10 +14,8 @@ export default function PublicDirectory() {
   
   // फिल्टर्सच्या स्टेट्स
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All'); // 'All', 'Men', 'Women'
+  const [selectedCategory, setSelectedCategory] = useState('All'); 
   const [selectedDistrict, setSelectedDistrict] = useState('All');
-  
-  // 🎯 नवीन जोडलेली थरांची फिल्टर स्टेट (५ थर ते १० थर)
   const [selectedThar, setSelectedThar] = useState('All'); 
 
   // 🎯 १-Read + Version-Controlled LocalStorage कॅश इंजिन (सुरक्षित जसेच्या तसे ⚡)
@@ -42,7 +41,7 @@ export default function PublicDirectory() {
           const allTeams = cacheData.teams || [];
 
           if (Number(serverVersion) > Number(cachedVersion) || !cachedData || !cachedTime || (now - cachedTime >= FOUR_HOURS)) {
-            console.log("🚀 [Instant Live] सर्व्हरवर नवीन बदल सापडले! डेटा फ्रेश अपडेट केला.");
+            console.log("🚀 [Instant Live] सर्व्हेरवर नवीन बदल सापडले! डेटा फ्रेश अपडेट केला.");
             localStorage.setItem(CACHE_KEY, JSON.stringify(allTeams));
             localStorage.setItem(CACHE_TIME_KEY, now.toString());
             localStorage.setItem(CACHE_VERSION_KEY, serverVersion.toString());
@@ -72,13 +71,31 @@ export default function PublicDirectory() {
     fetchLiveDirectory();
   }, []);
 
+  // 🆕 नवीन जोडलेला मॅजिक सिंक पॅच: आकडेवारी वरून आलेल्या सर्व फिल्टर्सना स्थानिक स्टेटशी अचूक सिंक्रोनाइझ करणे 🚀
+// 🆕 नवीन कडक सिंक पॅच: पॅरेंटकडून आलेली व्हॅल्यू स्थानिक स्टेटमध्ये सक्तीने रेंडर करणार
+  useEffect(() => {
+    console.log("📥 [Katta Micro-Engine Sync]: पॅरेंट कडून आलेल्या लाइव्ह व्हॅल्यूज ->", {
+      DISTRICT: initialDistrict,
+      AREA: initialArea,
+      THARA: initialThara,
+      CATEGORY: initialCategory
+    });
+
+    if (initialDistrict && initialDistrict !== '') setSelectedDistrict(initialDistrict);
+    if (initialArea !== undefined) setSearchTerm(initialArea);
+    if (initialThara && initialThara !== '') setSelectedThar(initialThara);
+    if (initialCategory && initialCategory !== '') setSelectedCategory(initialCategory);
+
+  }, [initialDistrict, initialArea, initialThara, initialCategory]);
+
+
   // 🔄 २४-कॅरेट कडक फिल्टर आणि सर्च लॉजिक (मॅचिंग सिस्टीम अपग्रेड 🎯)
   useEffect(() => {
     let result = teams;
 
     // १. पुरुष / महिला कॅटेगरी फिल्टर
     if (selectedCategory !== 'All') {
-      result = result.filter(t => t.teamCategory === selectedCategory);
+      result = result.filter(t => t.teamCategory?.toLowerCase() === selectedCategory.toLowerCase());
     }
 
     // २. जिल्हा फिल्टर
@@ -86,55 +103,48 @@ export default function PublicDirectory() {
       result = result.filter(t => t.district?.toLowerCase() === selectedDistrict.toLowerCase());
     }
 
-// =========================================================================
     // 🏆 APPROVED FIX: डायनॅमिक थर रेकॉर्ड उपस्थिती फिल्टर (२ सेकंदात फिक्स 🚀)
-    // =========================================================================
     if (selectedThar !== 'All') {
       result = result.filter(t => {
-        // जर व्हॅल्यू रिकामी नसेल, कोरी नसेल आणि '—' नसेल, तरच संघाने तो थर लावला आहे असं समजणे
         const hasRecord = (val) => {
           if (!val) return false;
           const clean = val.toString().trim();
           return clean !== "" && clean !== "—" && clean !== "-" && clean.toLowerCase() !== "undefined";
         };
 
-        // पुरुष / दोन्ही पथकांसाठी सर्वोच्च प्राधान्य लॉजिक (Highest Milestone Priority)
-        if (selectedThar === '10') {
-          return hasRecord(t.milestone10);
-        }
-        if (selectedThar === '9') {
-          return hasRecord(t.milestone9) && !hasRecord(t.milestone10);
-        }
-        if (selectedThar === '8') {
-          return hasRecord(t.milestone8) && !hasRecord(t.milestone9) && !hasRecord(t.milestone10);
-        }
-        if (selectedThar === '7') {
-          return hasRecord(t.milestone7) && !hasRecord(t.milestone8) && !hasRecord(t.milestone9) && !hasRecord(t.milestone10);
-        }
+        if (selectedThar === '10') return hasRecord(t.milestone10);
+        if (selectedThar === '9') return hasRecord(t.milestone9) && !hasRecord(t.milestone10);
+        if (selectedThar === '8') return hasRecord(t.milestone8) && !hasRecord(t.milestone9) && !hasRecord(t.milestone10);
+        if (selectedThar === '7') return hasRecord(t.milestone7) && !hasRecord(t.milestone8) && !hasRecord(t.milestone9) && !hasRecord(t.milestone10);
 
-        // महिला पथकांसाठी डायनॅमिक माइलस्टोन्स (५, ६, ७ थर)
-        if (selectedThar === '6') {
-          return hasRecord(t.milestone8); // महिला ६ थर
-        }
-        if (selectedThar === '5') {
-          return hasRecord(t.milestone7) && !hasRecord(t.milestone8); // महिला ५ थर
-        }
+        if (selectedThar === '6') return hasRecord(t.milestone8); 
+        if (selectedThar === '5') return hasRecord(t.milestone7) && !hasRecord(t.milestone8); 
         
         return false;
       });
     }
 
-
-    // ४. टेक्स्ट सर्च की-वर्ड फिल्टर
+// 🎯 ४. परिसर आणि पिनकोड निहाय मॅचिंग फिल्टर अपग्रेड
     if (searchTerm.trim() !== '') {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(t => 
-        t.teamName?.toLowerCase().includes(term) ||
-        t.areaName?.toLowerCase().includes(term) ||
-        t.city?.toLowerCase().includes(term) ||
-        t.name?.toLowerCase().includes(term) ||
-        t.id?.toLowerCase().includes(term)
-      );
+      const term = searchTerm.toLowerCase().trim();
+      result = result.filter(t => {
+        const cleanTeamName = t.teamName ? t.teamName.toLowerCase() : '';
+        const cleanAreaName = t.areaName ? t.areaName.toLowerCase() : '';
+        const cleanCity = t.city ? t.city.toLowerCase() : '';
+        const cleanAdminName = t.name ? t.name.toLowerCase() : '';
+        const cleanUid = t.id ? t.id.toLowerCase() : (t.uid ? t.uid.toLowerCase() : '');
+        const cleanPincode = t.pincode ? t.pincode.toString().toLowerCase() : '';
+
+        // 🎯 मॅजिक सर्च: जर आकडेवारीवरून 'Lower Parel' आले असेल, तर ते areaName किंवा pincode मध्ये कुठेही मॅच झाले तरी संघ दाखवा!
+        return (
+          cleanAreaName.includes(term) ||
+          cleanPincode.includes(term) ||
+          cleanTeamName.includes(term) ||
+          cleanCity.includes(term) ||
+          cleanAdminName.includes(term) ||
+          cleanUid.includes(term)
+        );
+      });
     }
 
     setFilteredTeams(result);
@@ -142,10 +152,8 @@ export default function PublicDirectory() {
 
   const districts = ['All', ...new Set(teams.map(t => t.district).filter(Boolean))];
 
-  // 🔗 मंडळाचे वैयक्तिक पब्लिक प्रोफाइल पाहण्यासाठी ॲक्शन (सुरक्षित जसेच्या तसे)
   const handleViewProfile = (team) => {
     const isUserLoggedIn = localStorage.getItem('govinda_user');
-
     if (!isUserLoggedIn) {
       Swal.fire({
         icon: 'info',
@@ -167,6 +175,15 @@ export default function PublicDirectory() {
     setSelectedTeam(team);
   };
 
+  // 🆕 जेव्हा युझर फिल्टर रिसेट करायला कट्ट्यावरून बाहेर पडेल, तेव्हा प्रॉप्स क्लियर करणे
+  const handleLocalClearAll = () => {
+    setSearchTerm('');
+    setSelectedCategory('All');
+    setSelectedDistrict('All');
+    setSelectedThar('All');
+    if (clearFilters) clearFilters();
+  };
+
   if (selectedTeam) {
     return <PublicTeamProfile team={selectedTeam} onBack={() => setSelectedTeam(null)} />;
   }
@@ -185,6 +202,15 @@ export default function PublicDirectory() {
       
       {/* 📊 टॉप सर्च आणि सुधारित फिल्टर बार */}
       <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm space-y-3">
+        
+        {/* 🆕 जर आकडेवारीवरून काही फिल्टर लागला असेल तर वर體 'रिसेट' करायला एक कडक बॅज दाखवणे */}
+        {(selectedDistrict !== 'All' || selectedThar !== 'All' || searchTerm !== '' || selectedCategory !== 'All') && (
+          <div className="flex items-center justify-between bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-xl text-xs font-bold text-orange-700">
+            <span>📊 आकडेवारीनुसार फिल्टर सक्रिय आहे!</span>
+            <button type="button" onClick={handleLocalClearAll} className="bg-orange-600 text-white px-2 py-0.5 rounded font-black text-[10px] uppercase">फिल्टर साफ करा ✕</button>
+          </div>
+        )}
+
         <div className="relative">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><Search size={18} /></span>
           <input 
@@ -197,17 +223,13 @@ export default function PublicDirectory() {
         </div>
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-0.5">
-          {/* श्रेणी बटन कप्पा */}
           <div className="flex bg-slate-100 p-1 rounded-xl space-x-1 self-start">
-            <button onClick={() => { setSelectedCategory('All'); setSelectedThar('All'); }} className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all ${selectedCategory === 'All' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>सर्व पथके</button>
-            <button onClick={() => { setSelectedCategory('Men'); setSelectedThar('All'); }} className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all ${selectedCategory === 'Men' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>👨‍👦 पुरुष</button>
-            <button onClick={() => { setSelectedCategory('Women'); setSelectedThar('All'); }} className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all ${selectedCategory === 'Women' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>👩‍👧  महिला</button>
+            <button onClick={() => { setSelectedCategory('All'); setSelectedThar('All'); if(clearFilters) clearFilters(); }} className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all ${selectedCategory === 'All' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>सर्व पथके</button>
+            <button onClick={() => { setSelectedCategory('Men'); setSelectedThar('All'); if(clearFilters) clearFilters(); }} className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all ${selectedCategory === 'Men' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>👨‍👦 पुरुष</button>
+            <button onClick={() => { setSelectedCategory('Women'); setSelectedThar('All'); if(clearFilters) clearFilters(); }} className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all ${selectedCategory === 'Women' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>👩‍👧  महिला</button>
           </div>
 
-          {/* 🎯 नवीन थर फिल्टर आणि जिल्हा सिलेक्टर्स कप्पा एकत्र */}
           <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            
-            {/* डायनॅमिक थर शोधक ड्रॉपडाउन */}
             <div className="flex items-center space-x-1.5 flex-1 sm:flex-none">
               <label className="text-xs font-bold text-slate-400 whitespace-nowrap">🏆 थर फिल्टर:</label>
               <select
@@ -233,7 +255,6 @@ export default function PublicDirectory() {
               </select>
             </div>
 
-            {/* जिल्हा ड्रॉपडाउन */}
             <div className="flex items-center space-x-1.5 flex-1 sm:flex-none">
               <label className="text-xs font-bold text-slate-400 whitespace-nowrap">📍 जिल्हा:</label>
               <select 
@@ -258,7 +279,6 @@ export default function PublicDirectory() {
         </div>
       ) : (
         <>
-          {/* 🖥️ १. डेस्कटॉपसाठी प्रिमियम टेबल व्ह्यू */}
           <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden w-full">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -282,7 +302,6 @@ export default function PublicDirectory() {
                         <div>
                           <div className="flex items-center space-x-1.5">
                             <span className="font-black text-slate-900 uppercase tracking-wide">{team.teamName}</span>
-                            {/* 🎯 व्हेरीफाईड बॅज (Verified Badge Display) */}
                             {team.isProfileComplete !== false && (
                               <CheckCircle2 size={14} className="text-emerald-500 fill-emerald-50" title="समिती व्हेरिफाइड पथक" />
                             )}
@@ -311,7 +330,6 @@ export default function PublicDirectory() {
             </table>
           </div>
 
-          {/* 📱 २. मोबाईलसाठी कॉम्पॅक्ट कार्ड्स ग्रीड */}
           <div className="block md:hidden space-y-2">
             {filteredTeams.map((team) => (
               <div key={team.id || team.uid} className="bg-white rounded-xl border border-slate-100 shadow-sm p-3 flex flex-col justify-between hover:border-slate-200 transition-all">

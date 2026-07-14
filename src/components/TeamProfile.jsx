@@ -8,12 +8,11 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
-// 🖨️ ग्लोबल प्रिंट कॉम्पोनंट इम्पोर्ट
+// 🖨️ ग्लोबल प्रिंट कॉम्पोनेंट इम्पोर्ट
 import PrintableTeamProfile from './PrintableTeamProfile';
 import { handleProfilePrint } from '../components/PrintableTeamProfile';
 // 🎯 मुख्य लोगोचा पाथ (तुमच्या प्रोजेक्ट स्ट्रक्चरनुसार मॅच करा)
 import logoIcon from '../assets/logo.png'; 
-
 
 export default function TeamProfile({ user, teamData, setTeamData, isEditMode, setIsEditMode, fetchUserData, handleProfileComplete }) {
   
@@ -109,6 +108,10 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
         return;
       }
 
+      // 🎯 व्हेरिफिकेशन कट्ट्यासाठी कडक स्मार्ट फ्लॅग लॉजिक 
+      // जर बदल स्वतः सुपरॲडमीन करत असेल तर डायरेक्ट मंजूर होईल, जर युझर करत असेल तर व्हेरिफिकेशनसाठी पेंडिंग जाईल!
+      const isSuperAdmin = user?.role === 'superadmin';
+
       const userRef = doc(db, "users", docId);
       const updatedObj = {
         teamCategory,
@@ -118,7 +121,9 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
         logoUrl: logoUrl.trim(),
         aboutTeam: aboutTeam.trim(),
         bestPerformance: bestPerformance.trim(),
-        isProfileComplete: true,
+        isProfileComplete: isSuperAdmin ? true : true, // सेव्ह केल्यामुळे प्रोफाइल कंप्लीट ट्रू होईल
+        hasPendingEdits: isSuperAdmin ? false : true,  // 👈 युझरने बदल केल्यास व्हेरिफिकेशन कट्ट्यावर जाईल 🎯
+        verificationStatus: isSuperAdmin ? "approved" : "pending",
         profileUpdatedAt: serverTimestamp(),
         hasInsurance,
         bestPerformanceUrl: bestPerformanceUrl.trim(),
@@ -157,184 +162,19 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
 
       if (setIsEditMode) setIsEditMode(false); 
 
-      Swal.fire({ icon: 'success', title: 'बदल यशस्वी! 🎉', text: 'संघाची प्रोफाईल अपडेट झाली आहे.', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-3xl' } });
+      Swal.fire({ 
+        icon: 'success', 
+        title: isSuperAdmin ? 'डेटा थेट पब्लिश झाला! 🚀' : 'बदल जतन केले! ⏳', 
+        text: isSuperAdmin ? 'संघाची प्रोफाईल थेट लाईव्ह अपडेट झाली आहे.' : 'सुपरॲडमीन मंजुरीनंतर कट्ट्यावर बदल दिसतील.', 
+        showConfirmButton: false, 
+        timer: 2000, 
+        customClass: { popup: 'rounded-3xl' } 
+      });
     } catch (err) {
       console.error("❌ [PROFILE SAVE CRASH]:", err);
       Swal.fire({ icon: 'error', title: 'अडचण आली!', text: `त्रुटी: ${err.message || 'कृपया पुन्हा प्रयत्न करा.'}`, confirmButtonColor: '#ff6600' });
     } finally { setLoading(false); }
   };
-
-
-  // // 🖨️ कडक तोडगा: Reports.jsx च्या धर्तीवर नवीन विंडो उघडून ए४ साईझमध्ये पोर्ट्रेट प्रिंट करणे 🚀
-  // const handleProfilePrint = () => {
-  //   const finalTeamName = teamData?.teamName || user?.teamName || "—";
-  //   const finalUID = teamData?.uid || teamData?.id || user?.teamUID || user?.uid || "—";
-  //   const currentYear = new Date().getFullYear();
-
-  //   const printWindow = window.open('', '_blank');
-  //   printWindow.document.write(`
-  //     <html>
-  //       <head>
-  //         <title>${finalTeamName.toUpperCase()} PROFILE REPORT</title>
-  //         <style>
-  //           @import url('https://fonts.googleapis.com/css2?family=Mukta:wght@400;700;800&family=Poppins:wght@400;600;700;900&display=swap');
-  //           @page { size: A4 portrait; margin: 12mm 12mm 12mm 12mm; }
-  //           body { font-family: 'Poppins', 'Mukta', sans-serif; margin: 0; padding: 0; color: #1e293b; background: #fff; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            
-  //           /* 🏆 मुख्य हेडर लेआउट (सोशल लिंक्स उजवीकडे २ ओळीत शिफ्ट) */
-  //           .header-box { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
-  //           .header-left { display: flex; align-items: center; gap: 12px; }
-  //           .header-logo { width: 55px; height: 55px; object-contain: true; }
-  //           .header-title { font-size: 24px; font-weight: 900; margin: 0; color: #0f172a; }
-  //           .header-slogan { font-size: 11px; font-weight: 700; margin: 2px 0 0 0; color: #ff6600; }
-            
-  //           .social-box { text-align: right; font-size: 9px; font-weight: bold; font-family: monospace; color: #334155; }
-  //           .social-row { display: flex; gap: 4px; justify-content: flex-end; margin-bottom: 3px; }
-  //           .social-item { bg-color: #f8fafc; padding: 2px 6px; border: 1px solid #e2e8f0; border-radius: 4px; display: flex; align-items: center; gap: 4px; }
-            
-  //           /* 🚩 डार्क टीम बॅनर (स्थापना वर्ष आणि प्रकार आतमध्ये समाविष्ट) */
-  //           .team-banner { background: linear-gradient(to right, #0f172a, #1e293b); color: #fff; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-  //           .team-title { font-size: 18px; font-weight: 800; margin: 0; text-transform: uppercase; }
-  //           .team-sub-row { display: flex; gap: 12px; margin-top: 4px; font-size: 10px; color: #cbd5e1; font-weight: bold; }
-  //           .team-uid { text-align: right; font-family: monospace; font-size: 11px; font-weight: 900; color: #f97316; }
-
-  //           /* 📊 २-कॉलम मुख्य रचना (माहिती वि. उभा फोटो) */
-  //           .main-content { display: grid; grid-template-cols: 7fr 5fr; gap: 12px; align-items: start; }
-  //           .left-side { display: flex; flex-col: true; gap: 10px; }
-            
-  //           /* माहिती तक्ते आणि कप्पे */
-  //           .info-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; font-size: 11px; font-weight: bold; }
-  //           .card-title { font-size: 9px; uppercase: true; color: #64748b; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 3px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 2px; }
-  //           .grid-data { display: grid; grid-template-cols: 1fr 1fr; gap: 8px; }
-            
-  //           /* 📸 सलामीचे क्षणचित्र (उजवीकडे अचूक उभ्या स्वरूपात लॉक) */
-  //           .photo-box { border: 1px solid #cbd5e1; padding: 4px; background: #f8fafc; border-radius: 8px; height: 180px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-  //           .photo-box img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
-  //           .no-photo { font-size: 10px; color: #94a3b8; font-weight: bold; text-align: center; }
-
-  //           /* 🏆 ऐतिहासिक थर (४ बॉक्स रचना - सुबक डिझाईन) */
-  //           .milestones-area { margin-top: 12px; background: #fff; border: 1px solid #cbd5e1; padding: 10px; border-radius: 8px; }
-  //           .milestone-grid { display: grid; grid-template-cols: repeat(4, 1fr); gap: 6px; margin-top: 4px; }
-  //           .milestone-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: bold; }
-  //           .milestone-badge { background: #ff6600; color: #fff; padding: 1px 6px; border-radius: 4px; font-size: 10px; }
-
-  //           /* 📜 इतिहास बॉक्स सबसे नीचे स्वतंत्र */
-  //           .history-area { margin-top: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; }
-  //           .history-text { font-size: 11px; font-weight: 500; color: #334155; leading-ratio: 1.5; text-align: justify; margin: 4px 0 0 0; white-space: pre-wrap; word-break: break-word; }
-
-  //           /* 👣 अधिकृत सुरक्षित फूटर बार (पेजच्या तळाशी लॉक) */
-  //           .custom-footer { position: fixed; bottom: 0; left: 0; width: 100%; display: flex; justify-content: space-between; align-items: center; font-size: 8.5px; color: #64748b; border-top: 1px solid #0f172a; padding-top: 4px; font-weight: bold; font-family: monospace; background: #fff; }
-  //         </style>
-  //       </head>
-  //       <body>
-          
-  //         <!-- १. हेडर आणि सोशल नेटवर्क तपशील -->
-  //         <div class="header-box">
-  //           <div class="header-left">
-  //             <img src="${logoIcon}" class="header-logo" alt="Logo" />
-  //             <div>
-  //               <h1 class="header-title">महाराष्ट्राचा <span style="color: #ff6600;">गोविंदा</span></h1>
-  //               <p class="header-slogan">प्रत्येक गोविंदासाठी</p>
-  //             </div>
-  //           </div>
-  //           <div class="social-box">
-  //             <div class="social-row">
-  //               <div class="social-item"><span style="color:#1877F2">📘</span> @maharashtrachagovinda</div>
-  //               <div className="social-item"><span style="color:#E1306C">📸</span> @maharashtrachagovinda</div>
-  //             </div>
-  //             <div class="social-row">
-  //               <div class="social-item"><span style="color:#FF0000">📺</span> @maharashtrachagovinda</div>
-  //               <div class="social-item"><span>🌐</span> maharashtrachagovinda.com</div>
-  //             </div>
-  //           </div>
-  //         </div>
-
-  //         <!-- २. डार्क टीम बॅनर (स्थापना, प्रकार, नाव आणि UID सह) -->
-  //         <div class="team-banner">
-  //           <div>
-  //             <h2 class="team-title">${finalTeamName}</h2>
-  //             <div class="team-sub-row">
-  //               <span>🗓️ स्थापना वर्ष: ${teamData?.establishedYear || '—'}</span>
-  //               <span>🚩 पथक प्रकार: ${teamData?.teamCategory === 'Women' ? 'महिला' : teamData?.teamCategory === 'Both' ? 'दोन्ही' : 'पुरुष'}</span>
-  //             </div>
-  //           </div>
-  //           <div class="team-uid">
-  //             <span style="font-size: 7px; color: #94a3b8; block: true; font-weight: bold; letter-spacing: 0.5px;">TEAM IDENTIFIER</span>
-  //             UID: ${finalUID}
-  //           </div>
-  //         </div>
-
-  //         <!-- ३. मुख्य २-कॉलम रचना (माहिती वि. उभा फोटो) -->
-  //         <div class="main-content">
-            
-  //           <!-- डावा भाग -->
-  //           <div class="left-side">
-  //             <div class="info-card">
-  //               <div class="card-title">📍 परिसर आणि जिल्हा तपशील</div>
-  //               <div style="color: #1e293b; font-size: 11px;">पत्ता: ${teamData?.address || '—'}</div>
-  //               <div class="grid-data" style="margin-top: 4px;">
-  //                 <div>जिल्हा: ${teamData?.district || '—'}</div>
-  //                 <div>पिनकोड: ${teamData?.pincode || '—'}</div>
-  //               </div>
-  //             </div>
-
-  //             <div class="info-card">
-  //               <div class="card-title">👤 मंडळाचे मुख्य पदाधिकारी</div>
-  //               <div class="grid-data">
-  //                 <div>मार्गदर्शक: ${teamData?.coachName || '—'}</div>
-  //                 <div>कर्णधार: ${teamData?.captainName || '—'}</div>
-  //               </div>
-  //             </div>
-
-  //             <div class="info-card" style="background: #fff7ed; border-color: #ffedd5;">
-  //               <div class="card-title" style="color: #c2410c;">🏆 सर्वोत्कृष्ट कामगिरी (RECORD)</div>
-  //               <div style="color: #9a3412;">${teamData?.bestPerformance || '—'}</div>
-  //             </div>
-  //           </div>
-
-  //           <!-- उजवा भाग (अचूक Vertical Format फोटो) -->
-  //           <div>
-  //             <span style="font-size: 8px; color: #64748b; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 2px;">📸 सलामीचे क्षणचित्र</span>
-  //             <div class="photo-box">
-  //               ${teamData?.bestPerformanceUrl ? 
-  //                 `<img src="${teamData.bestPerformanceUrl}" alt="Performance" />` : 
-  //                 `<div class="no-photo">⏳ फोटो उपलब्ध नाही</div>`
-  //               }
-  //             </div>
-  //           </div>
-
-  //         </div>
-
-  //         <!-- ४. ऐतिहासिक थर रेकॉर्ड्स (४ फिक्स बॉक्सेस) -->
-  //         <div class="milestones-area">
-  //           <div class="card-title" style="border: none; margin: 0;">🏆 ऐतिहासिक थर कामगिरी रेkords</div>
-  //           <div class="milestone-grid">
-  //             <div class="milestone-item"><span>${teamData?.teamCategory === 'Women' ? '५ थर' : '७ थर'}</span> <span class="milestone-badge">${teamData?.milestone7 || '—'}</span></div>
-  //             <div class="milestone-item"><span>${teamData?.teamCategory === 'Women' ? '६ थर' : '८ थर'}</span> <span class="milestone-badge">${teamData?.milestone8 || '—'}</span></div>
-  //             <div class="milestone-item"><span>${teamData?.teamCategory === 'Women' ? '७ थर' : '९ थर'}</span> <span class="milestone-badge">${teamData?.milestone9 || '—'}</span></div>
-  //             ${teamData?.teamCategory !== 'Women' ? `<div class="milestone-item"><span>१० थर</span> <span class="milestone-badge">${teamData?.milestone10 || '—'}</span></div>` : ''}
-  //           </div>
-  //         </div>
-
-  //         <!-- ५. संक्षिप्त इतिहास (सर्वात खाली सुरक्षित आणि मोकळा) -->
-  //         <div class="history-area">
-  //           <div class="card-title" style="border: none; margin: 0;">📜 संघाबद्दल संक्षिप्त इतिहास</div>
-  //           <p class="history-text">${teamData?.aboutTeam || '—'}</p>
-  //         </div>
-
-  //         <!-- ६. अचूक अधिकृत फूटर नोट बार (A4 च्या खाली लॉक) -->
-  //         <div class="custom-footer">
-  //           <div>MHARASHTRACHA GOVINDA DAHIHANDI MANAGEMENT APP</div>
-  //           <div style="color: #ff6600;">An Initiative by Sandesh Mahadik</div>
-  //         </div>
-
-  //       </body>
-  //     </html>
-  //   `);
-  //   printWindow.document.close();
-  //   printWindow.print();
-  // };
-
 
   // =========================================================================
   // 🖥️ SECTION 3: VIEW MODE (थरांचे लेबल्स प्रकारानुसार डायनॅमिक दिसणार 🎯)
@@ -343,35 +183,33 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
     return (
       <div className="w-full space-y-5 animate-in fade-in duration-150 p-0 m-0 text-left">
         
-{/* 🚩 मुख्य ब्रँडिंग डार्क बॅनर */}
+        {/* 🚩 मुख्य ब्रँडिंग डार्क बॅनर */}
         <div className="bg-gradient-to-r from-[#0b132b] to-[#1c2541] text-white p-6 rounded-3xl shadow-sm relative overflow-hidden w-full">
           <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-[#ff6600] opacity-15 blur-3xl rounded-full"></div>
           
-          {/* 🎯 फिक्स: मोबाईलवर बटणे ओव्हरलॅप न होता खाली सुबक सेट होण्यासाठी flex-wrap लेआउट आणि top-4 right-4 ची जागा सुटसुटीत केली */}
           <div className="sm:absolute top-4 right-4 z-20 flex flex-wrap items-center gap-2 mb-4 sm:mb-0 justify-center sm:justify-end">
+            {/* 🖨️ नवीन विंडो आधारित प्रिमियम प्रिंट बटण */}
+            <button 
+              type="button"
+              onClick={() => handleProfilePrint(teamData, user, logoIcon)} 
+              className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-3 py-2 rounded-xl transition-all shadow-md flex items-center space-x-1.5 backdrop-blur-sm group cursor-pointer active:scale-95 text-xs font-bold"
+            >
+              <Printer size={14} className="group-hover:scale-110 transition-transform text-orange-400" />
+              <span>PDF प्रिंट करा</span>
+            </button>
 
-          {/* 🖨️ नवीन विंडो आधारित प्रिमियम प्रिंट बटण */}
-          <button 
-            onClick={() => handleProfilePrint(teamData, user, logoIcon)} // 👈 डायरेक्ट डेटा ओढला!
-            className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-3 py-2 rounded-xl transition-all shadow-md flex items-center space-x-1.5 backdrop-blur-sm group cursor-pointer active:scale-95 text-xs font-bold"
-          >
-            <Printer size={14} className="group-hover:scale-110 transition-transform text-orange-400" />
-            <span>PDF प्रिंट करा</span>
-          </button>
-
-            {user?.role !== "superadmin" && (
-              <button 
-                onClick={() => setIsEditMode(true)} 
-                className="bg-white text-slate-800 hover:bg-slate-50 px-3 py-2 rounded-xl transition-all shadow-md flex items-center space-x-1.5 cursor-pointer active:scale-95 text-xs font-bold"
-                title="माहिती सुधारा"
-              >
-                <Edit2 size={13} />
-                <span>माहिती सुधारा</span>
-              </button>
-            )}
+            {/* सुपरॲडमीन ऐवजी नॉर्मल युझरला एडिट बटण देणे, किंवा पॅरेंट वरून कंट्रोल */}
+            <button 
+              type="button"
+              onClick={() => setIsEditMode(true)} 
+              className="bg-white text-slate-800 hover:bg-slate-50 px-3 py-2 rounded-xl transition-all shadow-md flex items-center space-x-1.5 cursor-pointer active:scale-95 text-xs font-bold"
+              title="माहिती सुधारा"
+            >
+              <Edit2 size={13} />
+              <span>माहिती सुधारा</span>
+            </button>
           </div>
 
-          {/* बाकीचा बॅनरचा आतील डेटा जसाच्या तसा */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 relative z-10 text-center sm:text-left pr-0 sm:pr-48">
             <div className="w-20 h-20 bg-white rounded-2xl border border-slate-700/50 flex items-center justify-center p-2 flex-shrink-0 overflow-hidden shadow-lg">
               {teamData?.logoUrl ? (
@@ -490,18 +328,18 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">🏆  ऐतिहासिक थर रेकॉर्ड्स</span>
                 <div className="grid grid-cols-2 gap-1.5 text-[10px]">
                   <div className="bg-slate-50 p-1.5 rounded-lg border">
-                    <span className="text-slate-400 font-medium">{teamData?.teamCategory === 'Women' ? '५ थर:' : '७ थर:'}</span> 
+                    <span className="text-slate-400 font-medium">{teamCategory === 'Women' ? '५ थर:' : '७ थर:'}</span> 
                     <span className="text-slate-800 font-black block truncate">{teamData?.milestone7 || '—'}</span>
                   </div>
                   <div className="bg-slate-50 p-1.5 rounded-lg border">
-                    <span className="text-slate-400 font-medium">{teamData?.teamCategory === 'Women' ? '६ थर:' : '८ थर:'}</span> 
+                    <span className="text-slate-400 font-medium">{teamCategory === 'Women' ? '६ थर:' : '८ थर:'}</span> 
                     <span className="text-slate-800 font-black block truncate">{teamData?.milestone8 || '—'}</span>
                   </div>
                   <div className="bg-slate-50 p-1.5 rounded-lg border">
-                    <span className="text-slate-400 font-medium">{teamData?.teamCategory === 'Women' ? '७ थर:' : '९ थर:'}</span> 
+                    <span className="text-slate-400 font-medium">{teamCategory === 'Women' ? '७ थर:' : '९ थर:'}</span> 
                     <span className="text-slate-800 font-black block truncate">{teamData?.milestone9 || '—'}</span>
                   </div>
-                  {teamData?.teamCategory !== 'Women' && (
+                  {teamCategory !== 'Women' && (
                     <div className="bg-slate-50 p-1.5 rounded-lg border">
                       <span className="text-slate-400 font-medium">१० थर:</span> 
                       <span className="text-slate-800 font-black block truncate">{teamData?.milestone10 || '—'}</span>
@@ -538,11 +376,11 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
 
         </div>
 
-{/* 🖨️ प्रिंट कप्पा (🎯 फिक्स: 'team' सोबत 'user' प्रॉप देखील पास केला आहे) */}
+        {/* 🖨️ प्रिंट कप्पा */}
         <div className="hidden print:block fixed inset-0 bg-white z-[99999] m-0 p-0">
           <PrintableTeamProfile 
             team={teamData} 
-            user={user} // 👈 हा तो बदल ज्यामुळे 'संघ उपलब्ध नाही' दुरुस्त होईल 🚀
+            user={user} 
             logoIcon={logoIcon} 
           />
         </div>

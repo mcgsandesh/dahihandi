@@ -17,7 +17,8 @@ const toMarathiNumber = (num) => {
   return num.toString().split('').map(digit => marathiDigits[digit] || digit).join('');
 };
 
-export default function PublicStats({ onDistrictClick }) {
+// 🎯 बदल: प्रॉप्समध्ये 'onTharaClick' सुरक्षितपणे स्वीकारला आहे
+  export default function PublicStats({ onDistrictClick, onTharaClick, onCategoryClick,onAreaClick }) {
   const [allTeamsData, setAllTeamsData] = useState([]); 
   const [stats, setStats] = useState({
     totalTeams: 0,
@@ -69,10 +70,8 @@ export default function PublicStats({ onDistrictClick }) {
             districtMap[distName] = (districtMap[distName] || 0) + 1;
           }
 
-          // 🎯 स्वतंत्र माईलस्टोन फील्ड्स (milestone7, milestone8...) तपासण्याचे तुझे मूळ लॉजिक 🚀
           let highestLayer = 0;
 
-          // सर्वोच्च माईलस्टोन आधी पकडण्यासाठी उतरत्या क्रमाने तपासणे (१० -> ९ -> ८ -> ७)
           if (t.milestone10 && t.milestone10.toString().trim() !== "") {
             highestLayer = 10;
           } else if (t.milestone9 && t.milestone9.toString().trim() !== "") {
@@ -83,12 +82,10 @@ export default function PublicStats({ onDistrictClick }) {
             highestLayer = 7;
           }
 
-          // सुरक्षित बॅकअप फॉलबॅक: जर माईलस्टोन फील्ड्स नसतील तरच maxLayers/layers तपासणे
           if (highestLayer === 0) {
             highestLayer = parseInt(t.maxLayers || t.layers || 0, 10);
           }
 
-          // थरांच्या आधारावर लाईव्ह काऊंट भरणे
           if (highestLayer === 10) ten++;
           else if (highestLayer === 9) nine++;
           else if (highestLayer === 8) eight++;
@@ -98,7 +95,6 @@ export default function PublicStats({ onDistrictClick }) {
 
         setDistrictCountsMap(districtMap); 
 
-        // 🎯 डीफॉल्ट सिलेक्शन मॅजिक फिक्स
         const distKeys = Object.keys(districtMap);
         if (distKeys.length > 0) {
           const defaultTarget = distKeys.find(k => 
@@ -134,12 +130,9 @@ export default function PublicStats({ onDistrictClick }) {
     fetchStatsFromCache();
   }, []);
 
-  // 🏙️ परिसर (areaName) आणि पिनकोड विभागणी
   const getFilteredAreaPincodes = () => {
     if (!selectedAreaDistrict) return [];
-    
     const areaPinMap = {};
-
     allTeamsData.forEach(t => {
       if (t.district && t.district.trim() === selectedAreaDistrict.trim()) {
         const pin = t.pincode ? t.pincode.toString().trim() : '';
@@ -154,7 +147,6 @@ export default function PublicStats({ onDistrictClick }) {
         }
       }
     });
-
     return Object.values(areaPinMap).sort((a, b) => b.count - a.count);
   };
 
@@ -163,7 +155,7 @@ export default function PublicStats({ onDistrictClick }) {
   const menPercentage = stats.totalTeams ? Math.round((stats.menTeams / stats.totalTeams) * 100) : 0;
   const womenPercentage = stats.totalTeams ? Math.round((stats.womenTeams / stats.totalTeams) * 100) : 0;
 
-  return (
+return (
     <div className="space-y-5 text-slate-700">
       
       {/* ⚡ भव्य काऊंटर्स ग्रीड */}
@@ -176,7 +168,14 @@ export default function PublicStats({ onDistrictClick }) {
           </div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-3">
+        {/* 🎯 बदल: पुरुष पथक कार्डवर क्लिक केल्यावर थेट कॅटेगरी फिल्टर पास होणार */}
+        <div 
+          onClick={() => {
+            console.log("📊 [Stats Click]: 'पुरुष पथके' कार्डवर क्लिक झाले. व्हॅल्यू रवाना: Men");
+            onCategoryClick && onCategoryClick('Men');
+          }}
+          className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-3 cursor-pointer hover:shadow-md transition-all active:scale-95"
+        >
           <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600"><Users size={20} /></div>
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">पुरुष पथके</p>
@@ -184,7 +183,14 @@ export default function PublicStats({ onDistrictClick }) {
           </div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-3">
+        {/* 🎯 बदल: महिला पथक कार्डवर क्लिक केल्यावर थेट कॅटेगरी फिल्टर पास होणार */}
+        <div 
+          onClick={() => {
+            console.log("📊 [Stats Click]: 'महिला पथके' कार्डवर क्लिक झाले. व्हॅल्यू रवाना: Women");
+            onCategoryClick && onCategoryClick('Women');
+          }}
+          className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-3 cursor-pointer hover:shadow-md transition-all active:scale-95"
+        >
           <div className="p-2.5 rounded-xl bg-pink-50 text-pink-600"><Users size={20} /></div>
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">महिला पथके</p>
@@ -212,19 +218,43 @@ export default function PublicStats({ onDistrictClick }) {
           </div>
 
           <div className="space-y-2 pt-0.5">
-            <div className="flex justify-between items-center text-xs font-bold text-slate-600 bg-slate-50 p-2 rounded-xl">
+            <div 
+              onClick={() => {
+                console.log("🏰 [Stats Click]: '१० थर' क्षमतेवर क्लिक झाले. व्हॅल्यू रवाना: 10");
+                onTharaClick && onTharaClick('10');
+              }} 
+              className="flex justify-between items-center text-xs font-bold text-slate-600 bg-slate-50 p-2 rounded-xl cursor-pointer hover:bg-orange-50 hover:border-orange-500/20 border border-transparent transition-all active:scale-98"
+            >
               <span>🏰 १० थरांचे जागतिक सलामीवीर</span>
               <span className="bg-orange-600 text-white px-2 py-0.5 rounded font-sans text-[10px] font-black">{toMarathiNumber(stats.layerBreakdown.ten)}</span>
             </div>
-            <div className="flex justify-between items-center text-xs font-bold text-slate-600 bg-slate-50 p-2 rounded-xl">
+            <div 
+              onClick={() => {
+                console.log("🏰 [Stats Click]: '९ थर' क्षमतेवर क्लिक झाले. व्हॅल्यू रवाना: 9");
+                onTharaClick && onTharaClick('9');
+              }} 
+              className="flex justify-between items-center text-xs font-bold text-slate-600 bg-slate-50 p-2 rounded-xl cursor-pointer hover:bg-orange-50 hover:border-orange-500/20 border border-transparent transition-all active:scale-98"
+            >
               <span>⚡ ९ थरांचा थरारक थर लावणारे</span>
               <span className="bg-[#0b132b] text-white px-2 py-0.5 rounded font-sans text-[10px] font-black">{toMarathiNumber(stats.layerBreakdown.nine)}</span>
             </div>
-            <div className="flex justify-between items-center text-xs font-bold text-slate-600 bg-slate-50 p-2 rounded-xl">
+            <div 
+              onClick={() => {
+                console.log("🏰 [Stats Click]: '८ थर' क्षमतेवर क्लिक झाले. व्हॅल्यू रवाना: 8");
+                onTharaClick && onTharaClick('8');
+              }} 
+              className="flex justify-between items-center text-xs font-bold text-slate-600 bg-slate-50 p-2 rounded-xl cursor-pointer hover:bg-orange-50 hover:border-orange-500/20 border border-transparent transition-all active:scale-98"
+            >
               <span>🚩 ८ थरांची कडक क्षमता असणारे</span>
               <span className="bg-blue-600 text-white px-2 py-0.5 rounded font-sans text-[10px] font-black">{toMarathiNumber(stats.layerBreakdown.eight)}</span>
             </div>
-            <div className="flex justify-between items-center text-xs font-bold text-slate-600 bg-slate-50 p-2 rounded-xl">
+            <div 
+              onClick={() => {
+                console.log("🏰 [Stats Click]: '७ थर' क्षमतेवर क्लिक झाले. व्हॅल्यू रवाना: 7");
+                onTharaClick && onTharaClick('7');
+              }} 
+              className="flex justify-between items-center text-xs font-bold text-slate-600 bg-slate-50 p-2 rounded-xl cursor-pointer hover:bg-orange-50 hover:border-orange-500/20 border border-transparent transition-all active:scale-98"
+            >
               <span>🎯 ७ थरांची सर्वाधिक क्षमता असणारे</span>
               <span className="bg-emerald-600 text-white px-2 py-0.5 rounded font-sans text-[10px] font-black">{toMarathiNumber(stats.layerBreakdown.seven)}</span>
             </div>
@@ -239,7 +269,14 @@ export default function PublicStats({ onDistrictClick }) {
           </div>
 
           <div className="space-y-3.5 pt-0.5">
-            <div className="space-y-1">
+            {/* 🎯 बदल: पुरुष गोविंदा टक्केवारीवर क्लिक करून सुद्धा थेट नेव्हिगेशन होणार */}
+            <div 
+              onClick={() => {
+                console.log("📊 [Stats Click]: पुरुष टक्केवारी बारवर क्लिक झाले. व्हॅल्यू रवाना: Men");
+                onCategoryClick && onCategoryClick('Men');
+              }}
+              className="space-y-1 cursor-pointer hover:bg-slate-50 p-1.5 rounded-xl transition-all"
+            >
               <div className="flex justify-between text-[11px] font-bold text-slate-600">
                 <span>👨‍👦 पुरुष गोविंदा पथके</span>
                 <span className="font-sans">{toMarathiNumber(menPercentage)}%</span>
@@ -249,7 +286,14 @@ export default function PublicStats({ onDistrictClick }) {
               </div>
             </div>
 
-            <div className="space-y-1">
+            {/* 🎯 बदल: महिला गोविंदा टक्केवारीवर क्लिक करून सुद्धा थेट नेव्हिगेशन होणार */}
+            <div 
+              onClick={() => {
+                console.log("📊 [Stats Click]: महिला टक्केवारी बारवर क्लिक झाले. व्हॅल्यू रवाना: Women");
+                onCategoryClick && onCategoryClick('Women');
+              }}
+              className="space-y-1 cursor-pointer hover:bg-slate-50 p-1.5 rounded-xl transition-all"
+            >
               <div className="flex justify-between text-[11px] font-bold text-slate-600">
                 <span>👩‍👧  महिला गोविंदा पथके</span>
                 <span className="font-sans">{toMarathiNumber(womenPercentage)}%</span>
@@ -273,7 +317,10 @@ export default function PublicStats({ onDistrictClick }) {
           {stats.topDistricts.map((dist, idx) => (
             <div 
               key={idx} 
-              onClick={() => onDistrictClick && onDistrictClick(dist.name)}
+              onClick={() => {
+                console.log(`📍 [Stats Click]: जिल्हा रँक बॉक्सवर क्लिक झाले. जिल्हा रवाना: ${dist.name}`);
+                onDistrictClick && onDistrictClick(dist.name);
+              }}
               className="bg-slate-50/60 border border-slate-100 p-2.5 rounded-xl flex flex-col items-center justify-center text-center hover:shadow-md cursor-pointer transition-all active:scale-95"
             >
               <span className="text-[10px] font-black text-slate-400 uppercase">रँक {toMarathiNumber(idx + 1)}</span>
@@ -321,7 +368,17 @@ export default function PublicStats({ onDistrictClick }) {
             filteredAreaPincodes.map((item, index) => (
               <div 
                 key={index}
-                className="bg-slate-50/60 border border-slate-100 p-1.5 rounded-xl flex flex-col items-center justify-between min-h-[72px] hover:border-orange-500/30 transition-all shadow-xs text-center relative cursor-pointer"
+  onClick={() => {
+                    console.log(`🏙️ [Stats Click]: परिसर वर्गीकरणावर क्लिक झाले. जिल्हा: ${selectedAreaDistrict}, एरिया/पिनकोड रवाना: ${item.area}`);
+                    // 🎯 फिक्स: जर AREA वर क्लिक झाले असेल, तर डॅशबोर्डच्या onAreaClick ला कॉल गेला पाहिजे!
+                    if (onAreaClick) {
+                      onAreaClick(selectedAreaDistrict, item.area);
+                    } else if (onDistrictClick) {
+                      // जर पॅरेंटमध्ये फक्त onDistrictClick असेल, तर सुरक्षित फॉलबॅक
+                      onDistrictClick(selectedAreaDistrict, item.area);
+                    }
+                  }}
+                className="bg-slate-50/60 border border-slate-100 p-1.5 rounded-xl flex flex-col items-center justify-between min-h-[72px] hover:border-orange-500/30 transition-all shadow-xs text-center relative cursor-pointer active:scale-95"
               >
                 <span className="text-[10px] font-black text-slate-800 line-clamp-1 w-full px-0.5 leading-tight">{item.area}</span>
                 <span className="text-[8px] text-slate-400 font-mono font-bold block mt-0.5">{toMarathiNumber(item.pin)}</span>

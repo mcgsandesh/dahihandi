@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 
 import { db } from '../firebase';
 import { collection, doc, serverTimestamp, updateDoc, query, where, onSnapshot, setDoc, getDocs, getDocsFromCache } from 'firebase/firestore'; 
-import { LayoutDashboard, LogOut, Shield, Shirt, Users, Search, Plus, User, Image as ImageIcon, X, Edit2, Trash2, Check, Copy, CheckCircle, FileText, Phone, MessageSquare, MoreVertical, Package, Menu ,Settings as SettingsIcon, RotateCcw ,Megaphone,Calendar ,Trophy } from 'lucide-react';
+import { LayoutDashboard, LogOut, Shield, Shirt, Users, Search, Plus, User, Image as ImageIcon, X, Edit2, Trash2, Check, Copy, CheckCircle, FileText, Phone, MessageSquare, MoreVertical, Package, Menu ,Settings as SettingsIcon, RotateCcw ,Megaphone,Calendar ,Trophy, BarChart3, BookOpen } from 'lucide-react';
 import Swal from 'sweetalert2';
 import Reports from '../components/Reports';
 import TshirtForm from '../components/TshirtForm'; 
@@ -20,11 +20,16 @@ import PublicInfo from '../components/PublicInfo';
 import PublicNews from '../components/PublicNews';
 import PublicEvents from '../components/PublicEvents';
 import PublicRecords from '../components/PublicRecords';
+import PublicArticles from '../components/PublicArticles';
+
+
+// 💸 मोबाईलसाठी तळाची चिकटलेली मॅन्युअल ॲड इम्पॉर्ट केली
+import AdMobileBottom from '../components/AdMobileBottom'; // कॉम्पोनंटचा अचूक पाथ तपासून घ्या
 
 
 export default function TeamDashboard({ user, onLogout }) {
   
-  // जर सूपरॲडमीनने फॉर्म बंद केला असेल, तर थेट 'profile' टॅब ओपन होईल
+  // जर सूपरॲдमीनने फॉर्म बंद केला असेल, तर थेट 'profile' टॅब ओपन होईल
   const hasFormAccess = user.allowInAppForm !== false;
   const [activeTab, setActiveTab] = useState(hasFormAccess ? 'dashboard' : 'profile'); 
   
@@ -118,40 +123,6 @@ export default function TeamDashboard({ user, onLogout }) {
     } catch (e) { return '—'; }
   };
 
-  // // 🔄 Master User Data Sync Listener (Team UID पॅटर्ननुसार परफेक्ट लाईव्ह सिंक)
-  // useEffect(() => {
-  //   const teamIdentifier = user.teamUID || user.uid;
-  //   if (!teamIdentifier) return;
-
-  //   const userDocRef = doc(db, "users", teamIdentifier);
-  //   const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
-  //     if (docSnap.exists()) {
-  //       const data = docSnap.data();
-  //       console.log("📥 Firebase Live Data Synced to Dashboard:", data);
-        
-  //       setTeamData({
-  //         teamCategory: data.teamCategory || 'Men',
-  //         address: data.address || '',
-  //         establishedYear: data.establishedYear || '',
-  //         slogan: data.slogan || '',
-  //         logoUrl: data.logoUrl || '',
-  //         aboutTeam: data.aboutTeam || '',
-  //         bestPerformance: data.bestPerformance || '',          
-  //         inventory: data.inventory || {},
-          
-  //         areaName: data.areaName || '',
-  //         pincode: data.pincode || '',
-  //         city: data.city || '',
-  //         district: data.district || '',
-  //         state: data.state || ''
-  //       });
-  //       setIsFormActive(data.isFormActive !== false);
-  //     }
-  //   });
-
-  //   return () => unsubscribeUser();
-  // }, [user]);
-
   // 🔄 Master User Data Sync Listener (Team UID पॅटर्ननुसार परफेक्ट लाईव्ह सिंक - दुरुस्त केला 🚀)
   useEffect(() => {
     const teamIdentifier = user.teamUID || user.uid;
@@ -164,7 +135,6 @@ export default function TeamDashboard({ user, onLogout }) {
         console.log("📥 Firebase Live Data Synced to Dashboard:", data);
         
         setTeamData({
-      
           teamCategory: data.teamCategory || 'Men',
           address: data.address || '',
           establishedYear: data.establishedYear || '',
@@ -184,7 +154,7 @@ export default function TeamDashboard({ user, onLogout }) {
           coachName: data.coachName || '',
           captainName: data.captainName || '',
 
-          // 🏆 नवीन ऐतिहासिक थर माइलस्टोन्स (🎯 इथे मॅप केले!)
+          // 🏆 नवीन ऐतिहासिक थर माइलस्टोन्स
           milestone7: data.milestone7 || '',
           milestone8: data.milestone8 || '',
           milestone9: data.milestone9 || '',
@@ -219,13 +189,11 @@ export default function TeamDashboard({ user, onLogout }) {
       if (forceServer) {
         throw new Error("Force Server Request");
       }
-      // पहिल्यांदा डेटा सर्व्हरऐवजी थेट लोकल कॅशमधून वाचणे (Zero Reads)
       querySnapshot = await getDocsFromCache(q);
       console.log(`✓ [Team Admin] ${querySnapshot.size} खेळाडू कॅशमधून यशस्वी लोड झाले!`);
     } catch (err) {
-      // कॅश नसेल किंवा फोर्स रिफ्रेश बटन दाबले असेल तरच सर्व्हरवरून ओढणे
       querySnapshot = await getDocs(q);
-      console.log(`🌍 [Team Admin] सर्व्हरवरून फ्रेश ${querySnapshot.size} खेळाडू लोड झाले!`);
+      console.log(`🌍 [Team Admin] सर्व्हेरवरून फ्रेश ${querySnapshot.size} खेळाडू लोड झाले!`);
     }
 
     const players = [];
@@ -250,7 +218,6 @@ export default function TeamDashboard({ user, onLogout }) {
     try {
       await updateDoc(doc(db, "players", id), { insurance: nextStatus });
       Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `विमा स्थिती: ${nextStatus === 'Done' ? 'झालेले' : 'प्रलंबित'}`, showConfirmButton: false, timer: 1500 });
-      // यादी मेमरीमध्येच तात्काळ रिफ्रेश करणे (नो सर्व्हर रीड)
       setPlayersList(prev => prev.map(p => p.id === id ? { ...p, insurance: nextStatus } : p));
     } catch (err) { console.error(err); }
   };
@@ -353,7 +320,7 @@ export default function TeamDashboard({ user, onLogout }) {
         Swal.fire({ icon: 'success', title: 'नोंदणी पूर्ण!', text: 'खेळाडू यशस्वी जोडला गेला.', confirmButtonColor: '#ff6600' });
       }
       setIsModalOpen(false);
-      fetchTeamPlayers(false); // सेव्ह झाल्यावर लोकल यादी अपडेट करणे
+      fetchTeamPlayers(false);
     } catch (err) { 
       console.error(err);
       Swal.fire({ icon: 'error', title: 'त्रुटी!', text: 'अडचण आली. कृपया पुन्हा प्रयत्न करा.' }); 
@@ -403,7 +370,6 @@ export default function TeamDashboard({ user, onLogout }) {
 
   const filteredPlayers = playersList.filter(p => p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || p.mobile?.includes(searchTerm));
 
-// 📋 टीम ॲडमिनसाठी सुधारित मेनू यादी (३ नवीन सिस्टीम फीडसह)
   const sidebarTabs = [
     { id: 'dashboard', label: 'डॅशबोर्ड', icon: <LayoutDashboard size={18} />, show: hasFormAccess },
     { id: 'players', label: 'खेळाडू यादी', icon: <Users size={18} />, show: hasFormAccess },
@@ -412,27 +378,29 @@ export default function TeamDashboard({ user, onLogout }) {
     { id: 'profile', label: 'संघ प्रोफाईल', icon: <User size={18} />, show: true },
     { id: 'settings', label: 'सेटिंग्ज', icon: <SettingsIcon size={18} />, show: hasFormAccess },
     
-    // 📢 सिस्टीम फीड विभागाचे मॉड्यूल्स (सर्वांसाठी चालू - show: true)
     { id: 'govinda_katta', label: '🚩 गोविंदा कट्टा', icon: <Users size={18} />, show: true },
     { id: 'public_stats', label: 'उत्सव आकडेवारी', icon: <FileText size={18} />, show: true },
     { id: 'public_info', label: ' उत्सव नियमावली', icon: <FileText size={18} />, show: true },
     { id: 'public_news', label: 'ताज्या घडामोडी', icon: <Megaphone size={18} />, show: true },
     { id: 'public_events', label: 'उत्सव व सराव कट्टा', icon: <Calendar size={18} />, show: true },
-    { id: 'public_records', label: 'ऐतिहासिक रेकॉर्ड्स', icon: <Trophy size={18} />, show: true }
+    { id: 'public_records', label: 'ऐतिहासिक रेकॉर्ड्स', icon: <Trophy size={18} />, show: true },
+    { id: 'articles', label: 'दहीहंडी ज्ञानपीठ', icon: <BookOpen size={18} />, show: true }     // 🎯 नवीन टॅब जोडला
+    
   ].filter(tab => tab.show);
 
+  // 🎯 मोबाईल टॅब्स यादी: ४ कडक प्रिमियम मेनू लॉक केले!
   const mobileTabs = [
-    { id: 'dashboard', label: 'डॅशबोर्ड', icon: <LayoutDashboard size={18} />, show: hasFormAccess },
-    { id: 'players', label: 'खेळाडू यादी', icon: <Users size={18} />, show: hasFormAccess },
-    { id: 'reports', label: 'रिपोर्ट्स', icon: <FileText size={18} />, show: hasFormAccess },
-    { id: 'profile', label: 'संघ प्रोफाईल', icon: <User size={18} />, show: true }
+    { id: 'profile', label: 'संघ प्रोफाईल', icon: <User size={18} />, show: true },
+    { id: 'public_events', label: 'सराव कट्टा', icon: <Calendar size={18} />, show: true },
+    { id: 'public_stats', label: 'आकडेवारी', icon: <BarChart3 size={18} />, show: true },
+    { id: 'public_records', label: 'रेकॉर्ड्स', icon: <Trophy size={18} />, show: true }
   ].filter(tab => tab.show);
 
-  return (
+return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans antialiased pb-16 md:pb-0 text-slate-800">
       
       {/* 📱 मोबाईल टॉप हेडर */}
-      <div className="md:hidden bg-[#0b132b] text-white px-4 py-3 flex items-center justify-between shadow-md z-30 sticky top-0">
+      <div className="md:hidden bg-[#0f172a] text-white px-4 py-3 flex items-center justify-between shadow-md z-30 sticky top-0">
         <div className="flex items-center space-x-2.5 min-w-0">
           <button 
             onClick={() => setIsDrawerOpen(true)} 
@@ -444,7 +412,7 @@ export default function TeamDashboard({ user, onLogout }) {
           
           <div className="flex flex-col min-w-0">
             <span className="text-[10px] font-black tracking-wide text-slate-400">
-              महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
+              महाराष्ट्राचा <span className="text-orange-500">गोविंदा</span>
             </span>
             <span className="text-xs font-bold uppercase truncate tracking-tight text-white max-w-[150px]">
               {user.teamName}
@@ -452,40 +420,39 @@ export default function TeamDashboard({ user, onLogout }) {
           </div>
         </div>
         
-        <div className="bg-[#ff6600]/10 border border-[#ff6600]/30 text-[#ff6600] px-2.5 py-1 rounded-xl text-[10px] font-black font-mono shadow-sm">
+        <div className="bg-orange-500/10 border border-orange-500/30 text-orange-500 px-2.5 py-1 rounded-xl text-[10px] font-black font-mono shadow-sm">
           {user.uid || 'MCG1206'}
         </div>
       </div>
 
-      {/* 📱 मोबाईल कडक स्लाईड-इन ड्रॉवर */}
+      {/* 📱 मोबाईल कडक स्लाईड-इन ड्रॉवर (Premium Matte-Dark Theme) */}
       {isDrawerOpen && (
         <div className="fixed inset-0 z-50 md:hidden animate-in fade-in duration-150">
-          <div onClick={() => setIsDrawerOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm"></div>
+          <div onClick={() => setIsDrawerOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-xs"></div>
           
-          <div className="fixed left-0 top-0 bottom-0 w-64 bg-[#0b132b] text-white p-5 shadow-2xl flex flex-col justify-between z-50 animate-in slide-in-from-left duration-200">
+          <div className="fixed left-0 top-0 bottom-0 w-64 bg-[#0f172a] text-slate-200 p-5 shadow-2xl flex flex-col justify-between z-50 animate-in slide-in-from-left duration-200">
             <div className="w-full">
               <div className="flex justify-between items-start pb-4 border-b border-slate-800 mb-5">
                 <div>
                   <h2 className="text-base font-black tracking-wide text-white">
-                    महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
-                    
+                    महाराष्ट्राचा <span className="text-orange-500">गोविंदा</span>
                   </h2>
-                  <p className="text-[11px] text-slate-300 tracking-wide uppercase mt-0.5 font-black truncate max-w-[170px]">
+                  <p className="text-[11px] text-slate-400 tracking-wide uppercase mt-0.5 font-black truncate max-w-[170px]">
                     {user.teamName}
                   </p>
                 </div>
                 <button onClick={() => setIsDrawerOpen(false)} className="text-slate-400 hover:text-white p-1 text-sm font-bold mt-0.5">✕</button>
               </div>
               
-              <div className="space-y-1">
+              <div className="space-y-1 max-h-[calc(100vh-160px)] overflow-y-auto scrollbar-none">
                 {sidebarTabs.map((tab) => (
                   <button 
                     key={tab.id} 
                     onClick={() => { setIsDrawerOpen(false); setActiveTab(tab.id); }}
-                    className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${activeTab === tab.id ? 'bg-[#ff6600] text-white shadow-lg shadow-[#ff6600]/20' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+                    className={`w-full flex items-center space-x-3 px-4 py-2 rounded-xl font-bold text-xs transition-all text-left ${activeTab === tab.id ? 'bg-orange-500 text-white shadow-md shadow-orange-500/15' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                   >
                     {tab.icon}
-                    <span className="font-sans">{tab.label}</span>
+                    <span>{tab.label}</span>
                   </button>
                 ))}
               </div>
@@ -493,7 +460,7 @@ export default function TeamDashboard({ user, onLogout }) {
 
             <button 
               onClick={() => { setIsDrawerOpen(false); onLogout(); }} 
-              className="w-full flex items-center justify-center space-x-2 bg-red-600/10 text-red-400 py-2.5 rounded-xl text-xs font-bold border border-red-500/10 hover:bg-red-600 hover:text-white transition-all mb-2"
+              className="w-full flex items-center justify-center space-x-2 bg-red-500/10 text-red-400 py-2.5 rounded-xl text-xs font-bold border border-red-500/10 hover:bg-red-600 hover:text-white transition-all mb-2"
             >
               <LogOut size={14} />
               <span>लॉगआऊट</span>
@@ -502,24 +469,24 @@ export default function TeamDashboard({ user, onLogout }) {
         </div>
       )}
 
-      {/* 🏢 डेस्कटॉप साइडबार */}
-      <div className="hidden md:flex w-64 bg-[#0b132b] text-white p-6 flex-col justify-between z-40">
+      {/* 🏢 डेस्कटॉप साइडबार (Premium Matte-Dark Theme) */}
+      <div className="hidden md:flex w-64 bg-[#0f172a] text-slate-200 p-5 flex-col justify-between z-40">
         <div>
-          <div className="mb-8 border-b border-slate-800 pb-4">
-            <h2 className="text-lg font-black tracking-wide text-white">
-              महाराष्ट्राचा <span className="text-[#ff6600]">गोविंदा</span>
+          <div className="mb-6 border-b border-slate-800 pb-4 text-left">
+            <h2 className="text-base font-black tracking-wide text-white">
+              महाराष्ट्राचा <span className="text-orange-500">गोविंदा</span>
             </h2>
-            <p className="text-[12px] text-slate-300 tracking-wide uppercase mt-1 font-black truncate">
+            <p className="text-[11px] text-slate-500 font-bold tracking-wider uppercase mt-0.5 truncate">
               {user.teamName}
             </p>
           </div>
           
-          <div className="space-y-1">
+          <div className="space-y-1 max-h-[calc(100vh-150px)] overflow-y-auto scrollbar-none pr-1">
             {sidebarTabs.map((tab) => (
               <button 
                 key={tab.id} 
                 onClick={() => setActiveTab(tab.id)} 
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === tab.id ? 'bg-[#ff6600] text-white shadow-lg shadow-[#ff6600]/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl font-bold text-xs transition-all text-left ${activeTab === tab.id ? 'bg-orange-500 text-white shadow-md shadow-orange-500/15' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
@@ -530,17 +497,25 @@ export default function TeamDashboard({ user, onLogout }) {
         
         <button 
           onClick={onLogout} 
-          className="w-full flex items-center justify-center space-x-2 bg-red-600/10 text-red-400 py-3 rounded-xl text-xs font-bold border border-red-500/10 hover:bg-red-600 hover:text-white transition-all"
+          className="w-full flex items-center justify-center space-x-2 bg-red-500/10 text-red-400 py-2.5 rounded-xl text-xs font-bold border border-red-500/10 hover:bg-red-600 hover:text-white transition-all mt-auto"
         >
           <LogOut size={14} />
           <span>लॉगआऊट</span>
         </button>
       </div>   
 
-      {/* 🖥️ मुख्य कार्यक्षेत्र */}
-      <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="w-full space-y-6">
+      {/* 🖥️ मुख्य कार्यक्षेत्र (Full Fluid w-full) */}
+      <div className="flex-1 p-4 md:p-6 overflow-y-auto max-h-screen pb-40 md:pb-6 w-full">
+        <div className="w-full space-y-4">
           
+          {/* हेडर टायटल (Desktop) */}
+          <div className="border-b border-slate-200 pb-2.5 hidden md:block text-left">
+            <h1 className="text-lg font-black text-slate-800 uppercase tracking-wide">
+              {sidebarTabs.find(m => m.id === activeTab)?.label}
+            </h1>
+            <p className="text-[11px] text-slate-400 font-bold mt-0.5">संघाची अंतर्गत माहिती आणि डिजिटल मॅनेजमेंट पॅनेल.</p>
+          </div>
+
           {/* 📊 MODERN DASHBOARD VIEW */}
           {activeTab === 'dashboard' && hasFormAccess && (() => {
             const tshirtCounts = {};
@@ -558,87 +533,84 @@ export default function TeamDashboard({ user, onLogout }) {
             const recentPlayers = [...playersList].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5);
 
             return (
-              <div className="w-full space-y-6 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-baseline space-x-3 min-w-0">
-                    <h1 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight flex-shrink-0">
-                      डॅशबोर्ड
-                    </h1>
-                    <span className="hidden sm:inline-block text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200/60 px-3 py-1.5 rounded-xl truncate max-w-md uppercase tracking-wide">
+              <div className="w-full space-y-4 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
+                  <div className="flex items-baseline space-x-2 min-w-0">
+                    <h1 className="text-sm font-black text-slate-800 uppercase tracking-wider">डॅशबोर्ड सारांश</h1>
+                    <span className="hidden sm:inline-block text-[10px] font-bold text-slate-400 bg-slate-50 border px-2 py-0.5 rounded-lg truncate max-w-xs">
                       {user.teamName}
                     </span>
                   </div>
                   
-                  {/* 🎯 फोर्स रिफ्रेश बटन टीम ॲडमीन पॅनेलसाठी वाढवले */}
                   <div className="flex items-center space-x-2">
                     <button 
                       onClick={() => fetchTeamPlayers(true)} 
-                      className="p-2.5 text-slate-600 bg-white hover:bg-slate-50 rounded-xl border border-slate-200 shadow-sm transition-all"
+                      className="p-1.5 text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl border transition-all active:scale-95"
                       title="यादी रिफ्रेश करा"
                     >
-                      <RotateCcw size={15} />
+                      <RotateCcw size={14} />
                     </button>
-                    <button onClick={() => openPlayerModal()} className="hidden sm:flex bg-[#ff6600] hover:bg-[#e65c00] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md items-center space-x-2 transition-all">
-                      <Plus size={16} /><span>खेळाडू जोडा</span>
+                    <button onClick={() => openPlayerModal()} className="hidden sm:flex bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-xl font-bold text-xs shadow-xs items-center space-x-1 transition-all active:scale-95">
+                      <Plus size={14} /><span>खेळाडू जोडा</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-3 md:gap-5">
-                  <div onClick={() => setActiveTab('players')} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100/60 cursor-pointer hover:shadow-md transition-all flex flex-col justify-between">
+                <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+                  <div onClick={() => setActiveTab('players')} className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 cursor-pointer hover:shadow-md transition-all flex flex-col justify-between">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">एकूण खेळाडू</span>
-                      <div className="w-7 h-7 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center"><Users size={14} /></div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">एकूण खेळाडू</span>
+                      <div className="w-6 h-6 bg-blue-50 text-blue-500 rounded-lg flex items-center justify-center"><Users size={12} /></div>
                     </div>
-                    <p className="text-2xl md:text-3xl font-black text-slate-800 mt-3">{playersList.length}</p>
-                    <span className="text-[10px] text-blue-500 font-bold mt-2 block">View Details</span>
+                    <p className="text-xl md:text-2xl font-black text-slate-800 mt-2">{playersList.length}</p>
+                    <span className="text-[9px] text-blue-500 font-bold mt-1 block">विवरण पहा</span>
                   </div>
 
-                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100/60 flex flex-col justify-between">
+                  <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">विमा पूर्ण</span>
-                      <div className="w-7 h-7 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center"><Shield size={14} /></div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">विमा पूर्ण</span>
+                      <div className="w-6 h-6 bg-emerald-50 text-emerald-500 rounded-lg flex items-center justify-center"><Shield size={12} /></div>
                     </div>
-                    <p className="text-2xl md:text-3xl font-black text-slate-800 mt-3">{playersList.filter(p=>p.insurance==='Done' || p.insurance==='झालेले').length}</p>
-                    <span className="text-[10px] text-emerald-500 font-bold mt-2 block">View Details</span>
+                    <p className="text-xl md:text-2xl font-black text-slate-800 mt-2">{playersList.filter(p=>p.insurance==='Done' || p.insurance==='झालेले').length}</p>
+                    <span className="text-[9px] text-emerald-500 font-bold mt-1 block">विवरण पहा</span>
                   </div>
 
-                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100/60 flex flex-col justify-between">
+                  <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">प्रलंबित विमा</span>
-                      <div className="w-7 h-7 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center"><Shield size={14} /></div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">प्रलंबित विमा</span>
+                      <div className="w-6 h-6 bg-orange-50 text-orange-500 rounded-lg flex items-center justify-center"><Shield size={12} /></div>
                     </div>
-                    <p className="text-2xl md:text-3xl font-black text-orange-500 mt-3">{playersList.filter(p=>p.insurance!=='Done' && p.insurance!=='झालेले').length}</p>
-                    <span className="text-[10px] text-orange-500 font-bold mt-2 block">View Details</span>
+                    <p className="text-xl md:text-2xl font-black text-orange-500 mt-2">{playersList.filter(p=>p.insurance!=='Done' && p.insurance!=='झालेले').length}</p>
+                    <span className="text-[9px] text-orange-500 font-bold mt-1 block">विवरण पहा</span>
                   </div>
 
-                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100/60 flex flex-col justify-between">
+                  <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">टी-शर्ट नोंद</span>
-                      <div className="w-7 h-7 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center"><Shirt size={14} /></div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">टी-शर्ट नोंद</span>
+                      <div className="w-6 h-6 bg-purple-50 text-purple-500 rounded-lg flex items-center justify-center"><Shirt size={12} /></div>
                     </div>
-                    <p className="text-2xl stroke-slate-800 md:text-3xl font-black text-slate-800 mt-3">{playersList.length}</p>
-                    <span className="text-[10px] text-purple-500 font-bold mt-2 block">View Details</span>
+                    <p className="text-xl md:text-2xl font-black text-slate-800 mt-2">{playersList.length}</p>
+                    <span className="text-[9px] text-purple-500 font-bold mt-1 block">विवरण पहा</span>
                   </div>
 
-                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100/60 flex flex-col justify-between">
+                  <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">शॉर्ट्स नोंद</span>
-                      <div className="w-7 h-7 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center"><Shirt size={14} /></div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">शॉर्ट्स नोंद</span>
+                      <div className="w-6 h-6 bg-indigo-50 text-indigo-500 rounded-lg flex items-center justify-center"><Shirt size={12} /></div>
                     </div>
-                    <p className="text-2xl md:text-3xl font-black text-slate-800 mt-3">{playersList.filter(p=>p.shorts).length}</p>
-                    <span className="text-[10px] text-indigo-500 font-bold mt-2 block">View Details</span>
+                    <p className="text-xl md:text-2xl font-black text-slate-800 mt-2">{playersList.filter(p=>p.shorts).length}</p>
+                    <span className="text-[9px] text-indigo-500 font-bold mt-1 block">विवरण पहा</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  <div className="lg:col-span-5 bg-white p-6 rounded-3xl shadow-sm border border-slate-100/60 space-y-5">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                  <div className="lg:col-span-5 bg-white p-4 rounded-2xl shadow-xs border border-slate-100 space-y-4">
                     <div>
-                      <h3 className="text-sm font-black text-slate-800 tracking-wide border-b pb-2">टी-शर्ट साईझ वितरण</h3>
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <h3 className="text-xs font-black text-slate-800 tracking-wide border-b pb-1.5">टी-शर्ट साईझ वितरण</h3>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
                         {Object.entries(tshirtCounts).map(([size, count]) => (
-                          <div key={size} className="bg-purple-50/50 text-purple-700 font-black text-xs px-3 py-2 rounded-xl flex items-center gap-2 border border-purple-100/40 shadow-sm">
-                            <span className="w-1.5 h-1.5 rounded-full bg-purple-600"></span>
+                          <div key={size} className="bg-purple-50 text-purple-700 font-black text-[10px] px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-purple-100 shadow-xs">
+                            <span className="w-1 h-1 rounded-full bg-purple-600"></span>
                             <span>{size} : {count}</span>
                           </div>
                         ))}
@@ -646,11 +618,11 @@ export default function TeamDashboard({ user, onLogout }) {
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-black text-slate-800 tracking-wide border-b pb-2">शॉर्ट्स साईझ वितरण</h3>
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <h3 className="text-xs font-black text-slate-800 tracking-wide border-b pb-1.5">शॉर्ट्स साईझ वितरण</h3>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
                         {Object.entries(shortsCounts).map(([size, count]) => (
-                          <div key={size} className="bg-orange-50/50 text-orange-700 font-black text-xs px-3 py-2 rounded-xl flex items-center gap-2 border border-orange-100/40 shadow-sm">
-                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                          <div key={size} className="bg-orange-50 text-orange-700 font-black text-[10px] px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-orange-100 shadow-xs">
+                            <span className="w-1 h-1 rounded-full bg-orange-500"></span>
                             <span>{size} : {count}</span>
                           </div>
                         ))}
@@ -658,35 +630,35 @@ export default function TeamDashboard({ user, onLogout }) {
                     </div>
 
                     {(totalBelt > 0 || totalTowel > 0) && (
-                      <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-3">
-                        {totalBelt > 0 && <div className="bg-slate-50 p-3 rounded-xl text-xs font-bold text-slate-600 flex justify-between items-center"><span>Belt :</span><span className="font-black text-slate-900 bg-white shadow-sm px-2 py-0.5 rounded-lg">{totalBelt}</span></div>}
-                        {totalTowel > 0 && <div className="bg-teal-50/50 p-3 rounded-xl text-xs font-bold text-teal-700 flex justify-between items-center"><span>Towel :</span><span className="font-black text-teal-900 bg-white shadow-sm px-2 py-0.5 rounded-lg">{totalTowel}</span></div>}
+                      <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
+                        {totalBelt > 0 && <div className="bg-slate-50 p-2.5 rounded-xl text-[10px] font-bold text-slate-600 flex justify-between items-center"><span>Belt :</span><span className="font-black text-slate-900 bg-white shadow-xs px-1.5 py-0.2 rounded">{totalBelt}</span></div>}
+                        {totalTowel > 0 && <div className="bg-teal-50/50 p-2.5 rounded-xl text-[10px] font-bold text-teal-700 flex justify-between items-center"><span>Towel :</span><span className="font-black text-teal-900 bg-white shadow-xs px-1.5 py-0.2 rounded">{totalTowel}</span></div>}
                       </div>
                     )}
                   </div>
 
-                  <div className="lg:col-span-7 bg-white p-6 rounded-3xl shadow-sm border border-slate-100/60 overflow-hidden flex flex-col justify-between">
-                    <div className="mb-4"><h3 className="text-sm font-black text-slate-800 tracking-wide">अलीकडील ५ नोंदणीकृत खेळाडू</h3></div>
+                  <div className="lg:col-span-7 bg-white p-4 rounded-2xl shadow-xs border border-slate-100 overflow-hidden flex flex-col justify-between">
+                    <div className="mb-2"><h3 className="text-xs font-black text-slate-800 tracking-wide">अलीकडील ५ नोंदणीकृत खेळाडू</h3></div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase bg-slate-50/50">
-                            <th className="py-2.5 px-2">नाव</th>
-                            <th className="py-2.5 px-2 text-center">वय</th>
-                            <th className="py-2.5 px-2 text-center">टी-शर्ट</th>
-                            <th className="py-2.5 px-2 text-center">शॉर्ट्स</th>
-                            <th className="py-2.5 px-2 text-right">विमा स्थिती</th>
+                          <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase bg-slate-50/50">
+                            <th className="py-2 px-1.5">नाव</th>
+                            <th className="py-2 px-1.5 text-center">वय</th>
+                            <th className="py-2 px-1.5 text-center">टी-शर्ट</th>
+                            <th className="py-2 px-1.5 text-center">शॉर्ट्स</th>
+                            <th className="py-2 px-1.5 text-right">विमा स्थिती</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50 text-xs font-bold text-slate-600">
                           {recentPlayers.map((p) => (
                             <tr key={p.id} className="hover:bg-slate-50/40 transition-all">
-                              <td className="py-3 px-2 font-black text-slate-800 truncate max-w-[140px]">{p.name}</td>
-                              <td className="py-3 px-2 text-center text-slate-400 font-medium">{calculateAge(p.dob)}</td>
-                              <td className="py-3 px-2 text-center text-purple-600 font-mono">{p.tshirt}</td>
-                              <td className="py-3 px-2 text-center text-slate-500 font-mono">{p.shorts || '—'}</td>
-                              <td className="py-3 px-2 text-right">
-                                <span className={`px-2.5 py-0.5 rounded-md text-[10px] ${p.insurance === 'Done' || p.insurance === 'झालेले' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
+                              <td className="py-2 px-1.5 font-black text-slate-800 truncate max-w-[130px]">{p.name}</td>
+                              <td className="py-2 px-1.5 text-center text-slate-400 font-medium">{calculateAge(p.dob)}</td>
+                              <td className="py-2 px-1.5 text-center text-purple-600 font-mono">{p.tshirt}</td>
+                              <td className="py-2 px-1.5 text-center text-slate-500 font-mono">{p.shorts || '—'}</td>
+                              <td className="py-2 px-1.5 text-right">
+                                <span className={`px-2 py-0.2 rounded text-[9px] font-black ${p.insurance === 'Done' || p.insurance === 'झालेले' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
                                   {p.insurance === 'Done' || p.insurance === 'झालेले' ? 'झालेले' : 'प्रलंबित'}
                                 </span>
                               </td>
@@ -716,7 +688,7 @@ export default function TeamDashboard({ user, onLogout }) {
               setActiveTab={setActiveTab}
               playersList={playersList}
               inventoryData={teamData?.inventory} 
-              forceRefreshList={() => fetchTeamPlayers(true)} // 🎯 प्लेयर्स यादीत थेट फोर्स रिफ्रेश पाठवला
+              forceRefreshList={() => fetchTeamPlayers(true)}
             />
           )}
 
@@ -733,33 +705,21 @@ export default function TeamDashboard({ user, onLogout }) {
 
           {/* REPORT VIEW */}
           {activeTab === 'reports' && hasFormAccess && (
-            <div className="animate-in fade-in duration-300 space-y-4">
-              <div className="border-b border-slate-200 pb-3 flex items-center space-x-3">
-                <button 
-                  onClick={() => setActiveTab('dashboard')} 
-                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-600 active:bg-slate-200 transition-all flex items-center justify-center flex-shrink-0"
-                  title="मागे जा"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"></path>
-                  </svg>
-                </button>
-                <h1 className="text-xl font-black text-slate-800">रिपोर्ट पॅनेल</h1>
-              </div>
+            <div className="animate-in fade-in duration-300 space-y-3">
               <Reports userTeamName={user.teamName} onBack={() => setActiveTab('dashboard')} />
             </div>
           )}
 
           {/* PROFILE VIEW */}
           {activeTab === 'profile' && (
-            <div className="w-full  mx-auto animate-in fade-in duration-200 space-y-6">              
-              <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm relative">
-                <div className="absolute top-6 right-6">
+            <div className="w-full mx-auto animate-in fade-in duration-200">              
+              <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs relative">
+                <div className="absolute top-4 right-4">
                   <button 
                     onClick={() => setIsEditMode(!isEditMode)} 
-                    className={`p-2 rounded-xl transition-all shadow-sm ${isEditMode ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                    className={`p-1.5 rounded-xl transition-all shadow-xs ${isEditMode ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
                   >
-                    <Edit2 size={16} />
+                    <Edit2 size={14} />
                   </button>
                 </div>
                 
@@ -789,104 +749,53 @@ export default function TeamDashboard({ user, onLogout }) {
             />
           )}
 
-          {/* 🎯 ३ स्वतंत्र व्ह्यूज रेंडरिंग लॉजिक */}
-          {activeTab === 'govinda_katta' && (
-            <div className="animate-in fade-in duration-150 space-y-4">
-              <div className="border-b border-slate-200 pb-3 hidden md:block">
-                <h1 className="text-xl md:text-2xl font-black text-slate-800">🚩 गोविंदा कट्टा</h1>
-                <p className="text-xs text-slate-500 mt-0.5">नोंदणीकृत दहीहंडी मंडळांची लाईव्ह यादी.</p>
-              </div>
-              <PublicDirectory />
-            </div>
-          )}
-
-          {activeTab === 'public_stats' && hasFormAccess && (
-            <div className="animate-in fade-in duration-150 space-y-4">
-              <div className="border-b border-slate-200 pb-3 hidden md:block">
-                <h1 className="text-xl md:text-2xl font-black text-slate-800">📊 उत्सव आकडेवारी</h1>
-                <p className="text-xs text-slate-500 mt-0.5">मंडळे व पथकांचे थेट विश्लेषण आणि टक्केवारी.</p>
-              </div>
-              <PublicStats />
-            </div>
-          )}
-
-          {activeTab === 'public_info' && (
-            <div className="animate-in fade-in duration-150 space-y-4">
-              <div className="border-b border-slate-200 pb-3 hidden md:block">
-                <h1 className="text-xl md:text-2xl font-black text-slate-800">📜 उत्सव नियमावली</h1>
-                <p className="text-xs text-slate-500 mt-0.5">समन्वय समितीचे नियम व मार्गदर्शक तत्त्वे.</p>
-              </div>
-              <PublicInfo />
-            </div>
-          )}
-
-          {/* 🆕 ४. टीम ॲडमिन सार्वजनिक ताज्या घडामोडी व्ह्यू */}
-          {activeTab === 'public_news' && (
-            <div className="animate-in fade-in duration-150 space-y-4">
-              <div className="border-b border-slate-200 pb-3 hidden md:block">
-                <h1 className="text-xl md:text-2xl font-black text-slate-800">📢 ताज्या घडामोडी व सूचना</h1>
-                <p className="text-xs text-slate-500 mt-0.5">सिस्टीम द्वारे प्रसारित केलेल्या सर्व अधिकृत सूचना.</p>
-              </div>
-              <PublicNews />
-            </div>
-          )}
-
-          {/* 🆕 ५. टीम ॲडमिन उत्सव व सराव कट्टा व्ह्यू */}
-          {activeTab === 'public_events' && (
-            <div className="animate-in fade-in duration-150 space-y-4">
-              <div className="border-b border-slate-200 pb-3 hidden md:block">
-                <h1 className="text-xl md:text-2xl font-black text-slate-800">📅 उत्सव व सराव कट्टा</h1>
-                <p className="text-xs text-slate-500 mt-0.5">मंडळांची भव्य सराव शिबिरे आणि दहीहंडीचे अचूक नकाशे / ठिकाणे.</p>
-              </div>
-              <PublicEvents />
-            </div>
-          )}
-
-          {/* 🆕 ६. टीम ॲडमिन ऐतिहासिक रेकॉर्ड्स व्ह्यू */}
-          {activeTab === 'public_records' && (
-            <div className="animate-in fade-in duration-150 space-y-4">
-              <div className="border-b border-slate-200 pb-3 hidden md:block">
-                <h1 className="text-xl md:text-2xl font-black text-slate-800">🏆 ऐतिहासिक रेकॉर्ड्स आणि गॅलरी</h1>
-                <p className="text-xs text-slate-500 mt-0.5">सर्वोच्च मानवी मनोरे रचणाऱ्या वीर गोविंदा पथकांची यशोगाथा.</p>
-              </div>
-              <PublicRecords />
-            </div>
-          )}
+          {/* 🎯 स्वतंत्र व्ह्यू रेंडरिंग लॉजिक */}
+          {activeTab === 'govinda_katta' && <PublicDirectory />}
+          {activeTab === 'public_stats' && <PublicStats />}
+          {activeTab === 'public_info' && <PublicInfo />}
+          {activeTab === 'public_news' && <PublicNews />}
+          {activeTab === 'public_events' && <PublicEvents />}
+          {activeTab === 'public_records' && <PublicRecords />}
+          
+          {/* 🎯 नवीन लेख रेंडरिंग केस जोडला (१००% फ्लूइड 🚀) */}
+          {activeTab === 'articles' && <PublicArticles />}
           
         </div>
       </div>
 
+      {/* 💸 मोबाईलसाठी सुबक तळाची चिकटलेली ६०px गुगल ॲड बार */}
+      <AdMobileBottom />
+
       {/* 📱 मोबाईल बार आयटम्स */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-2 flex justify-around items-center shadow-lg z-30">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-1.5 flex justify-around items-center shadow-lg z-30 h-16">
         {mobileTabs.map((btn) => (
           <button 
             key={btn.id} 
             onClick={() => setActiveTab(btn.id)} 
-            className={`flex flex-col items-center space-y-0.5 transition-all ${activeTab === btn.id ? 'text-[#ff6600] font-bold' : 'text-slate-400'}`}
+            className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${activeTab === btn.id ? 'text-orange-500 font-black scale-105' : 'text-slate-400 font-bold'}`}
           >
             {btn.icon}
-            <span className="text-[10px]">{btn.label}</span>
+            <span className="text-[9px] mt-0.5">{btn.label}</span>
           </button>
         ))}
       </div>
 
       {/* 📱 मोबाईल प्लस तरंगते बटण */}
       {hasFormAccess && (activeTab === 'dashboard' || activeTab === 'players') && (
-        <button onClick={() => openPlayerModal()} className="sm:hidden fixed bottom-20 right-5 bg-[#ff6600] text-white p-4 rounded-full shadow-xl z-20"><Plus size={22} /></button>
+        <button onClick={() => openPlayerModal()} className="sm:hidden fixed bottom-20 right-5 bg-orange-500 text-white p-3.5 rounded-full shadow-xl z-20 active:scale-95"><Plus size={20} /></button>
       )}
 
       {/* 🗟 प्रगत संपादन मॉडेल */}
       {isModalOpen && hasFormAccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
-          <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative z-10 max-h-[85vh] overflow-y-auto">
-            <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-slate-400 p-1"><X size={20} /></button>
-            <div className="mb-4"><h3 className="text-lg font-black text-slate-800">{editingPlayerId ? 'खेळाडूची माहिती सुधारा' : 'गोविंदा खेळाडू नोंदणी'}</h3></div>
+          <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"></div>
+          <div className="bg-white rounded-2xl w-full max-w-md p-5 shadow-2xl relative z-10 max-h-[82vh] overflow-y-auto">
+            <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-slate-400 p-1"><X size={18} /></button>
+            <div className="mb-3"><h3 className="text-sm font-black text-slate-800">{editingPlayerId ? 'खेळाडूची माहिती सुधारा' : 'गोविंदा खेळाडू नोंदणी'}</h3></div>
             <TshirtForm 
               formData={{ playerName, gender, bloodGroup, pyramidPlace, birthDate, mobileNumber, tshirtSize, shortsSize, customTshirt, customShorts, needBelt, needTowel, insuranceStatus, tshirtGiven }}
               setFormData={(callback) => {
                 const updated = callback({ playerName, gender, bloodGroup, pyramidPlace, birthDate, mobileNumber, tshirtSize, shortsSize, customTshirt, customShorts, needBelt, needTowel, insuranceStatus, tshirtGiven });
-                
                 if(updated.playerName !== undefined) setPlayerName(updated.playerName);
                 if(updated.gender !== undefined) setGender(updated.gender);
                 if(updated.bloodGroup !== undefined) setBloodGroup(updated.bloodGroup);

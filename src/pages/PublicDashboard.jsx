@@ -1,28 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { Users, BarChart3, BookOpen, Menu, X, ArrowLeft, Megaphone, Calendar, Trophy, LogOut } from 'lucide-react';
+import { Users, BarChart3, Menu, X, Home, Megaphone, Calendar, Trophy, BookOpen } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase'; 
 
-// 🎯 कॉम्पोनेंट्स यशस्वीरित्या इम्पोर्ट केले
+// 🎯 आपला नवीन कॉमन ग्लोबल साईडबार कॉम्पोनेंट
+import Sidebar from '../components/Sidebar';
+
+// कॉम्पोनेंट्स इम्पोर्ट हब
 import PublicDirectory from '../components/PublicDirectory';
 import PublicStats from '../components/PublicStats';
 import PublicInfo from '../components/PublicInfo';
-// 🆕 नवीन जोडलेले मेंटेनन्स आधारित पब्लिक कॉम्पोनेंट्स
 import PublicNews from '../components/PublicNews';
 import PublicEvents from '../components/PublicEvents';
 import PublicRecords from '../components/PublicRecords';
-
-// 💸 मोबाईलसाठी तळाची चिकटलेली मॅन्युअल ॲड इम्पॉर्ट केली
-import AdMobileBottom from '../components/AdMobileBottom'; // कॉम्पोनंटचा अचूक पाथ तपासून घ्या
-
 import PublicArticles from '../components/PublicArticles';
 
+// मोबाईलसाठी तळाची चिकटलेली ॲड बार
+import AdMobileBottom from '../components/AdMobileBottom';
 
-
-
-// initialTab प्रोप लँडिंग पेजवरून डायरेक्ट नेव्हिगेशनसाठी अत्यंत महत्त्वाचा आहे
-export default function PublicDashboard({ handleLogin, onBackToAdmin, initialTab = 'directory' }) {
+export default function PublicDashboard({ 
+  handleLogin, 
+  onBackToAdmin, 
+  initialTab = 'directory',
+  isEmbeddedView = false,     // पॅच: सुपर किंवा मंडळ ॲडमीनच्या आत उघडल्यास हे ट्रु होईल
+  embeddedTab = 'directory',  // साईडबार कडून येणारा चालू टॅब
+  setEmbeddedTab              // साईडबारचा टॅब बदलण्याचे फंक्शन
+}) {
   
-  // 🔄 सुरुवातीचा टॅबसेट करताना प्रोप आणि लोकल स्टोरेज दोन्ही सुरक्षितपणे तपासणे
-  const [currentTab, setCurrentTab] = useState(() => {
+  // डॅशबोर्डमधील फिल्टर्स स्टेट्स (आता एकाच जागी सुरक्षित लॉक 🔒)
+  const [statsCategoryFilter, setStatsCategoryFilter] = useState('All');
+  const [statsTharaFilter, setStatsTharaFilter] = useState('All');
+  const [statsDistrictFilter, setStatsDistrictFilter] = useState('All');
+  const [statsAreaFilter, setStatsAreaFilter] = useState('');
+
+  // मोबाईल मेनू ओपन/क्लोज स्टेट
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [lang, setLang] = useState('mr'); 
+
+  // व्ह्यू नुसार टॅबची स्टेट निवडणे
+  const [localTab, setLocalTab] = useState(() => {
     const savedTab = localStorage.getItem('active_public_tab');
     if (savedTab) {
       localStorage.removeItem('active_public_tab');
@@ -31,86 +47,55 @@ export default function PublicDashboard({ handleLogin, onBackToAdmin, initialTab
     return initialTab;
   });
 
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const currentTab = isEmbeddedView ? embeddedTab : localTab;
 
-  // १. डॅशबोर्डमध्ये वरती या नवीन स्टेट्स वाढवणे
-const [statsCategoryFilter, setStatsCategoryFilter] = useState('All');
-const [statsTharaFilter, setStatsTharaFilter] = useState('All');
-  // 🎯 ॲनालिसिस क्लिक लिंक करण्यासाठी नवीन फिल्टर्स स्टेट्स (१००% सुरक्षित)
-  const [statsDistrictFilter, setStatsDistrictFilter] = useState('');
-  const [statsAreaFilter, setStatsAreaFilter] = useState('');
-
-
-  // 🎯 मॅजिक सिंक पॅच: जसं लँडिंग पेजवरून 'initialTab' बदलेल किंवा नवीन क्लीक होऊन ॲप री-माउंट होईल,
-  // तशी ही सिस्टीम जुन्या कोडिंगला धक्का न लावता लाइव्ह टॅब तात्काळ सिंक्रोनाइझ करेल!
-  useEffect(() => {
-    const savedTab = localStorage.getItem('active_public_tab');
-    if (savedTab) {
-      setCurrentTab(savedTab);
-      localStorage.removeItem('active_public_tab'); // मेमरी लगेच साफ करा
-    } else if (initialTab) {
-      setCurrentTab(initialTab);
+  const setCurrentTab = (tabId) => {
+    if (isEmbeddedView && setEmbeddedTab) {
+      setEmbeddedTab(tabId);
+    } else {
+      setLocalTab(tabId);
     }
-  }, [initialTab]);
-
-  // 📋 १. मुख्य डेस्कटॉप साइडबार मेनूची पूर्ण यादी (सर्व ६ पर्याय)
-  const menuItems = [
-    { id: 'directory', label: 'गोविंदा कट्टा', icon: <Users size={18} /> },
-    { id: 'stats', label: 'उत्सव आकडेवारी', icon: <BarChart3 size={18} /> },
-    { id: 'rules', label: 'उत्सव नियमावली', icon: <BookOpen size={18} /> },
-    { id: 'public_news', label: 'ताज्या घडामोडी', icon: <Megaphone size={18} /> },
-    { id: 'public_events', label: 'उत्सव व सराव कट्टा', icon: <Calendar size={18} /> },
-    { id: 'public_records', label: 'ऐतिहासिक रेकॉर्ड्स', icon: <Trophy size={18} /> },
-    { id: 'articles', label: 'दहीहंडी ज्ञानपीठ', icon: <BookOpen size={18} /> } // 🎯 नवीन पब्लिक लेख टॅब जोडला
-
-  ];
-
-  // 📱 २. मोबाईल बॉटम बारसाठी तुम्ही सांगितलेले फक्त ४專 प्रिमियम मेनू
-  const mobileBottomItems = [
-    { id: 'directory', label: 'गोविंदा कट्टा', icon: <Users size={18} /> },
-    { id: 'stats', label: 'आकडेवारी', icon: <BarChart3 size={18} /> },
-    { id: 'public_events', label: 'सराव कट्टा', icon: <Calendar size={18} /> },
-    { id: 'public_records', label: 'रेकॉर्ड्स', icon: <Trophy size={18} /> }
-  ];
-
-  // 🚪 कॉमन सुरक्षित लॉगआऊट मॅकेनिझम (Code Duplication टाळण्यासाठी)
-  const handleSystemLogout = () => {
-    // १. लोकल स्टोरेज पूर्ण क्लीनअप 🧹
-    localStorage.removeItem('govinda_user');
-    localStorage.removeItem('govinda_guest');
-    localStorage.removeItem('active_public_tab');
-    
-    // २. फायरबेस अधिकृत साईन आऊट 🔐
-    import('../firebase').then(({ auth }) => {
-      auth.signOut().then(() => {
-        // ३. ॲप पूर्ण रिफ्रेश करून होम स्क्रीनवर नेणे
-        window.location.href = window.location.origin + import.meta.env.BASE_URL;
-      });
-    });
   };
 
-  // 🔄 टॅब बदलल्यावर अचूक कॉम्पोनेंट रेंडर करणे
-// 🔄 टॅब बदलल्यावर अचूक कॉम्पोनेंट रेंडर करणे
-  const renderTabContent = () => {
-    console.log("🖥️ [System Deep Log]: डॅशबोर्ड कोअर सिंक तपासणी -> ", {
-      ACTIVE_TAB: currentTab,
-      DISTRICT: statsDistrictFilter,
-      AREA: statsAreaFilter,
-      THARA: statsTharaFilter,
-      CATEGORY: statsCategoryFilter
-    });
+  // 🔄 ॲटो-कॅश इनव्हॅलिडेशन इंजिन
+  useEffect(() => {
+    const checkAppVersionAndClearCache = async () => {
+      try {
+        const configRef = doc(db, "public_site_cache", "system_config");
+        const configSnap = await getDoc(configRef);
+        if (configSnap.exists()) {
+          const serverVersion = configSnap.data().version || 1.0;
+          const localVersion = localStorage.getItem('mcg_local_db_version');
+          
+          if (localVersion && parseFloat(localVersion) < parseFloat(serverVersion)) {
+            console.log("🔄 [Cache System]: IndexedDB कॅश साफ होत आहे...");
+            if (window.indexedDB) {
+              window.indexedDB.deleteDatabase("firestore/[DEFAULT]/maharashtracha-govinda/main"); 
+            }
+            localStorage.setItem('mcg_local_db_version', serverVersion.toString());
+            window.location.reload(); 
+          } else if (!localVersion) {
+            localStorage.setItem('mcg_local_db_version', serverVersion.toString());
+          }
+        }
+      } catch (err) { console.error("Cache engine check failed:", err); }
+    };
+    checkAppVersionAndClearCache();
+  }, []);
 
+  // टॅब बदलल्यावर अचूक कॉम्पोनेंट रेंडर करणे
+  const renderTabContent = () => {
     switch (currentTab) {
       case 'directory':
+      case 'govinda_katta':
         return (
           <PublicDirectory 
-            handleLogin={handleLogin} 
+            handleLogin={handleLogin}
             initialDistrict={statsDistrictFilter}
             initialArea={statsAreaFilter}
             initialThara={statsTharaFilter}
             initialCategory={statsCategoryFilter}
             clearFilters={() => {
-              console.log("🧹 [System Log]: सर्व डॅशबोर्ड फिल्टर्स मेमरीमधून साफ केले.");
               setStatsDistrictFilter('All');
               setStatsAreaFilter('');
               setStatsTharaFilter('All');
@@ -119,173 +104,75 @@ const [statsTharaFilter, setStatsTharaFilter] = useState('All');
           />
         );
       case 'stats':
+      case 'public_stats':
         return (
           <PublicStats 
             onDistrictClick={(districtName) => {
-              console.log("🚀 [Redirect Log]: जिल्ह्यावरून थेट कट्ट्याकडे उडी. जिल्हा ->", districtName);
-              setStatsDistrictFilter(districtName);
-              setStatsAreaFilter('');
-              setStatsTharaFilter('All');
-              setStatsCategoryFilter('All');
-              setCurrentTab('directory');
+              setStatsDistrictFilter(districtName); setStatsAreaFilter(''); setStatsTharaFilter('All'); setStatsCategoryFilter('All');
+              setCurrentTab(isEmbeddedView ? 'govinda_katta' : 'directory');
             }}
             onAreaClick={(districtName, areaName) => {
-              console.log(`🏙️ [Dashboard Area Sync]: परिसरावरून कट्ट्याकडे उडी. जिल्हा: ${districtName} | परिसर: ${areaName}`);
-              
-              // 🎯 फिक्स: जिल्हा अचूक सेट करा जेणेकरून कट्ट्यावरील जिल्हा ड्रॉपडाउन आपोआप मॅच होईल
-              setStatsDistrictFilter(districtName); 
-              setStatsAreaFilter(areaName.trim()); // परिसर नाव सुरक्षित पाठवले
-              setStatsTharaFilter('All');
-              setStatsCategoryFilter('All');
-              setCurrentTab('directory'); // थेट कट्ट्यावर नेव्हिगेट
+              setStatsDistrictFilter(districtName); setStatsAreaFilter(areaName.trim()); setStatsTharaFilter('All'); setStatsCategoryFilter('All');
+              setCurrentTab(isEmbeddedView ? 'govinda_katta' : 'directory');
             }}
             onTharaClick={(tharaCount) => {
-              console.log("🚀 [Redirect Log]: थरावरून थेट कट्ट्याकडे उडी. थर क्षमता ->", tharaCount);
-              setStatsDistrictFilter('All');
-              setStatsAreaFilter('');
-              setStatsCategoryFilter('All');
-              setStatsTharaFilter(tharaCount.toString()); // 🎯 सक्तीने स्ट्रिंगमध्ये कन्व्हर्ट केले
-              setCurrentTab('directory'); // ⚡ कट्ट्यावर री-डायरेक्ट कमांड लॉक!
+              setStatsDistrictFilter('All'); setStatsAreaFilter(''); setStatsCategoryFilter('All'); setStatsTharaFilter(tharaCount.toString());
+              setCurrentTab(isEmbeddedView ? 'govinda_katta' : 'directory');
             }}
             onCategoryClick={(categoryName) => {
-              console.log("🚀 [Redirect Log]: कॅटेगरीवरून थेट कट्ट्याकडे उडी. श्रेणी ->", categoryName);
-              setStatsDistrictFilter('All');
-              setStatsAreaFilter('');
-              setStatsTharaFilter('All');
-              setStatsCategoryFilter(categoryName);
-              setCurrentTab('directory');
+              setStatsDistrictFilter('All'); setStatsAreaFilter(''); setStatsTharaFilter('All'); setStatsCategoryFilter(categoryName);
+              setCurrentTab(isEmbeddedView ? 'govinda_katta' : 'directory');
             }}
           />
         );
       case 'rules':
+      case 'public_info': 
         return <PublicInfo />;
-      case 'public_news':
+      case 'public_news': 
         return <PublicNews />;
-      case 'public_events':
+      case 'public_events': 
         return <PublicEvents />;
-      case 'public_records':
+      case 'public_records': 
         return <PublicRecords />;
-
-        // 🎯 फिक्स: हा नवीन केस जोडल्यामुळे आता ज्ञानपीठ पेज चकाचक लोड होईल!
-      case 'articles':
+      case 'articles': 
         return <PublicArticles />;
-        
-      default:
+      default: 
         return <PublicDirectory handleLogin={handleLogin} />;
     }
   };
 
-return (
-    <div className="min-h-screen bg-[#f4f6f9] flex flex-col md:flex-row font-sans antialiased select-none relative text-slate-700">
+  return (
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans antialiased pb-16 md:pb-0 select-none text-slate-700">
       
-      {/* 📱 १. मोबाईल हेडर (Premium Dynamic Look - No Autologout Fix आवृत्ती) */}
-      <div className="md:hidden bg-[#0f172a] text-white px-4 py-3 flex items-center justify-between shadow-md z-30 sticky top-0">
-        <div className="flex flex-col text-left">
-          <span className="text-base font-black tracking-wide">
-            महाराष्ट्राचा <span className="text-orange-500">गोविंदा</span>
-          </span>
-          <span className="text-[10px] text-slate-400 font-bold tracking-wide mt-0.5">
-            प्रत्येक गोविंदासाठी
-          </span>
-        </div>
-        <div className="flex items-center space-x-2">
-          {onBackToAdmin && (
-            <button 
-              onClick={localStorage.getItem('govinda_user') ? onBackToAdmin : onBackToAdmin} 
-              className="p-1 text-slate-300 hover:text-white transition-transform active:scale-90" 
-              title="मागे जा"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
-          {/* Main Menu Trigger */}
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-1 text-slate-300 hover:text-white">
-            {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
-        </div>
-      </div>
+      {/* 👑 १. इंजेक्टेड ग्लोबल सामायिक साईडबार (फक्त विदाऊट लॉगिन/पब्लिक व्ह्यू असेल तरच दिसेल) */}
+      {!isEmbeddedView && (
+        <Sidebar 
+          userRole="public"
+          hasFormAccess={false}
+          activeTab={currentTab}
+          setActiveTab={setCurrentTab}
+          isMenuOpen={isMobileMenuOpen}
+          setIsMenuOpen={setIsMobileMenuOpen}
+          onLogout={onBackToAdmin}
+          lang={lang}
+          handleLogin={handleLogin} // 🎯 थेट App.jsx मधून आलेले मूळ फंक्शन इथे पास आहे
+          setEmbeddedTab={setEmbeddedTab} // 🎯 फक्त ही १ ओळ इथे पास करून द्या!
+        />
+      )}
 
-      {/* 🏢 २. डावा साइडबार (Premium Matte-Dark Design) */}
-      <div className={`fixed inset-y-0 left-0 w-64 bg-[#0f172a] text-slate-200 p-5 flex flex-col justify-between z-40 transform transition-transform duration-300 ease-in-out md:sticky md:top-0 md:h-screen md:transform-none ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="flex flex-col flex-grow overflow-y-auto scrollbar-none">
-          <div className="mb-6 border-b border-slate-800 pb-4 text-left flex-shrink-0">
-            <h2 className="text-base font-black tracking-wide text-white">
-              महाराष्ट्राचा <span className="text-orange-500">गोविंदा</span>
-            </h2>
-            <p className="text-[10px] text-slate-500 font-bold tracking-wider uppercase mt-0.5">
-              प्रत्येक गोविंदासाठी
-            </p>
-          </div>
-
-          {/* मेनू बटन्स - यात ७ चे ७ पर्याय नेहमी नीट आणि क्लीन दिसतील */}
-          <div className="space-y-1 flex-grow">
-            {menuItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => { setCurrentTab(item.id); setIsMobileMenuOpen(false); }}
-                className={`w-full flex items-center space-x-3 px-4 py-2 rounded-xl font-bold text-xs transition-all text-left ${
-                  currentTab === item.id 
-                    ? 'bg-orange-500 text-white shadow-md shadow-orange-500/15' 
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 🎯 डेस्कटॉप आणि मोबाईल ड्रॉवर तळाचा बटन विभाग (Session Kill फिक्स आवृत्ती 🚀) */}
-        <div className="pt-4 border-t border-slate-800 flex-shrink-0 mt-auto bg-[#0f172a]">
-          {localStorage.getItem('govinda_user') ? (
-            <div className="space-y-2">
-              {/* १. लॉगआऊट बटन */}
-              <button 
-                onClick={handleSystemLogout} 
-                className="w-full flex items-center justify-center space-x-2 bg-red-500/10 text-red-400 py-2 rounded-xl text-xs font-bold transition-all border border-red-500/10 hover:bg-red-600 hover:text-white active:scale-98"
-              >
-                <LogOut size={14} />
-                <span>लॉगआऊट (Logout)</span>
-              </button>
-              
-              {/* २. होम पेजवर जा बटन */}
-              {onBackToAdmin && (
-                <button 
-                  onClick={onBackToAdmin} 
-                  className="w-full flex items-center justify-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white py-1.5 rounded-xl text-[11px] font-black transition-all border border-slate-700 active:scale-98"
-                >
-                  <ArrowLeft size={12} /><span>होम पेजवर जा</span>
-                </button>
-              )}
-            </div>
-          ) : (
-            onBackToAdmin && (
-              <button 
-                onClick={onBackToAdmin} 
-                className="w-full flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-xl text-xs font-bold transition-all border border-slate-700 active:scale-98"
-              >
-                <ArrowLeft size={14} /><span>डॅशबोर्डवर परत जा</span>
-              </button>
-            )
-          )}
-        </div>
-      </div>
-
-      {/* मोबाईल साइडबार बॅकग्राउंड लेयर */}
-      {isMobileMenuOpen && <div onClick={() => setIsMobileMenuOpen(false)} className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-xs"></div>}
-
-      {/* 🖥️ ३. मुख्य कार्यक्षेत्र (Full Fluid 🚀) */}
-      <div className="flex-1 p-4 md:p-6 overflow-y-auto z-10 w-full pb-40 md:pb-6 max-h-screen">
+      {/* 🖥️ २. मुख्य कार्यक्षेत्र */}
+      <div className="flex-1 p-4 md:p-6 overflow-y-auto z-10 w-full max-h-screen">
         <div className="w-full space-y-4">
-        
-          {/* हेडर टायटल (Desktop) */}
-          <div className="border-b border-slate-200 pb-2.5 hidden md:block text-left">
-            <h1 className="text-lg font-black text-slate-800 uppercase tracking-wide">
-              {menuItems.find(m => m.id === currentTab)?.label}
-            </h1>
-            <p className="text-[11px] text-slate-400 font-bold mt-0.5">महाराष्ट्रातील अधिकृत आणि नोंदणीकृत दहीहंडी उत्सवाचे व्यासपीठ.</p>
-          </div>
+          
+          {/* 🌐 ड्युअल लँग्वेज फ्रंटएंड स्विचर (फक्त पब्लिक विदाऊट लॉगिन मोडमध्ये वरती उजवीकडे क्लीन दिसेल) */}
+          {!isEmbeddedView && (
+            <div className="flex justify-end mb-2">
+              <div className="flex bg-slate-200/60 p-0.5 rounded-lg space-x-0.5 border shadow-sm">
+                <button onClick={() => setLang('mr')} className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'mr' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}>मराठी</button>
+                <button onClick={() => setLang('en')} className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'en' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}>English</button>
+              </div>
+            </div>
+          )}
 
           {/* कॉम्पोनेंट लोड AREA */}
           <div className="w-full animate-in fade-in duration-200">
@@ -295,34 +182,28 @@ return (
         </div>
       </div>
 
-      {/* 💸 मोबाईलसाठी तळाची चिकटलेली ॲड बार */}
       <AdMobileBottom />
 
-      {/* 📱 ४. मोबाईल स्क्रीनसाठी सुधारित बॉटम नेव्हिगेशन बार */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-40 flex justify-around items-center py-1.5 px-1">
-        {mobileBottomItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setCurrentTab(item.id)}
-            className={`flex flex-col items-center justify-center space-y-0.5 py-1 px-2 rounded-xl transition-all ${
-              currentTab === item.id 
-                ? 'text-orange-500 font-black' 
-                : 'text-slate-400 font-bold'
-            }`}
-          >
-            <div className={`p-1 rounded-lg transition-colors ${currentTab === item.id ? 'bg-orange-500/10' : ''}`}>
+      {/* 📱 मोबाईल स्क्रीनसाठी सुधारित बॉटम बार (फक्त पब्लिक विदाऊट लॉगिन मोडमध्येच दिसेल) */}
+      {!isEmbeddedView && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-1.5 flex justify-around items-center shadow-lg z-30 h-16">
+          {[
+            { id: 'directory', label: lang === 'mr' ? 'गोविंदा कट्टा' : 'Govinda Katta', icon: <Users size={18} /> },
+            { id: 'stats', label: lang === 'mr' ? 'आकडेवारी' : 'Stats', icon: <BarChart3 size={18} /> },
+            { id: 'public_events', label: lang === 'mr' ? 'सराव कट्टा' : 'Practice', icon: <Calendar size={18} /> },
+            { id: 'public_records', label: lang === 'mr' ? 'रेकॉर्ड्स' : 'Records', icon: <Trophy size={18} /> }
+          ].map((item) => (
+            <button 
+              key={item.id} 
+              onClick={() => setCurrentTab(item.id)} 
+              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${currentTab === item.id ? 'text-orange-500 font-black scale-105' : 'text-slate-400 font-bold'}`}
+            >
               {item.icon}
-            </div>
-            <span className="text-[9px] tracking-tight">{item.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* अतिरिक्त CSS पॅच */}
-      <style>{`
-        .scrollbar-none::-webkit-scrollbar { display: none; }
-        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
+              <span className="text-[9px] mt-0.5">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
     </div>
   );

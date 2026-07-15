@@ -264,56 +264,65 @@ export default function PublicEvents() {
           कार्यक्रम उपलब्ध नाही किंवा सर्च मॅच झाला नाही.
         </div>
       ) : (
+        
+        
         /* 🎯 मोबाईलवर १ कॉलम आणि डेस्कटॉपवर (md:) २ कॉलमचे कडक ग्रिड लेआउट केले */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {processedEvents.map((e) => {
-            const dateInfo = formatEventDate(e.fromDate);
-            const finalImg = e.posterUrl || e.photoUrl || DEFAULT_IMAGES[e.type] || DEFAULT_IMAGES.practice_session;
-            const badge = categoryBadges[e.type] || categoryBadges.practice_session;
-            
-            const todayStr = new Date().toISOString().split('T')[0];
-            const isToday = e.fromDate <= todayStr && e.toDate >= todayStr;
 
-            return (
-              <div 
-                key={e.id}
-                onClick={() => setSelectedEvent(e)}
-                className={`bg-[#03060f] border rounded-2xl p-2.5 flex items-center gap-3 cursor-pointer hover:border-orange-500/40 hover:shadow-lg transition-all group ${
-                  isToday ? 'border-orange-500/40 bg-gradient-to-r from-orange-500/5 to-transparent' : 'border-slate-800/90'
-                }`}
-              >
-                {/* 📆 डाव्या बाजूचा मोठा मराठी डेट बॉक्स */}
-                <div className="flex flex-col items-center justify-center bg-[#0d1527] border border-slate-800 rounded-xl w-[58px] h-[64px] flex-shrink-0 shadow-inner group-hover:border-orange-500/40 transition-all">
-                  <span className="text-lg font-black text-orange-500 font-mono tracking-tighter leading-none">{dateInfo.day}</span>
-                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider mt-1">{dateInfo.month}</span>
-                </div>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  {processedEvents.map((e) => {
+    const dateInfo = formatEventDate(e.fromDate);
+    const finalImg = e.posterUrl || e.photoUrl || DEFAULT_IMAGES[e.type] || DEFAULT_IMAGES.practice_session;
+    const badge = categoryBadges[e.type] || categoryBadges.practice_session;
+    
+    // ⏰ हा व्हेरिएबल इथे डिफाइन केला आहे
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isToday = e.fromDate <= todayStr && e.toDate >= todayStr;
 
-                {/* इमेज थंबनेल */}
-                <div className="w-[65px] h-[54px] rounded-lg overflow-hidden bg-slate-950 flex-shrink-0 border border-slate-800 relative">
-                  <img src={finalImg} alt={e.title_mr} className="w-full h-full object-cover" />
-                  {isToday && <span className="absolute top-0.5 left-0.5 bg-orange-600 text-white font-black text-[6px] px-1 py-0.2 rounded animate-pulse">LIVE</span>}
-                </div>
-
-                {/* माहिती भाग */}
-                <div className="flex-1 min-w-0 text-left space-y-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`text-[7px] font-black uppercase px-1.5 py-0.2 rounded border ${badge.bg}`}>
-                      {badge.label}
-                    </span>
-                    {e.distanceKm && (
-                      <span className="text-[8px] font-black text-orange-400 flex items-center bg-slate-950 px-1 rounded border border-orange-500/10">
-                        <MapPin size={8} className="mr-0.5 text-orange-500" /> {toMarathiNumber(e.distanceKm)} किमी
-                      </span>
-                    )}
-                  </div>
-                  
-                  <h4 className="text-xs font-black text-slate-200 line-clamp-1 group-hover:text-white transition-all leading-tight">{e.title_mr}</h4>
-                  <p className="text-[10px] text-slate-400 font-bold truncate">🏰 {e.mandalName || 'आयोजक मंडळ'}</p>
-                </div>
-              </div>
-            );
-          })}
+    return (
+      <div 
+        key={e.id}
+        onClick={() => setSelectedEvent(e)}
+        className={`bg-[#03060f] border rounded-2xl p-2.5 flex items-center gap-3 cursor-pointer hover:border-orange-500/40 hover:shadow-lg transition-all group ${
+          isToday ? 'border-orange-500/40 bg-gradient-to-r from-orange-500/5 to-transparent' : 'border-slate-800/90'
+        }`}
+      >
+        {/* 📆 डाव्या बाजूचा मोठा मराठी डेट बॉक्स */}
+        <div className="flex flex-col items-center justify-center bg-[#0d1527] border border-slate-800 rounded-xl w-[58px] h-[64px] flex-shrink-0 shadow-inner group-hover:border-orange-500/40 transition-all">
+          <span className="text-lg font-black text-orange-500 font-mono tracking-tighter leading-none">{dateInfo.day}</span>
+          <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider mt-1">{dateInfo.month}</span>
         </div>
+
+        {/* इमेज थंबनेल */}
+        <div className="w-[65px] h-[54px] rounded-lg overflow-hidden bg-slate-950 flex-shrink-0 border border-slate-800 relative">
+          <img src={finalImg} alt={e.title_mr} className="w-full h-full object-cover" />
+          {isToday && <span className="absolute top-0.5 left-0.5 bg-orange-600 text-white font-black text-[6px] px-1 py-0.2 rounded animate-pulse">LIVE</span>}
+        </div>
+
+        {/* माहिती भाग */}
+        <div className="flex-1 min-w-0 text-left space-y-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`text-[7px] font-black uppercase px-1.5 py-0.2 rounded border ${badge.bg}`}>
+              {badge.label}
+            </span>
+          </div>
+          
+          <h4 className="text-xs font-black text-slate-200 line-clamp-1 group-hover:text-white transition-all leading-tight">{e.title_mr}</h4>
+          <p className="text-[10px] text-slate-400 font-bold truncate">🏰 {e.mandalName || 'आयोजक मंडळ'}</p>
+        </div>
+
+        {/* 📍 उजव्या बाजूचा मोठा डिस्टन्स बॉक्स */}
+        {e.distanceKm && (
+          <div className="flex flex-col items-center justify-center bg-[#0d1527]/60 border border-orange-500/20 rounded-xl w-[54px] h-[54px] flex-shrink-0 shadow-inner group-hover:border-orange-500/40 transition-all ml-auto">
+            <span className="text-sm font-black text-orange-400 font-mono tracking-tighter leading-none">
+              {toMarathiNumber(e.distanceKm)}
+            </span>
+            <span className="text-[9px] font-bold text-slate-400 tracking-wide mt-1">किमी</span>
+          </div>
+        )}
+      </div>
+    );
+  })}
+</div>
       )}
 
       {/* पॉपअप मोडल */}

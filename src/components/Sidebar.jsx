@@ -92,8 +92,9 @@ export default function Sidebar({
             {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
           <div className="flex flex-col text-left min-w-0">
-            <span className="text-[10px] font-black tracking-wide text-slate-400">
+            <span className="text-[24px] font-black tracking-wide text-slate-100">
               {t.brand} <span className="text-orange-500">{t.subBrand}</span>
+              <p className="text-[10px]  text-slate-400">{t.defaultSub}</p >
             </span>
             {teamName && <span className="text-xs font-bold uppercase truncate tracking-tight text-white max-w-[150px]">{teamName}</span>}
           </div>

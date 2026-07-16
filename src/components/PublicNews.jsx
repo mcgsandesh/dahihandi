@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { Megaphone, Clock, Loader2, Search } from 'lucide-react';
+import { Megaphone, Clock, Loader2, Search, ArrowLeft, ExternalLink, Calendar } from 'lucide-react';
 
 const toMarathiNumber = (num) => {
   if (num === null || num === undefined) return '';
@@ -26,6 +26,7 @@ export default function PublicNews() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(''); 
+  const [selectedNews, setSelectedNews] = useState(null); // 🎯 सिंगल बातमी पाहण्यासाठी स्टेट
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -41,9 +42,19 @@ export default function PublicNews() {
     fetchNews();
   }, []);
 
-  const filteredNews = news.filter(n => 
-    n.text_mr?.toLowerCase().includes(searchQuery.toLowerCase().trim())
-  );
+  // 🎯 व्हॅलिडेशन फिल्टर: मुदत संपलेल्या बातम्या गाळणे आणि शोध फिल्टर लावणे
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const filteredNews = news.filter(n => {
+    // जर बातमीला expiryDate असेल आणि ती आजच्या तारखेपेक्षा जुनी असेल, तर दाखवू नका
+    if (n.expiryDate && n.expiryDate < todayStr) return false;
+
+    const matchesSearch = 
+      n.subject_mr?.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+      n.details_mr?.toLowerCase().includes(searchQuery.toLowerCase().trim());
+      
+    return matchesSearch;
+  });
 
   if (loading) {
     return (
@@ -53,6 +64,57 @@ export default function PublicNews() {
     );
   }
 
+  // 📖 १. सविस्तर बातमी वाचन कक्ष (Main News Page Detail View)
+  if (selectedNews) {
+    return (
+      <div className="w-full space-y-4 text-left animate-in fade-in duration-150 pb-24 text-slate-700">
+        <button 
+          onClick={() => setSelectedNews(null)} 
+          className="flex items-center text-xs font-black text-slate-600 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-200"
+        >
+          <ArrowLeft size={14} className="mr-1.5"/> मागे जा
+        </button>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-start space-x-3">
+            <div className="p-2.5 bg-orange-50 rounded-xl text-orange-600 border border-orange-100 flex-shrink-0">
+              <Megaphone size={16} />
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-sm font-black text-slate-900 leading-snug">{selectedNews.subject_mr}</h1>
+              <div className="flex items-center space-x-1.5 text-[9px] text-slate-400 font-bold">
+                <Clock size={11} />
+                <span>प्रसिद्धी: {formatMarathiDate(selectedNews.createdAt)}</span>
+              </div>
+            </div>
+          </div>
+
+          <hr className="border-slate-100" />
+
+          {/* सविस्तर वृत्त डिटेल्स */}
+          <div className="text-xs font-medium text-slate-800 leading-relaxed space-y-3 whitespace-pre-wrap">
+            {selectedNews.details_mr || 'या बातमीचे सविस्तर वृत्त उपलब्ध नाही भाऊ.'}
+          </div>
+
+          {/* संदर्भ लिंक असल्यास */}
+          {selectedNews.refLink && (
+            <div className="pt-2">
+              <a 
+                href={selectedNews.refLink} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="inline-flex items-center text-[10px] font-black bg-orange-50 text-orange-600 border border-orange-100 px-3 py-1.5 rounded-xl hover:bg-orange-600 hover:text-white transition-all shadow-sm"
+              >
+                अधिक माहितीसाठी लिंक 🔗 <ExternalLink size={10} className="ml-1" />
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 📋 २. मुख्य सूची व्ह्यू (फक्त सब्जेक्ट आणि तारीख दिसेल)
   return (
     <div className="w-full space-y-4 text-left animate-in fade-in duration-150 pb-24 text-slate-700">
       
@@ -62,32 +124,34 @@ export default function PublicNews() {
         <input 
           type="text" 
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="🔍 कोणतीही महत्त्वाची बातमी किंवा सूचना शोधा..."
+          onChange={(e) => setSearchTerm ? setSearchQuery(e.target.value) : setSearchQuery(e.target.value)}
+          placeholder="🔍 बातमीचा विषय शोधा..."
           className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-1.5 text-xs focus:outline-none focus:border-orange-500 text-slate-800 font-semibold shadow-inner"
         />
       </div>
 
-      {/* 📢 बातम्या सूची (व्हाईट थीम कार्ड्स) */}
+      {/* 📢 बातम्या सूची */}
       {filteredNews.length === 0 ? (
         <div className="bg-white rounded-2xl p-10 text-center text-slate-400 border border-dashed border-slate-200 text-xs font-bold">
-          📢 सध्या एकही नवीन बातमी किंवा सूचना उपलब्ध नाही.
+          📢 सध्या एकही बातमी किंवा सूचना उपलब्ध नाही.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filteredNews.map((n) => (
             <div 
               key={n.id} 
-              className="bg-white p-4 rounded-2xl border border-slate-150 shadow-sm flex items-start space-x-3.5 hover:border-orange-500/40 transition-all group"
+              onClick={() => setSelectedNews(n)}
+              className="bg-white p-3.5 rounded-2xl border border-slate-150 shadow-sm flex items-center space-x-3.5 hover:border-orange-500/40 cursor-pointer transition-all group"
             >
               <div className="p-2.5 bg-orange-50 rounded-xl text-orange-600 border border-orange-100 flex-shrink-0 group-hover:bg-[#0b132b] group-hover:text-white transition-all">
                 <Megaphone size={15} />
               </div>
-              <div className="space-y-2 min-w-0 flex-1">
-                <p className="text-xs font-bold text-slate-800 leading-relaxed break-words">
-                  {n.text_mr}
-                </p>
-                <div className="flex items-center space-x-1.5 text-[9px] text-slate-400 font-bold border-t border-slate-100 pt-1.5">
+              <div className="space-y-1 min-w-0 flex-1">
+                {/* फक्त सब्जेक्ट दाखवणे */}
+                <h4 className="text-xs font-bold text-slate-800 leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors">
+                  {n.subject_mr || n.text_mr}
+                </h4>
+                <div className="flex items-center space-x-1.5 text-[9px] text-slate-400 font-bold pt-0.5">
                   <Clock size={11} className="text-slate-400" />
                   <span>{formatMarathiDate(n.createdAt)}</span>
                 </div>

@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import PublicTeamProfile from './PublicTeamProfile';
 
 // 🎯 बदल: पॅरेंट कडून येणारे सर्व डीफॉल्ट फिल्टर्स प्रॉप्स इथे स्वीकारले आहेत (initialCategory सह 🚀)
-export default function PublicDirectory({ handleLogin, initialDistrict, initialArea, initialThara, initialCategory, clearFilters }) {
+export default function PublicDirectory({ handleLogin, initialDistrict, initialArea, initialThara, initialCategory, clearFilters,directSlug,items  }) {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [teams, setTeams] = useState([]);
   const [filteredTeams, setFilteredTeams] = useState([]);
@@ -152,26 +152,101 @@ export default function PublicDirectory({ handleLogin, initialDistrict, initialA
 
   const districts = ['All', ...new Set(teams.map(t => t.district).filter(Boolean))];
 
-  const handleViewProfile = (team) => {
-    const isUserLoggedIn = localStorage.getItem('govinda_user');
-    if (!isUserLoggedIn) {
-      Swal.fire({
-        icon: 'info',
-        title: 'सुरक्षा लॉक! 🔐',
-        text: 'मंडळाची संपूर्ण प्रोफाइल आणि खेळाडूंची माहिती पाहण्यासाठी कृपया आधी तुमच्या गुगल अकाउंटने लॉगिन करा.',
-        confirmButtonColor: '#ff6600',
-        confirmButtonText: 'लॉगिन करा 🚩',
-        showCancelButton: true,
-        cancelButtonText: 'नाही, नंतर करतो',
-        customClass: { popup: 'rounded-3xl' }
-      }).then((result) => {
-        if (result.isConfirmed) {
-          localStorage.removeItem('govinda_guest');
-          window.location.href = import.meta.env.BASE_URL || '/';
+
+// =========================================================================
+  // 📡 [POLLING HACK - १००% फिक्स] युआरएल स्लॅग मॅचिंग आणि ऑटो-ओपनिंग कक्ष 🚀
+  // =========================================================================
+  useEffect(() => {
+    if (!directSlug) return;
+
+    console.log("🔍 [DEEP LINK START] स्लॅग डिटेक्ट झाला आहे, डेटा येण्याची वाट पाहत आहे:", directSlug);
+
+    // दर ५०० मिलिसेकंदाला यादी तपासणारा टायमर (IndexedDB/Firebase डेटा येईपर्यंत चालू राहील)
+    const checkerInterval = setInterval(() => {
+      // इथे तुमच्या डिरेक्टरी फाईलमध्ये यादीसाठी जे मुख्य व्हेरिएबल वापरले आहे (items किंवा filteredTeams), ते तपासा
+      const currentList = teams || []; 
+
+      if (currentList && currentList.length > 0) {
+        console.log(`📡 [POLLING ACTIVE] कॅश मेमरी लोड झाली भाऊ! एकूण संघ: ${currentList.length}`);
+        
+        // स्लॅगमधून UID वेगळा काढणे
+        const slugParts = directSlug.split('-');
+        const extractedUID = slugParts[slugParts.length - 1].toLowerCase().trim();
+
+        // यादीमधून अचूक संघ शोधणे
+        const matchedTeam = currentList.find(t => {
+          const teamUID = (t.uid || t.id || '').toLowerCase().trim();
+          return teamUID === extractedUID;
+        });
+
+        if (matchedTeam) {
+          console.log("🎯✓✓✓ [POLLING SUCCESS] अचूक संघ सापडला! थेट प्रोफाईल उघडत आहे:", matchedTeam.teamName);
+          setSelectedTeam(matchedTeam);
+        } else {
+          console.log("❌ [POLLING MATCH FAILED] स्लॅगचा UID आपल्या यादीमधील कोणत्याही आयडीशी मॅच झाला नाही.");
         }
-      });
-      return;
-    }
+
+        // 🎯 काम फत्ते झाल्यावर टायमर थांबवणे (जेणेकरून लूप चालू राहणार नाही)
+        clearInterval(checkerInterval);
+      } else {
+        console.log("⏳ [POLLING WAITING] लोकल मेमरी अजून रिकामी आहे... पुन्हा तपासत आहे...");
+      }
+    }, 500);
+
+    // कॉम्पोनेंट अनमाउंट झाल्यावर सेफ्टीसाठी टायमर क्लियर करणे
+    return () => clearInterval(checkerInterval);
+  }, [directSlug, teams]);
+
+
+  // const handleViewProfile = (team) => {
+  //   const isUserLoggedIn = localStorage.getItem('govinda_user');
+  //   if (!isUserLoggedIn) {
+  //     Swal.fire({
+  //       icon: 'info',
+  //       title: 'सुरक्षा लॉक! 🔐',
+  //       text: 'मंडळाची संपूर्ण प्रोफाइल आणि खेळाडूंची माहिती पाहण्यासाठी कृपया आधी तुमच्या गुगल अकाउंटने लॉगिन करा.',
+  //       confirmButtonColor: '#ff6600',
+  //       confirmButtonText: 'लॉगिन करा 🚩',
+  //       showCancelButton: true,
+  //       cancelButtonText: 'नाही, नंतर करतो',
+  //       customClass: { popup: 'rounded-3xl' }
+  //     }).then((result) => {
+  //       if (result.isConfirmed) {
+  //         localStorage.removeItem('govinda_guest');
+  //         window.location.href = import.meta.env.BASE_URL || '/';
+  //       }
+  //     });
+  //     return;
+  //   }
+  //   setSelectedTeam(team);
+  // };
+
+  //   // 🆕 जेव्हा युझर फिल्टर रिसेट करायला कट्ट्यावरून बाहेर पडेल, तेव्हा प्रॉप्स क्लियर करणे
+  // const handleLocalClearAll = () => {
+  //   setSearchTerm('');
+  //   setSelectedCategory('All');
+  //   setSelectedDistrict('All');
+  //   setSelectedThar('All');
+  //   if (clearFilters) clearFilters();
+  // };
+
+  //   if (selectedTeam) {
+  //   return <PublicTeamProfile team={selectedTeam} onBack={() => setSelectedTeam(null)} />;
+  // }
+
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-[400px] flex flex-col items-center justify-center space-y-3">
+  //       <div className="w-10 h-10 border-4 border-[#ff6600] border-t-transparent rounded-full animate-spin"></div>
+  //       <p className="text-slate-500 text-xs font-bold tracking-wide">महाराष्ट्रातील गोविंदा पथके शोधत आहे...</p>
+  //     </div>
+  //   );
+  // }
+
+
+  // 🎯 कडक बदल २: लॉगिनची सक्ती पूर्णपणे काढून थेट प्रोफाईल उघडणे
+  const handleViewProfile = (team) => {
+    // आता लॉगिन असो वा नसो, थेट त्या संघाचा डेटा स्टेटमध्ये सेट होणार!
     setSelectedTeam(team);
   };
 
@@ -184,8 +259,25 @@ export default function PublicDirectory({ handleLogin, initialDistrict, initialA
     if (clearFilters) clearFilters();
   };
 
+  // 🎯 प्रोफाईल उघडणे (सुरक्षित जसेच्या तसे)
+// 🎯 प्रोफाईल उघडणे (सुधारित आणि सुरक्षित बॅक बटण क्लिनअपसह 🚀)
   if (selectedTeam) {
-    return <PublicTeamProfile team={selectedTeam} onBack={() => setSelectedTeam(null)} />;
+    return (
+      <PublicTeamProfile 
+        team={selectedTeam} 
+        onBack={() => {
+          // १. पहिली स्टेप: कॉम्पोनेंट स्टेट रिकामी करणे
+          setSelectedTeam(null);
+          
+          // २. दुसरी स्टेप: ब्राउझरच्या ॲड्रेस बारमधून '/view/...' काढून टाकणे (पेज रिफ्रेश न करता)
+          try {
+            window.history.pushState({}, '', window.location.origin + (import.meta.env.BASE_URL || '/'));
+          } catch (err) {
+            console.error("URL Cleanup failed:", err);
+          }
+        }} 
+      />
+    );
   }
 
   if (loading) {

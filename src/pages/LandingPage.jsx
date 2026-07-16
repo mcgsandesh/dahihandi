@@ -261,21 +261,57 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
       {/* 3️⃣ मुख्य डेटा मांडणी लेआउट */}
       <main className="max-w-7xl w-full mx-auto px-4 md:px-8 py-4 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-5 items-start z-10">
         
-        {/* 📢 चालू घडामोडी / सूचना बॉक्स */}
-        <div className="col-span-1 lg:col-span-3 space-y-3">
-          <div className="border border-slate-900 bg-slate-950/50 p-4 rounded-2xl text-left h-auto lg:h-[610px] overflow-y-auto scrollbar-none">
-            <h3 className="text-xs font-black text-orange-400 uppercase tracking-wider flex items-center gap-1.5 mb-3">
-              <Megaphone size={13} /> {c.newsHeading}
-            </h3>
-            <div className="space-y-2">
-              {latestNews.map((n, i) => (
-                <div key={i} className="p-3 bg-slate-900/40 border border-slate-900 rounded-xl text-[11px] text-slate-300 font-bold leading-normal">
-                  {n.text_mr || n.text_en}
+          {/* 📢 चालू घडामोडी / सूचना बॉक्स */}
+          <div className="col-span-1 lg:col-span-3 space-y-3">
+            <div className="border border-slate-900 bg-slate-950/50 p-4 rounded-2xl text-left h-auto lg:h-[610px] overflow-y-auto scrollbar-none flex flex-col justify-between">
+              
+              <div>
+                {/* 🎯 हेडर: शीर्षक आणि 'सर्व पहा' बटण एकत्र */}
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xs font-black text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Megaphone size={13} /> {c.newsHeading}
+                  </h3>
+                  {/* 🚀 मुख्य न्यूज पेजवर नेणारे बटण */}
+                  <button 
+                    onClick={() => handleSmartNavigation('public_news')} 
+                    className="text-[11px] font-black text-orange-500 hover:underline cursor-pointer"
+                  >
+                    सर्व पहा ➡️
+                  </button>
                 </div>
-              ))}
+
+                {/* 📢 बातम्यांची सूची */}
+                <div className="space-y-2">
+                  {latestNews.length > 0 ? (
+                    latestNews.map((n, i) => {
+                      // फ्रंटएंड स्तरावर मुदत संपलेली बातमी लँडिंग पेजवर न दाखवण्याचा फिल्टर
+                      const todayStr = new Date().toISOString().split('T')[0];
+                      if (n.expiryDate && n.expiryDate < todayStr) return null;
+
+                      return (
+                        <div 
+                          key={i} 
+                          onClick={() => handleSmartNavigation('public_news')}
+                          className="p-3 bg-slate-900/40 border border-slate-900 hover:border-orange-500/30 rounded-xl text-[11px] text-slate-300 font-bold leading-normal cursor-pointer hover:bg-slate-900/80 transition-all flex justify-between items-start group"
+                        >
+                          {/* 🎯 बातमीचा विषय (Subject) प्राधान्याने दाखवणे, नसल्यास जुना टेक्स्ट */}
+                          <span className="group-hover:text-white transition-colors line-clamp-2 pr-2">
+                            {n.subject_mr || n.text_mr || n.text_en}
+                          </span>
+                          <span className="text-orange-500/60 group-hover:text-orange-500 font-black text-[9px] flex-shrink-0 self-center">
+                            वाचा 🔗
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-[11px] text-slate-500 italic text-center py-6">सध्या कोणतीही बातमी उपलब्ध नाही भाऊ.</p>
+                  )}
+                </div>
+              </div>
+
             </div>
           </div>
-        </div>
 
         {/* उजवा मुख्य विभाग */}
         <div className="col-span-1 lg:col-span-9 space-y-8">
@@ -313,35 +349,65 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
             </div>
           </div>
 
-{/* 🎯 ५. आयोजित स्पर्धा व आगामी सराव शिबिरे (अचूक डिफॉल्ट इमेज इंजिनसह 🚀) */}
-          <div className="space-y-3.5">
-            <div className="flex justify-between items-center px-1">
-              <h2 className="text-sm md:text-base font-black text-white uppercase tracking-wide flex items-center gap-1.5">
-                <Calendar size={15} className="text-orange-500" /> {c.eventsHeading}
-              </h2>
-              <button onClick={() => handleSmartNavigation('public_events')} className="text-[11px] font-black text-orange-500 hover:underline">सर्व पहा ➡️</button>
-            </div>
+        {/* 🎯 ५. आयोजित स्पर्धा व आगामी सराव शिबिरे (अचूक डिफॉल्ट इमेज इंजिनसह 🚀) */}
+        <div className="space-y-3.5">
+          <div className="flex justify-between items-center px-1">
+            <h2 className="text-sm md:text-base font-black text-white uppercase tracking-wide flex items-center gap-1.5">
+              <Calendar size={15} className="text-orange-500" /> {c.eventsHeading}
+            </h2>
+            <button onClick={() => handleSmartNavigation('public_events')} className="text-[11px] font-black text-orange-500 hover:underline">सर्व पहा ➡️</button>
+          </div>
 
-            <div ref={eventsRef} className="w-full flex space-x-4 overflow-x-auto pb-3 scrollbar-none snap-x">
-              {upcomingEvents.length > 0 ? upcomingEvents.map((evt) => {
-                const todayStr = new Date().toISOString().split('T')[0];
+          <div ref={eventsRef} className="w-full flex space-x-4 overflow-x-auto pb-3 scrollbar-none snap-x">
+            {(() => {
+              const todayStr = new Date().toISOString().split('T')[0];
+              
+              // 🎯 बग फिक्स १: संपलेले कार्यक्रम फिल्टर करून काढले (फक्त आजचे किंवा पुढचेच दिसणार)
+              const activeEvents = upcomingEvents.filter(evt => evt.toDate >= todayStr);
+
+              if (activeEvents.length === 0) {
+                return (
+                  <div className="w-full py-10 text-center border border-dashed border-slate-900 rounded-2xl bg-slate-950/20">
+                    <p className="text-xs text-slate-500 italic">सध्या कोणतेही सराव शिबीर शेड्यूल नाही भाऊ.</p>
+                  </div>
+                );
+              }
+
+              return activeEvents.map((evt) => {
                 const isToday = evt.fromDate <= todayStr && evt.toDate >= todayStr;
-                
-                // 🎯 फिक्स: पब्लिक इव्हेंट्स कॉम्पोनंटसारखेच अचूक डिफॉल्ट इमेजेसचे मॅपिंग लावणे
                 const posterImg = getEventPoster(evt);
+                
+                // 🎯 बग फिक्स २: तारीख मोठी आणि स्पष्ट दिसण्यासाठी 'formatEventDate' चा वापर
+                // (जर तुझ्याकडे हे फंक्शन नसेल तर आपण थेट तारीख स्ट्रिंगमधून दिवस/महिना काढू शकतो)
+                const day = evt.fromDate ? evt.fromDate.split('-')[2] : '';
+                const monthNum = evt.fromDate ? evt.fromDate.split('-')[1] : '';
+                const monthsMr = {
+                  '01': 'जाने', '02': 'फेब्रु', '03': 'मार्च', '04': 'एप्रिल', 
+                  '05': 'मे', '06': 'जुन', '07': 'जुलै', '08': 'ऑग', 
+                  '09': 'सप्टें', '10': 'ऑक्टो', '11': 'नोव्हें', '12': 'डिसें'
+                };
+                const monthLabel = monthsMr[monthNum] || 'दिनांक';
 
                 return (
                   <div 
                     key={evt.id}
                     onClick={() => openDetailPopup(evt.title_mr, evt.mandalName, '2026', evt.description_mr, posterImg, evt.postLink, 'event')}
                     className={`w-[260px] md:w-[280px] flex-shrink-0 snap-start bg-slate-950 border rounded-2xl p-3 shadow-xl hover:border-slate-800 transition-all cursor-pointer group flex flex-col justify-between ${
-                      isToday ? 'border-orange-500/40' : 'border-slate-900'
+                      isToday ? 'border-orange-500/40 bg-gradient-to-b from-orange-500/5 to-transparent' : 'border-slate-900'
                     }`}
                   >
+                    {/* इमेज आणि त्यावर मोठी स्पष्ट तारीख */}
                     <div className="w-full aspect-[16/10] rounded-xl overflow-hidden relative bg-slate-900">
                       <img src={posterImg} alt="Event Cover" className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300" />
-                      <span className={`absolute top-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded-md ${isToday ? 'bg-orange-600 text-white animate-pulse' : 'bg-slate-900/90 text-slate-400'}`}>
-                        {isToday ? 'आज थेट' : 'शीबीर'}
+                      
+                      {/* 📆 डाव्या कोपऱ्यात मोठी आणि स्पष्ट मराठी तारीख */}
+                      <div className="absolute top-2 left-2 flex flex-col items-center justify-center bg-slate-950/90 border border-slate-800 rounded-lg px-2 py-1 shadow-md min-w-[42px]">
+                        <span className="text-sm font-black text-orange-500 font-mono leading-none">{day}</span>
+                        <span className="text-[8px] font-black text-slate-300 tracking-wider mt-0.5">{monthLabel}</span>
+                      </div>
+
+                      <span className={`absolute top-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-md ${isToday ? 'bg-orange-600 text-white animate-pulse' : 'bg-slate-900/90 text-slate-400'}`}>
+                        {isToday ? 'आज थेट' : ""}
                       </span>
                     </div>
 
@@ -351,25 +417,20 @@ export default function LandingPage({ handleLogin, handleExploreAsGuest, loading
                     </div>
 
                     <div className="pt-2 mt-2 border-t border-slate-900/60 flex items-center justify-between text-[9px] text-slate-500 font-mono">
-                      <div className="flex items-center gap-0.5">
-                        <Clock size={11} />
+                      <div className="flex items-center gap-0.5 text-slate-400 font-bold">
+                        <Clock size={11} className="text-orange-500" />
                         <span>{evt.fromDate} ते {evt.toDate}</span>
                       </div>
                       <span className="text-orange-400 font-black">पहा 🔗</span>
                     </div>
                   </div>
                 );
-              }) : (
-                <div className="w-full py-10 text-center border border-dashed border-slate-900 rounded-2xl bg-slate-950/20">
-                  <p className="text-xs text-slate-500 italic">सध्या कोणतेही सराव शिबीर शेड्यूल नाही भाऊ.</p>
-                </div>
-              )}
-            </div>
+              });
+            })()}
           </div>
+        </div>
 
  
-          
-
         </div>
       </main>
 

@@ -5,33 +5,48 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
-// 🎯 कडक अपग्रेड: प्रॉप्समध्ये isSuperAdminView आणि onEditClick स्वीकारले 🚀
+// 🎯 अधिकृत ॲड मोबाईल बॉटम कॉम्पोनेंट इम्पोर्ट
+import AdMobileBottom from '../components/AdMobileBottom';
+
 export default function PublicTeamProfile({ team, onBack, isSuperAdminView, onEditClick }) {
   
-// 🔍 १. कडक कन्सोल डेबगिंग लॉग्स (एडिट बटण का लपले आहे ते तपासण्यासाठी 📡)
   useEffect(() => {
     console.log("=== 📜 [PUBLIC TEAM PROFILE DEBUG START] ===");
     console.log("📥 आलेला संपूर्ण संघ डेटा (team Object):", team);
-    
-    // 🚨 हा लॉग आपल्याला मूळ उत्तर देईल भाऊ की प्रॉप पास झालाय की नाही:
+    console.log("🏠 संघाचा पत्ता (Address Check):", team?.address);
+    console.log("👥 मार्गदर्शक व कर्णधार:", team?.coachName, " | ", team?.captainName);
     console.log("⚙️ [PROPS CHECK] isSuperAdminView ची सद्यस्थिती:", isSuperAdminView);
-    console.log("🖱️ [PROPS CHECK] onEditClick फंक्शन उपलब्ध आहे का?:", typeof onEditClick === 'function' ? "होय (Available)" : "नाही (Missing)");
-
-    if (team) {
-      console.log("🏆 थरांचे मूळ रेकॉर्ड्स -> M7:", team.milestone7, " | M8:", team.milestone8, " | M9:", team.milestone9, " | M10:", team.milestone10);
-      console.log("📸 सलामी फोटो लिंक (bestPerformanceUrl):", team.bestPerformanceUrl);
-    }
     console.log("=== 📜 [PUBLIC TEAM PROFILE DEBUG END] ===");
   }, [team, isSuperAdminView, onEditClick]);
 
-  // शेअर लिंक तयार करणे (सुरक्षित जसेच्या तसे)
-  const shareLink = `${window.location.origin}${import.meta.env.BASE_URL}${(team?.teamName || '').toLowerCase().trim().replace(/\s+/g, '-')}/view`;
+  // 🎯 व्हॅलिडेशन सुधारणा: जर एखादी फील्ड '—' किंवा रिकामी असेल तर ती अचूक तपासणे
+  const hasValidText = (val) => val && val.trim() !== '' && val.trim() !== '—';
+
+  // 🔐 पब्लिक शेअर लिंक लॉक करण्यासाठी कडक व्हॅलिडेशन चेक (१००% मॅच विथ डेटाबेस) 🚀
+  const isProfileReadyForShare = 
+    (team?.aboutTeam && team.aboutTeam.trim().length >= 300) && 
+    //team?.address && 
+    team?.logoUrl && 
+    team?.slogan && 
+    team?.bestPerformance && 
+    team?.bestPerformanceUrl &&
+    team?.coachName && // मार्गदर्शक अनिवार्य
+    team?.captainName && // कर्णधार अनिवार्य
+    (hasValidText(team?.milestone7) || hasValidText(team?.milestone8) || hasValidText(team?.milestone9) || hasValidText(team?.milestone10));
+
+  // युनियन फ्रेंडली युआरएल स्लॅग जनरेशन (नावासोबत UID मिक्स)
+  const cleanName = (team?.teamName || 'team').toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-');
+  const cleanUID = (team?.uid || team?.id || 'id').toLowerCase();
+  const shareLink = `${window.location.origin}/view/${cleanName}-${cleanUID}`;
 
   const handleShare = () => {
-    if (navigator.clipboard) {
+    if (navigator.share) {
+      navigator.share({ title: team?.teamName, text: 'गोविंदा कट्ट्यावर या संघाची अधिकृत प्रोफाईल नक्की पहा!', url: shareLink })
+        .catch(err => console.log(err));
+    } else if (navigator.clipboard) {
       navigator.clipboard.writeText(shareLink);
       Swal.fire({
-        toast: true, position: 'top-end', icon: 'success', title: 'प्रोफाइल link कॉपी झाली!', showConfirmButton: false, timer: 2000
+        toast: true, position: 'top-end', icon: 'success', title: 'प्रोफाइल वेबसाईट लिंक कॉपी झाली! 🔗', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-xl' }
       });
     }
   };
@@ -39,9 +54,9 @@ export default function PublicTeamProfile({ team, onBack, isSuperAdminView, onEd
   if (!team) return null;
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 w-full p-0 m-0 text-left">
+    <div className="space-y-5 animate-in fade-in duration-200 w-full p-0 m-0 text-left text-slate-900 bg-[#f8fafc]">
       
-      {/* 🔙 बॅक आणि शेअर बार */}
+      {/* 🔙 १. नेव्हिगेशन व शेअर बार */}
       <div className="flex items-center justify-between bg-white p-3 rounded-2xl border border-slate-100 shadow-sm w-full">
         <button 
           onClick={onBack}
@@ -51,201 +66,220 @@ export default function PublicTeamProfile({ team, onBack, isSuperAdminView, onEd
           <span>मडंळ यादीकडे मागे जा</span>
         </button>
 
-        <button 
-          onClick={handleShare}
-          className="p-2 text-slate-500 hover:text-[#ff6600] hover:bg-slate-50 rounded-xl transition-all active:scale-95"
-          title="मंडळ प्रोफाइल शेअर करा"
-        >
-          <Share2 size={18} />
-        </button>
+        {/* 🔗 शेअर बटण - कडक व्हॅलिडेशन लॉकसह */}
+        {isProfileReadyForShare ? (
+          <button 
+            onClick={handleShare}
+            className="flex items-center space-x-1.5 text-xs font-black bg-orange-50 text-orange-600 border border-orange-100 px-3 py-2 rounded-xl transition-all active:scale-95"
+            title="मंडळ प्रोफाइल शेअर करा"
+          >
+            <Share2 size={14} />
+            <span>लिंक शेअर करा</span>
+          </button>
+        ) : (
+          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-3 py-2 rounded-xl text-[10px] font-black leading-tight" title="माहिती अपूर्ण असल्यामुळे शेअर बंद आहे भाऊ">
+            ⚠️ शेअर लॉक आहे
+          </div>
+        )}
       </div>
 
-      {/* 🚩 मुख्य ब्रँडिंग कार्ड (भव्य डार्क लूक) */}
-      <div className="bg-gradient-to-br from-[#0b132b] to-[#1c2541] text-white p-6 rounded-3xl shadow-md relative overflow-hidden w-full">
-        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-[#ff6600] opacity-15 blur-3xl rounded-full"></div>
+      {/* 🚩 २. मुख्य ब्रँडिंग हेडर बॅनर (मोबाईल ओव्हरलॅप फ्री - अल्ट्रा स्लिम) */}
+      <div className="bg-gradient-to-br from-[#070b19] via-[#0f172a] to-[#1e293b] text-white p-4 md:p-6 rounded-3xl shadow-xl relative overflow-hidden w-full border border-slate-800">
+        <div className="absolute -right-16 -bottom-16 w-80 h-80 bg-orange-600 opacity-10 blur-3xl rounded-full pointer-events-none"></div>
         
-        {/* 🎯 कडक मॅपिंग: जर सुपरॲडमीन पाहत असेल, तरच उजव्या कोपऱ्यात प्रिमियम एडिट बटण दिसेल 🚀 */}
         {isSuperAdminView && (
           <div className="absolute top-4 right-4 z-20">
             <button 
               onClick={onEditClick}
-              className="bg-white/10 hover:bg-white/20 border border-white/25 text-white px-3 py-2 rounded-xl transition-all shadow-md flex items-center space-x-1.5 backdrop-blur-sm group active:scale-95 cursor-pointer"
-              title="मंडळाची संपूर्ण माहिती दुरुस्त करा"
+              className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-3 py-2 rounded-xl transition-all shadow-md flex items-center space-x-1.5 text-xs font-black border border-orange-400/20 active:scale-95"
             >
-              <Edit2 size={13} className="group-hover:rotate-12 transition-transform text-orange-400" />
-              <span className="text-[11px] font-black tracking-wide hidden sm:inline">संपूर्ण माहिती सुधारा</span>
-              <span className="text-[11px] font-black tracking-wide sm:hidden">Edit</span>
+              <Edit2 size={13} />
+              <span className="hidden sm:inline">माहिती सुधारा</span>
+              <span className="sm:hidden">Edit</span>
             </button>
           </div>
         )}
         
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 relative z-10 text-center sm:text-left">
-          {/* मंडळाचा भव्य लोगो */}
-          <div className="w-20 h-20 rounded-2xl bg-white border border-slate-700/50 flex items-center justify-center p-2 flex-shrink-0 overflow-hidden shadow-lg">
+        {/* मुख्य माहिती रो (Row) मांडणी */}
+        <div className="flex flex-row items-center md:items-start gap-4 relative z-10 pr-16 md:pr-48">
+          {/* मंडळाचा लोगो */}
+          <div className="w-16 h-16 md:w-28 md:h-28 bg-white rounded-xl md:rounded-2xl border border-slate-700/40 flex items-center justify-center p-1.5 flex-shrink-0 overflow-hidden shadow-2xl">
             {team.logoUrl ? (
-              <img src={team.logoUrl} alt="Logo" className="w-full h-full object-contain rounded-xl" />
+              <img src={team.logoUrl} alt="Logo" className="w-full h-full object-contain" />
             ) : (
-              <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400">
-                <ImageIcon size={24} />
+              <div className="w-full h-full bg-slate-50 flex items-center justify-center text-slate-300">
+                <ImageIcon size={22} />
               </div>
             )}
           </div>
 
-          {/* मंडळाचे नाव व स्लोगन */}
-          <div className="space-y-1.5 flex-1 min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 justify-center sm:justify-start">
-              <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide text-white">{team.teamName || "संघ उपलब्ध नाही"}</h2>
-              <span className={`text-[9px] font-black px-2 py-0.5 rounded-md self-center sm:self-auto ${team.teamCategory === 'Women' ? 'bg-pink-500/20 text-pink-300' : team.teamCategory === 'Both' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'}`}>
-                {team.teamCategory === 'Women' ? '👩‍👧  महिला पथक' : team.teamCategory === 'Both' ? '👨‍👩‍👦  पुरुष व महिला' : '👨‍👦  पुरुष पथक'}
+          {/* नाव, स्लोगन, प्रकार */}
+          <div className="space-y-1 min-w-0 flex-1">
+            <h1 className="text-base md:text-3xl font-black uppercase tracking-wide text-white leading-tight truncate">
+              {team.teamName || "संघ उपलब्ध नाही"}
+            </h1>
+            
+            {team.slogan && (
+              <p className="text-[10px] md:text-sm text-slate-300 italic font-medium tracking-wide truncate">
+                "{team.slogan}"
+              </p>
+            )}
+            
+            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+              <span className={`text-[7px] md:text-[10px] text-white font-black px-1.5 py-0.2 rounded uppercase tracking-wider ${team.teamCategory === 'Women' ? 'bg-pink-600' : team.teamCategory === 'Both' ? 'bg-purple-600' : 'bg-blue-600'}`}>
+                {team.teamCategory === 'Women' ? '👩‍👧 महिला' : team.teamCategory === 'Both' ? '👨‍👩‍👦 दोन्ही' : '👨‍👦 पुरुष'}
+              </span>
+              <span className={`text-[7px] md:text-[10px] font-black px-1.5 py-0.2 rounded uppercase tracking-wider text-white ${team.hasInsurance ? 'bg-emerald-600' : 'bg-red-600'}`}>
+                {team.hasInsurance ? 'विma सुरक्षित' : 'विमा अपूर्ण'}
               </span>
             </div>
-            {team.slogan && <p className="text-xs text-slate-300 italic font-medium">"{team.slogan}"</p>}
-            
-            <div className="font-mono text-[10px] font-black px-2 py-0.5 rounded bg-white/5 text-slate-400 tracking-wide inline-block">
-              UID: {team.uid || team.id}
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* 📊 ३ बॉक्स मॅट्रिक्स लेआउट */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 w-full items-stretch">
-        
-        {/* 📦 बॉक्स १: मंडळाची कुंडली व संपर्क (४ कॉलम्स) */}
-        <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-4 flex flex-col justify-between w-full">
-          <div className="space-y-4">
-            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide border-b pb-2 flex items-center space-x-1">
-              <FileText size={13} className="text-slate-400" /> <span>📋  मंडळाची माहिती</span>
-            </h3>
-            
-            <div className="space-y-4 text-xs font-bold text-slate-600">
-              <div className="flex items-start space-x-3">
-                <MapPin size={14} className="text-slate-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[10px] text-slate-400 font-black uppercase">पत्ता / परिसर</p>
-                  <p className="text-slate-800 mt-0.5 font-extrabold">{team.address || team.areaName || '—'}</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {team.city && <span className="bg-slate-50 text-slate-500 text-[9px] px-1.5 py-0.5 rounded border">{team.city}</span>}
-                    {team.pincode && <span className="bg-slate-50 text-slate-600 text-[9px] font-mono px-1.5 py-0.5 rounded border">PIN: {team.pincode}</span>}
-                    {team.district && <span className="bg-slate-50 text-slate-400 text-[9px] px-1.5 py-0.5 rounded border">{team.district}</span>}
-                  </div>
-                </div>
-              </div>
-
+            <div className="flex flex-wrap items-center gap-1.5">
               {team.establishedYear && (
-                <div className="flex items-start space-x-3">
-                  <Calendar size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-black uppercase">स्थापना वर्ष</p>
-                    <p className="text-slate-800 font-sans font-extrabold mt-0.5 text-sm">{team.establishedYear}</p>
-                  </div>
+                <div className="text-[8px] md:text-[10px] font-black px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/20 shadow-inner">
+                  🚩 स्थापना: {team.establishedYear}
                 </div>
               )}
-
-              {/* मार्गदर्शक आणि कर्णधार */}
-              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-dashed">
-                <div>
-                  <p className="text-[9px] text-slate-400 font-black uppercase flex items-center space-x-1"><User size={10}/> <span>मार्गदर्शक (Coach)</span></p>
-                  <p className="text-slate-800 font-extrabold text-[11px] mt-0.5 truncate">{team.coachName || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-[9px] text-slate-400 font-black uppercase flex items-center space-x-1"><User size={10}/> <span>कर्णधार (Captain)</span></p>
-                  <p className="text-slate-800 font-extrabold text-[11px] mt-0.5 truncate">{team.captainName || '—'}</p>
-                </div>
+              <div className="font-mono text-[8px] md:text-[10px] font-black px-1.5 py-0.2 rounded bg-white/10 text-slate-300 tracking-wide border border-white/5">
+                ID: {team.uid || team.id}
               </div>
             </div>
           </div>
-
-          {/* 🔗 सोशल कनेक्ट लिंक्स बटणे */}
-          <div className="pt-3 border-t border-slate-100 space-y-1.5">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">अधिकृत सोशल नेटवर्क:</span>
-            <div className="flex flex-wrap gap-1.5">
-              {team.socialLinks?.instagram ? (
-                <a href={team.socialLinks.instagram} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg bg-pink-50 text-pink-600 hover:bg-pink-100 transition-all text-[11px] font-black flex items-center space-x-1"><LinkIcon size={11} /> <span>Instagram</span></a>
-              ) : <span className="text-[9px] text-slate-300 italic">नो इंस्टाग्राम</span>}
-              {team.socialLinks?.facebook ? (
-                <a href={team.socialLinks.facebook} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all text-[11px] font-black flex items-center space-x-1"><LinkIcon size={11} /> <span>Facebook</span></a>
-              ) : <span className="text-[9px] text-slate-300 italic ml-1">नो फेसबुक</span>}
-              {team.socialLinks?.youtube ? (
-                <a href={team.socialLinks.youtube} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all text-[11px] font-black flex items-center space-x-1"><LinkIcon size={11} /> <span>YouTube</span></a>
-              ) : <span className="text-[9px] text-slate-300 italic ml-1">नो यूट्यूब</span>}
-            </div>
-          </div>
         </div>
+      </div>
 
-        {/* 📦 बॉक्स २: उत्सव कामगिरी, रेकॉर्ड्स व इतिहास (४ कॉलम्स) */}
-        <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-4 w-full flex flex-col justify-between">
-          <div className="space-y-3.5 flex-1 flex flex-col">
-            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide border-b pb-2 flex items-center space-x-1 flex-shrink-0">
-              <Trophy size={13} className="text-amber-500" /> <span>📊  उत्सव कामगिरी व इतिहास</span>
+      {/* 📊 ३. २-कॉलम प्रो लेआउट */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-stretch">
+        
+        {/* डावी बाजू (कॉलम ७) */}
+        <div className="lg:col-span-7 space-y-5 flex flex-col justify-between">
+          
+          {/* सर्वोच्च कामगिरी हायलाईट */}
+          <div className="bg-gradient-to-r from-orange-600 to-amber-500 p-4 rounded-3xl text-white shadow-md flex items-center justify-between border border-orange-400/20">
+            <div className="space-y-0.5 text-left">
+              <span className="block font-black uppercase tracking-widest text-[9px] text-orange-100">🏆 ऐतिहासिक सर्वोच्च विक्रम</span>
+              <p className="text-sm md:text-base font-black leading-tight">{team.bestPerformance || 'नमुद नाही भाऊ'}</p>
+            </div>
+            <Trophy size={26} className="opacity-40 flex-shrink-0 animate-bounce" />
+          </div>
+
+          {/* संघाचा इतिहास (नो स्क्रोलबार - पूर्ण वृत्त दर्शन) */}
+          <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-100 shadow-sm text-left space-y-3">
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b pb-2 flex items-center space-x-2">
+              <FileText size={14} className="text-slate-400" /> <span>संघाचा इतिहास व परंपरा</span>
             </h3>
-
-            <div className="bg-orange-50/40 p-2.5 rounded-xl border border-orange-100 text-xs flex-shrink-0">
-              <span className="block font-black text-orange-800 uppercase tracking-wider text-[9px]">सर्वोत्कृष्ट कामगिरी (Record)</span>
-              <p className="text-slate-700 font-extrabold mt-0.5">{team.bestPerformance || '—'}</p>
+            <div className="text-slate-700 font-extrabold leading-relaxed text-xs md:text-sm whitespace-pre-wrap">
+              {team.aboutTeam || 'संघाचा संक्षिप्त इतिहास येथे नमुद केला जाईल...'}
             </div>
+          </div>
 
-            {/* संक्षिप्त इतिहास स्क्रोल बॉक्स */}
-            <div className="bg-slate-50/60 p-2.5 rounded-xl border text-xs flex-1 flex flex-col min-h-[120px] max-h-[180px] lg:max-h-[220px]">
-              <span className="block font-black text-slate-400 uppercase tracking-wider text-[9px] flex-shrink-0 mb-1">संघाबद्दल संक्षिप्त इतिहास</span>
-              <div className="overflow-y-auto pr-1 text-slate-600 font-medium leading-relaxed text-[11px] whitespace-pre-wrap flex-1 scrollbar-thin">
-                {team.aboutTeam || '—'}
+          {/* ऐतिहासिक थर माइलस्टोन्स (केवळ उपलब्ध व्हॅल्यूज दिसणार) */}
+          <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-100 shadow-sm text-left space-y-3">
+            <span className="text-xs font-black text-slate-900 uppercase tracking-wider block flex items-center gap-1.5 border-b pb-2">
+              <Award size={14} className="text-amber-500"/> अधिकृत मानवी मनोरे रेकॉर्ड्स
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {hasValidText(team?.milestone7) && (
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/60 flex justify-between items-center shadow-sm">
+                  <span className="text-slate-500 font-bold text-xs">{team.teamCategory === 'Women' ? '५ थर' : '७ थर'}</span> 
+                  <span className="text-slate-900 font-black text-xs bg-white px-2.5 py-1 rounded-lg border border-slate-200">{team.milestone7}</span>
+                </div>
+              )}
+              {hasValidText(team?.milestone8) && (
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/60 flex justify-between items-center shadow-sm">
+                  <span className="text-slate-500 font-bold text-xs">{team.teamCategory === 'Women' ? '६ थर' : '८ थर'}</span> 
+                  <span className="text-orange-600 font-black text-xs bg-white px-2.5 py-1 rounded-lg border border-slate-200">{team.milestone8}</span>
+                </div>
+              )}
+              {hasValidText(team?.milestone9) && (
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/60 flex justify-between items-center shadow-sm">
+                  <span className="text-slate-500 font-bold text-xs">{team.teamCategory === 'Women' ? '७ थर' : '९ थर'}</span> 
+                  <span className="text-slate-900 font-black text-xs bg-white px-2.5 py-1 rounded-lg border border-slate-200">{team.milestone9}</span>
+                </div>
+              )}
+              {team.teamCategory !== 'Women' && hasValidText(team?.milestone10) && (
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/60 flex justify-between items-center shadow-sm">
+                  <span className="text-slate-500 font-bold text-xs">१० थर</span> 
+                  <span className="text-slate-900 font-black text-xs bg-white px-2.5 py-1 rounded-lg border border-slate-200">{team.milestone10}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* पत्ता, संपर्क आणि जिल्हा */}
+          <div className="bg-[#0b132b] text-white p-5 rounded-3xl shadow-sm space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-bold">
+              <div className="space-y-2">
+                <div className="flex items-start space-x-2 text-slate-300">
+                  <MapPin size={15} className="text-orange-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider">परिसर व पत्ता</p>
+                    {/* 🎯 कडक दुरुस्ती: डेटाबेसमधील पत्ता अचूक रेंडरिंग */}
+                    <p className="text-white mt-0.5 font-black text-xs leading-snug">
+                      {team.address || '—'}
+                      {team.district && `, जिल्हा: ${team.district}`}
+                    </p>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {team.areaName && <span className="bg-white/10 text-slate-200 text-[8px] px-1.5 py-0.5 rounded border border-white/5">{team.areaName}</span>}
+                      {team.city && <span className="bg-white/10 text-slate-200 text-[8px] px-1.5 py-0.5 rounded border border-white/5">{team.city}</span>}
+                      {team.pincode && <span className="bg-white/10 text-orange-400 text-[8px] font-mono px-1.5 py-0.5 rounded border border-white/5">PIN: {team.pincode}</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 bg-white/5 border border-white/5 p-3 rounded-2xl text-[11px]">
+                <div className="flex justify-between items-center border-b border-white/5 pb-1">
+                  <span className="text-[9px] text-slate-400 uppercase font-black">मार्गदर्शक:</span>
+                  <span className="text-white font-black truncate max-w-[120px]">{team.coachName || '—'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] text-slate-400 uppercase font-black">कर्णधार:</span>
+                  <span className="text-white font-black truncate max-w-[120px]">{team.captainName || '—'}</span>
+                </div>
               </div>
             </div>
 
-            {/* 🏆 थरांचे ऐतिहासिक माइलस्टोन्स */}
-            <div className="pt-2 border-t border-dashed space-y-1.5 flex-shrink-0">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">🏆  ऐतिहासिक थर रेकॉर्ड्स</span>
-              <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-                <div className="bg-slate-50 p-1.5 rounded-lg border">
-                  <span className="text-slate-400 font-medium">{team.teamCategory === 'Women' ? '५ थर:' : '७ थर:'}</span> 
-                  <span className="text-slate-800 font-black block truncate">{team.milestone7 || '—'}</span>
-                </div>
-                <div className="bg-slate-50 p-1.5 rounded-lg border">
-                  <span className="text-slate-400 font-medium">{team.teamCategory === 'Women' ? '६ थर:' : '८ थर:'}</span> 
-                  <span className="text-slate-800 font-black block truncate">{team.milestone8 || '—'}</span>
-                </div>
-                <div className="bg-slate-50 p-1.5 rounded-lg border">
-                  <span className="text-slate-400 font-medium">{team.teamCategory === 'Women' ? '७ थर:' : '९ थर:'}</span> 
-                  <span className="text-slate-800 font-black block truncate">{team.milestone9 || '—'}</span>
-                </div>
-                {team.teamCategory !== 'Women' && (
-                  <div className="bg-slate-50 p-1.5 rounded-lg border">
-                    <span className="text-slate-400 font-medium">१० थर:</span> 
-                    <span className="text-slate-800 font-black block truncate">{team.milestone10 || '—'}</span>
-                  </div>
-                )}
+            {/* सोशल लिंक्स */}
+            <div className="pt-2.5 border-t border-white/5 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">वेबसाईट सोशल मीडिया जोडण्या:</span>
+              <div className="flex gap-1.5">
+                {team.socialLinks?.instagram && <a href={team.socialLinks.instagram} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-xl bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-500 text-white text-[10px] font-black flex items-center space-x-1 shadow"><LinkIcon size={10} /> <span>Instagram</span></a>}
+                {team.socialLinks?.facebook && <a href={team.socialLinks.facebook} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-xl bg-blue-600 text-white text-[10px] font-black flex items-center space-x-1 shadow"><LinkIcon size={10} /> <span>Facebook</span></a>}
+                {team.socialLinks?.youtube && <a href={team.socialLinks.youtube} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-xl bg-red-600 text-white text-[10px] font-black flex items-center space-x-1 shadow"><LinkIcon size={10} /> <span>YouTube</span></a>}
               </div>
             </div>
           </div>
         </div>
 
-        {/* 📦 BOX 3: भव्य व्हर्टिकल सलामी क्षणचित्र */}
-        <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between w-full h-full min-h-[460px] lg:min-h-[520px]">
-          <div className="w-full h-full flex flex-col flex-1">
-            <span className="block font-black text-slate-800 uppercase tracking-wider text-[10px] border-b pb-2 mb-3 flex-shrink-0">
-              📸  सलामी क्षणचित्र (Vertical Format)
+        {/* उजवी बाजू (कॉलम ५) */}
+        <div className="lg:col-span-5 space-y-4 flex flex-col justify-between w-full h-full">
+          
+          {/* 🖼️ ऐतिहासिक क्षणचित्र गॅलरी कार्ड */}
+          <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between flex-1 min-h-[360px]">
+            <span className="block font-black text-slate-900 uppercase tracking-wider text-[10px] border-b pb-2 mb-3">
+              📸 सलामी ऐतिहासिक क्षणचित्र (Vertical Format)
             </span>
-            
-            <div className="flex-1 w-full rounded-2xl border border-slate-900/10 overflow-hidden bg-slate-950 shadow-inner relative min-h-[380px] lg:min-h-[440px]">
+            <div className="flex-1 w-full rounded-2xl border border-slate-900/5 overflow-hidden bg-slate-950 shadow-inner relative min-h-[300px] flex items-center justify-center">
               {team.bestPerformanceUrl ? (
-                <img 
-                  src={team.bestPerformanceUrl} 
-                  alt="Best Performance Live" 
-                  className="absolute inset-0 w-full h-full object-contain md:object-cover hover:object-contain transition-all duration-300" 
-                />
+                <img src={team.bestPerformanceUrl} alt="Best Performance Vertical View" className="w-full h-full object-contain md:object-cover hover:object-contain transition-all duration-300" />
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-slate-500 bg-slate-50">
-                  <ImageIcon size={26} className="text-slate-300" />
-                  <p className="text-[11px] font-bold mt-1 text-slate-500">सलामीचा फोटो उपलब्ध नाही</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-slate-400 bg-slate-50/50">
+                  <ImageIcon size={32} className="text-slate-300" />
+                  <p className="text-xs font-black mt-2 text-slate-400">सलामी फोटो उपलब्ध नाही</p>
                 </div>
               )}
             </div>
           </div>
+
+          {/* 🎯 अधिकृत गुगल जाहिरात स्लॉट सिस्टीम थेट तळाशी फिक्स */}
+          <div className="w-full flex justify-center items-center flex-shrink-0">
+            <AdMobileBottom />
+          </div>
+
         </div>
 
       </div>
-
     </div>
   );
 }

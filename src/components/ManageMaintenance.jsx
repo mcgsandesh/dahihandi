@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, doc, setDoc, updateDoc, deleteDoc, getDocs, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import { Megaphone, Calendar, Trophy, Plus, Trash2, Edit2, X, Save, Loader2, Search, Filter } from 'lucide-react';
+import { Megaphone, Calendar, Trophy, Plus, Trash2, Edit2, X, Save, Loader2, Search } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export default function ManageMaintenance() {
@@ -14,28 +14,28 @@ export default function ManageMaintenance() {
   const [eventsList, setEventsList] = useState([]);
   const [recordsList, setRecordsList] = useState([]);
 
-  // =========================================================================
-  // 🔍 SECTION 1: सर्च आणि सर्व टॅबच्या फिल्टर्ससाठी स्टेट्स (अचूक फिक्स 🎯)
-  // =========================================================================
+  // सर्च आणि सर्व टॅबच्या फिल्टर्ससाठी स्टेट्स
   const [searchQuery, setSearchQuery] = useState('');
   
   // उत्सव व सराव कट्टा टॅबसाठी फिल्टर्स
   const [eventCategoryFilter, setEventCategoryFilter] = useState('all');
-  const [eventYearFilter, setEventYearFilter] = useState(new Date().getFullYear().toString()); // बाय-डिफॉल्ट चालू वर्ष (2026)
+  const [eventYearFilter, setEventYearFilter] = useState(new Date().getFullYear().toString()); 
 
   // ऐतिहासिक रेकॉर्ड्स टॅबसाठी फिल्टर्स
   const [recYearFilter, setRecYearFilter] = useState('all');
   const [recGenderFilter, setRecGenderFilter] = useState('all');
 
-  // 🗟 मॉडेल आणि एडिटिंग स्टेट्स
+  // मॉडेल आणि एडिटिंग स्टेट्स
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState(null);
 
-  // 🎯 सिंगल इनपुट कोऑर्डिनेट्ससाठी स्टेट फिक्स
   const [eventRawCoordinates, setEventRawCoordinates] = useState('');
 
-  // 📝 १. न्यूज फॉर्म स्टेट्स
-  const [newsTextMr, setNewsTextMr] = useState('');
+  // 📝 १. न्यूज फॉर्म स्टेट्स (🎯 सुधारित नवीन फिल्ड्स)
+  const [newsSubjectMr, setNewsSubjectMr] = useState('');
+  const [newsDetailsMr, setNewsDetailsMr] = useState('');
+  const [newsExpiryDate, setNewsExpiryDate] = useState('');
+  const [newsRefLink, setNewsRefLink] = useState('');
 
   // 📝 २. इव्हेंट फॉर्म स्टेट्स
   const [eventTitleMr, setEventTitleMr] = useState('');
@@ -58,7 +58,7 @@ export default function ManageMaintenance() {
   const [recPhotoUrl, setRecPhotoUrl] = useState('');
   const [showOnDashboard, setShowOnDashboard] = useState(true);
 
-  // 🌍 डेटा लोड करण्याचे फंक्शन (कोऑर्डिनेट्स सिस्टीमशी सुसंगत) 🚀
+  // 🌍 डेटा लोड करण्याचे फंक्शन
   const fetchData = async () => {
     setGlobalLoading(true);
     try {
@@ -71,7 +71,6 @@ export default function ManageMaintenance() {
         return {
           id: d.id,
           ...data,
-          // 📍 जर डेटाबेसमध्ये lat आणि lng असतील, तर ते स्ट्रिंग स्वरूपातही ऑब्जेक्टमध्ये ठेवू
           rawCoordinates: data.lat && data.lng ? `${data.lat}, ${data.lng}` : ''
         };
       }));
@@ -89,12 +88,16 @@ export default function ManageMaintenance() {
     fetchData();
   }, []);
 
-  // 🔓 मॉडेल उघडण्याचे लॉजिक (सिंगल कोऑर्डिनेट्स फिक्ससह) 🚀
+  // 🔓 मॉडेल उघडण्याचे लॉजिक
   const openFormModal = (type, data = null) => {
     if (data) {
       setEditId(data.id);
       if (type === 'news') {
-        setNewsTextMr(data.text_mr || '');
+        // 🎯 एडिट करताना जुना डेटा सेट करणे
+        setNewsSubjectMr(data.subject_mr || data.text_mr || '');
+        setNewsDetailsMr(data.details_mr || '');
+        setNewsExpiryDate(data.expiryDate || '');
+        setNewsRefLink(data.refLink || '');
       } else if (type === 'events') {
         setEventTitleMr(data.title_mr || '');
         setEventType(data.type || 'practice_session');
@@ -104,14 +107,11 @@ export default function ManageMaintenance() {
         setFromDate(data.fromDate || '');
         setToDate(data.toDate || '');
         setEventMapLink(data.mapLink || '');
-        
-        // 🎯 डेटा एडिट करताना जुने lat आणि lng एकत्र करून दाखवणे
         if (data.lat && data.lng) {
           setEventRawCoordinates(`${data.lat}, ${data.lng}`);
         } else {
           setEventRawCoordinates('');
         }
-        
         setEventLat(data.lat || '');
         setEventLng(data.lng || '');
       } else if (type === 'records') {
@@ -125,7 +125,12 @@ export default function ManageMaintenance() {
       }
     } else {
       setEditId(null);
-      setNewsTextMr('');
+      // 🎯 नवीन नोंदणी वेळी सर्व रिकामे करणे
+      setNewsSubjectMr('');
+      setNewsDetailsMr('');
+      setNewsExpiryDate('');
+      setNewsRefLink('');
+
       setEventTitleMr('');
       setEventType('practice_session');
       setMandalName('');
@@ -134,8 +139,6 @@ export default function ManageMaintenance() {
       setFromDate('');
       setToDate('');
       setEventMapLink('');
-      
-      // 🎯 नवीन नोंदणी वेळी बॉक्स रिकामा करणे
       setEventRawCoordinates('');
       setEventLat('');
       setEventLng('');
@@ -161,12 +164,18 @@ export default function ManageMaintenance() {
       let updateData = { updatedAt: serverTimestamp() };
 
       if (activeTab === 'news') {
-        if (!newsTextMr.trim()) throw new Error("मजकूर रिकामी असू शकत नाही!");
-        updateData.text_mr = newsTextMr.trim();
+        if (!newsSubjectMr.trim()) throw new Error("बातमीचा विषय / हेडलाईन आवश्यक आहे!");
+        
+        // 🎯 नवीन डेटा स्ट्रक्चर मॅपिंग (पब्लिक पेज सुसंगत)
+        updateData.subject_mr = newsSubjectMr.trim();
+        updateData.text_mr = newsSubjectMr.trim(); // जुन्या सपोर्टसाठी
+        updateData.details_mr = newsDetailsMr.trim();
+        updateData.expiryDate = newsExpiryDate;
+        updateData.refLink = newsRefLink.trim();
+
       } else if (activeTab === 'events') {
         if (!eventTitleMr.trim() || !fromDate || !toDate) throw new Error("आवश्यक माहिती अपूर्ण आहे!");
 
-        // 🎯 मॅजिक कोऑर्डिनेट्स सेपरेटर लॉजिक
         let finalLat = null;
         let finalLng = null;
 
@@ -244,9 +253,6 @@ export default function ManageMaintenance() {
     }
   };
 
-  // =========================================================================
-  // 🧠 SECTION 2: डायनॅमिक उत्सव वर्ष शोधण्याचे लॉजिक
-  // =========================================================================
   const getUniqueYears = (dataList, dateField = 'fromDate') => {
     const years = dataList.map(item => {
       if (item.year) return item.year.toString();
@@ -260,24 +266,23 @@ export default function ManageMaintenance() {
   const dynamicEventYears = getUniqueYears(eventsList, 'fromDate');
   const dynamicRecordYears = getUniqueYears(recordsList);
 
-  // =========================================================================
-  // 📋 SECTION 3: प्रोग्रेसिव्ह कम्बाइन फिल्टरिंग मॅच लॉजिक
-  // =========================================================================
   const getFilteredData = () => {
     const queryLower = searchQuery.toLowerCase().trim();
 
     if (activeTab === 'news') {
-      return newsList.filter(n => n.text_mr?.toLowerCase().includes(queryLower));
+      return newsList.filter(n => 
+        n.subject_mr?.toLowerCase().includes(queryLower) || 
+        n.details_mr?.toLowerCase().includes(queryLower) ||
+        n.text_mr?.toLowerCase().includes(queryLower)
+      );
     }
     
     if (activeTab === 'events') {
       return eventsList.filter(e => {
         const matchesSearch = e.title_mr?.toLowerCase().includes(queryLower) || e.mandalName?.toLowerCase().includes(queryLower);
         const matchesCategory = eventCategoryFilter === 'all' || e.type === eventCategoryFilter;
-        
         const eventYear = e.fromDate ? e.fromDate.split('-')[0] : '';
         const matchesYear = eventYearFilter === 'all' || eventYear === eventYearFilter;
-        
         return matchesSearch && matchesCategory && matchesYear;
       });
     }
@@ -287,10 +292,8 @@ export default function ManageMaintenance() {
         const matchesSearch = r.title_mr?.toLowerCase().includes(queryLower) || 
                              r.team_mr?.toLowerCase().includes(queryLower) || 
                              r.teamUID?.toLowerCase().includes(queryLower);
-                             
         const matchesYear = recYearFilter === 'all' || (r.year && r.year.toString() === recYearFilter);
         const matchesGender = recGenderFilter === 'all' || r.type === recGenderFilter;
-        
         return matchesSearch && matchesYear && matchesGender;
       });
     }
@@ -309,7 +312,7 @@ export default function ManageMaintenance() {
         <button onClick={() => { setActiveTab('records'); setSearchQuery(''); }} className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-black rounded-xl transition-all whitespace-nowrap ${activeTab === 'records' ? 'bg-[#0b132b] text-white shadow' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><Trophy size={14} /> <span>🏆   ऐतिहासिक रेकॉर्ड्स</span></button>
       </div>
 
-      {/* 🖥️ SECTION 4: सर्च आणि फिल्टर्स UI */}
+      {/* 🖥️ सर्च आणि फिल्टर्स UI */}
       <div className="mb-5 flex flex-col md:flex-row gap-3 items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-100">
         <div className="relative w-full md:max-w-xs">
           <Search className="absolute top-2.5 left-3 text-slate-400" size={14} />
@@ -371,7 +374,7 @@ export default function ManageMaintenance() {
           <div className="bg-slate-50/50 rounded-2xl p-2 border border-slate-100 space-y-1.5">
             {filteredItems.length === 0 ? <p className="p-6 text-center text-slate-400 text-xs font-bold">माहिती उपलब्ध नाही किंवा सर्च रिझल्ट मिळाला नाही.</p> : filteredItems.map((n) => (
               <div key={n.id} className="bg-white px-4 py-2.5 border border-slate-100 rounded-xl flex justify-between items-center gap-4 hover:border-slate-200 transition-all shadow-sm">
-                <p className="text-xs font-bold text-slate-700 leading-relaxed truncate">{n.text_mr}</p>
+                <p className="text-xs font-bold text-slate-700 leading-relaxed truncate">{n.subject_mr || n.text_mr}</p>
                 <div className="flex items-center space-x-1 flex-shrink-0">
                   <button onClick={() => openFormModal('news', n)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"><Edit2 size={13} /></button>
                   <button onClick={() => handleDelete('news', n.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={13} /></button>
@@ -456,10 +459,28 @@ export default function ManageMaintenance() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              
+              {/* 🎯 सुधारित न्यूज इनपुट ब्लॉक */}
               {activeTab === 'news' && (
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">महत्त्वाची बातमी / सूचना (मराठीत)</label>
-                  <textarea value={newsTextMr} onChange={(e) => setNewsTextMr(e.target.value)} rows="3" placeholder="उदा. 🚨 गोविंदा विमा यादी जमा करण्याची अंतिम तारीख..." className="w-full border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-[#ff6600] bg-slate-50 font-medium text-slate-800" />
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">बातमीचा मुख्य विषय / हेडलाईन</label>
+                    <input type="text" value={newsSubjectMr} onChange={(e) => setNewsSubjectMr(e.target.value)} placeholder="उदा. भव्य प्रो गोविंदा स्पर्धा २०२६ तारीख जाहीर!" className="w-full border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-[#ff6600] bg-slate-50 font-bold text-slate-800" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">सविस्तर बातमी / मजकूर</label>
+                    <textarea value={newsDetailsMr} onChange={(e) => setNewsDetailsMr(e.target.value)} rows="4" placeholder="येथे बातमीचे संपूर्ण डिटेल्स सविस्तर लिहा भाऊ..." className="w-full border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-[#ff6600] bg-slate-50 font-medium text-slate-800" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">वैधता अंतिम तारीख (Expiry)</label>
+                      <input type="date" value={newsExpiryDate} onChange={(e) => setNewsExpiryDate(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none bg-slate-50 font-bold text-slate-700" />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">संदर्भ लिंक (URL - Optional)</label>
+                      <input type="url" value={newsRefLink} onChange={(e) => setNewsRefLink(e.target.value)} placeholder="https://..." className="w-full border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none bg-slate-50 font-mono" />
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -495,7 +516,6 @@ export default function ManageMaintenance() {
                     </div>
                   </div>
 
-                  {/* 📍 नवीन सिंगल इनपुट कोऑर्डिनेट्स बॉक्स - डिझाईन जुनीच */}
                   <div className="bg-orange-50/50 p-3 rounded-2xl border border-orange-500/10 space-y-2.5">
                     <span className="text-[10px] font-black text-orange-600 block uppercase tracking-wide">📍   लोकेशन मॅपिंग (Google Maps Coordinates)</span>
                     <div>

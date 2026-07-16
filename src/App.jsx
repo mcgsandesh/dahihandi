@@ -25,10 +25,9 @@ import TeamProfile from './components/TeamProfile';
 // 💸 मोबाईलसाठी तळाची चिकटलेली मॅन्युअल ॲड इम्पॉर्ट केली
 import AdMobileBottom from './components/AdMobileBottom'; // कॉम्पोनंटचा अचूक पाथ तपासून घ्या
 
-
-
 export default function App() {
-  // 🌐 पब्लिक लिंक डिटेक्शन (सुरक्षित जसेच्या तसे)
+
+// 🌐 पब्लिक लिंक डिटेक्शन (सुरक्षित जसेच्या तसे)
   if (window.location.pathname.includes('/register')) {
     return <PublicRegister />;
   }
@@ -42,22 +41,54 @@ export default function App() {
   // 🎯 विना-लॉगिन युझर ट्रॅक करण्यासाठी स्टेट
   const [isGuest, setIsGuest] = useState(false);
 
-  // 🎯 लँडिंग पेजवरून येणारा नेमका टॅब ट्रॅक करण्यासाठी नवीन स्टेट
+  // 🎯 लँडिंग पेजवरून येणार नेमका टॅब ट्रॅक करण्यासाठी नवीन स्टेट
   const [publicActiveTab, setPublicActiveTab] = useState('directory');
 
   // 🎯 कडक बदल १: थेट लिंकवरून आलेल्या विना-लॉगिन युझरचा स्लॅग ट्रॅक करण्यासाठी स्टेट
   const [directViewSlug, setDirectViewSlug] = useState(null);
 
   // 🎯 लँडिंग पेजवरून ही पेजेस उघडण्यासाठी स्टेट
-const [currentPublicPage, setCurrentPublicPage] = useState(null); // 'about', 'privacy', 'terms', 'faq' किंवा null
+  const [currentPublicPage, setCurrentPublicPage] = useState(null); // 'about', 'privacy', 'terms', 'faq' किंवा null
 
   // ==========================================
-  // 🔍 DEEP ROUTING DIAGNOSTICS & CORE LOGGER
+  // ⚡ ॲटोमॅटिक व्हर्जन控制 आणि कॅश क्लियरिंग हॅक (सुरक्षित लॉक)
+  // ==========================================
+  useEffect(() => {
+    try {
+      // vite.config.js मधून येणारे __APP_VERSION__ थेट वापरले
+      const currentVersion = __APP_VERSION__; 
+      const savedVersion = localStorage.getItem("app_version");
+
+      if (!savedVersion || savedVersion !== currentVersion) {
+        console.log(`🧹 जुने व्हर्जन (${savedVersion}) सापडले. नवीन व्हर्जन (${currentVersion}) नुसार कॅश साफ होत आहे...`);
+        
+        // १. लोकल स्टोरेज क्लियर करा
+        localStorage.clear(); 
+
+        // २. ब्राउझरची जुनी कॅश (Cache Storage) साफ करा
+        if ('caches' in window) {
+          caches.keys().then((names) => {
+            names.forEach((name) => caches.delete(name));
+          });
+        }
+
+        // ३. नवीन व्हर्जन लोकल स्टोरेजमध्ये सेट करा
+        localStorage.setItem("app_version", currentVersion);
+
+        // ४. नवीन व्हर्जनच्या फाईल्स लोड करण्यासाठी पेज फोर्स रिफ्रेश करा
+        window.location.reload(true);
+      }
+    } catch (err) {
+      console.error("❌ Version check/clear error:", err);
+    }
+  }, []);
+
+  // ==========================================
+  // 🔍 DEEP ROUTING DIAGNOSTICS & CORE LOGGER (सुरक्षित लॉक)
   // ==========================================
   useEffect(() => {
     const rawPath = window.location.pathname;
     const rawSearch = window.location.search;
-    const rawHash = window.location.hash;
     
     console.log("🔥 [APP INITIAL LOAD] --------------------------------");
     console.log("📊 Full URL:", window.location.href);
@@ -81,51 +112,52 @@ const [currentPublicPage, setCurrentPublicPage] = useState(null); // 'about', 'p
     console.log("-----------------------------------------------------");
   }, []);
 
-  // स्प्लॅश स्क्रीन टायमर (३ सेकंद)
+  // स्प्लॅश स्क्रीन टायमर (सुरक्षित लॉक)
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 1500);
+    }, 1200);
     return () => clearTimeout(timer);
   }, []);
 
-  // यूआरएल मध्ये '/view' आहे का हे तपासणे
+  // =========================================================================
+  // 🔗 सुधारित कडक बदल: लॉगिनची सक्ती काढून थेट पब्लिक व्ह्यूला रस्ता मोकळा करणे 🚀
+  // =========================================================================
   useEffect(() => {
     const path = window.location.pathname;
+    
+    // युआरएल मध्ये '/view' शोधणे (उदा. /view/jay-bharat-mcg3333)
     if (path.includes('/view')) {
-      const isUserLoggedIn = localStorage.getItem('govinda_user');
-      
-      if (!isUserLoggedIn) {
-        localStorage.removeItem('govinda_guest');
-        
-        setTimeout(() => {
-          Swal.fire({
-            icon: 'warning',
-            title: 'प्रवेश नाकारला! 🛑',
-            text: 'शेअर केलेली प्रोफाइल पाहण्यासाठी कृपया आधी सिस्टीममध्ये लॉगिन करा.',
-            confirmButtonColor: '#ff6600',
-            customClass: { popup: 'rounded-3xl' }
-          });
-        }, 3500);
-
-        window.history.pushState({}, '', window.location.origin + import.meta.env.BASE_URL);
+      let cleanSlug = "";
+      if (path.includes('/view/')) {
+        cleanSlug = path.split('/view/')[1];
       } else {
-        const cleanSlug = path.replace('/view', '').replace(/\//g, '');
-        if (cleanSlug) {
-          setDirectViewSlug(cleanSlug);
-          setIsGuest(true);
+        cleanSlug = path.replace('/view', '').replace(/\//g, '');
+      }
+
+      console.log("📡 [URL DEEP LINK LOG] सिस्टीममध्ये स्लॅग डिटेक्ट झाला भाऊ ->", cleanSlug);
+
+      if (cleanSlug) {
+        // 🎯 मॅजिक फिक्स: प्रवेश न नाकारता युझरला थेट गेस्ट मोड देऊन डॅशबोर्डवर नेणे
+        setDirectViewSlug(cleanSlug);
+        setIsGuest(true); 
+        
+        // जर तो लॉगिन नसेल, तर तात्पुरती गेस्ट कॅश व्हॅल्यू सेट ठेवणे
+        const isUserLoggedIn = localStorage.getItem('govinda_user');
+        if (!isUserLoggedIn) {
+          localStorage.setItem('govinda_guest', 'true');
         }
       }
     }
   }, []);
 
-  // localStorage मधून युजर लोड करणे आणि Real-time ब्लॉक चेक करणे
+  // localStorage मधून युजर लोड करणे आणि Real-time ब्लॉक चेक करणे (सुरक्षित लॉक)
   useEffect(() => {
     const savedUser = localStorage.getItem('govinda_user');
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
       setUser(parsedUser);
-
+      
       // 🛡️ REAL-TIME SECURITY LOCK (फक्त जे खरे ॲडमीन आहेत त्यांच्यासाठीच)
       if (parsedUser.teamUID && parsedUser.role !== 'guest') {
         let userDocRef = doc(db, "users", parsedUser.teamUID);
@@ -137,7 +169,7 @@ const [currentPublicPage, setCurrentPublicPage] = useState(null); // 'about', 'p
             if (dbData.isDeleted === true) {
               Swal.fire({
                 title: 'अकाउंट बंद केले आहे!',
-                text: 'सुपरॲдमीनने तुमचे account डीॲक्टिव्हेट केले आहे.',
+                text: 'सुपरॲडमीनने तुमचे account डीॲक्टिव्हेट केले आहे.',
                 icon: 'error',
                 confirmButtonColor: '#ff6600',
                 confirmButtonText: 'ठीक आहे'
@@ -160,6 +192,8 @@ const [currentPublicPage, setCurrentPublicPage] = useState(null); // 'about', 'p
       }
     }
   }, []);
+
+
 
   // गुगलने लॉगिन झाल्यावर डेटाबेसमधील रोल चेक करणे
   const checkUserStatus = async (googleUser) => {
@@ -276,7 +310,7 @@ const [currentPublicPage, setCurrentPublicPage] = useState(null); // 'about', 'p
     loading_status_set(false);
   };
 
-const handleExploreAsGuest = (targetTab = 'directory') => {
+  const handleExploreAsGuest = (targetTab = 'directory') => {
     console.log("=== 🔍 GOVINDA KATTA EXPLORE LOG START ===");
     console.log(`1. Target Tab received: ${targetTab}`);
     console.log("2. Current isGuest state before reset:", isGuest);
@@ -365,13 +399,12 @@ const handleExploreAsGuest = (targetTab = 'directory') => {
   }
 
   // 🎯 कडक बदल: जर युझरने फुटरमधील पॉलिसी पेजेसवर क्लिक केले, तर ते पेज इथे रेंडर होईल
-if (currentPublicPage === 'about') return <AboutUs onBack={() => setCurrentPublicPage(null)} setCurrentPublicPage={setCurrentPublicPage} />;
-if (currentPublicPage === 'privacy') return <PrivacyPolicy onBack={() => setCurrentPublicPage(null)} setCurrentPublicPage={setCurrentPublicPage} />;
-if (currentPublicPage === 'terms') return <TermsAndConditions onBack={() => setCurrentPublicPage(null)} setCurrentPublicPage={setCurrentPublicPage} />;
-if (currentPublicPage === 'faq') return <FAQAndManual onBack={() => setCurrentPublicPage(null)} setCurrentPublicPage={setCurrentPublicPage} />;
+  if (currentPublicPage === 'about') return <AboutUs onBack={() => setCurrentPublicPage(null)} setCurrentPublicPage={setCurrentPublicPage} />;
+  if (currentPublicPage === 'privacy') return <PrivacyPolicy onBack={() => setCurrentPublicPage(null)} setCurrentPublicPage={setCurrentPublicPage} />;
+  if (currentPublicPage === 'terms') return <TermsAndConditions onBack={() => setCurrentPublicPage(null)} setCurrentPublicPage={setCurrentPublicPage} />;
+  if (currentPublicPage === 'faq') return <FAQAndManual onBack={() => setCurrentPublicPage(null)} setCurrentPublicPage={setCurrentPublicPage} />;
 
-
-// 🎯 सुधारित रेंडर कंडिशन: युझर विना-लॉगिन आला असेल, 'guest' रोलचा असेल, 
+  // 🎯 सुधारित रेंडर कंडिशन: युझर विना-लॉगिन आला असेल, 'guest' रोलचा असेल, 
   // किंवा तो लॉगिन असताना त्याने लँडिंग पेजवरून 'गोविंदा कट्टा' बटणावर क्लिक केले असेल (isGuest === true),
   // या तिन्ही प्रकारांत त्याला सरळ कट्टा दाखवलाच पाहिजे! 🚀
   if ((!user && isGuest) || (user && user.role === 'guest') || isGuest) {
@@ -427,9 +460,8 @@ if (currentPublicPage === 'faq') return <FAQAndManual onBack={() => setCurrentPu
     );
   }
 
-return (
+  return (
     <div className="min-h-screen bg-[#03060f] text-white">
-      
       {/* १. तुमचे मुख्य लँडिंग पेज */}
       <LandingPage 
         handleLogin={handleLogin} 
@@ -441,7 +473,6 @@ return (
 
       {/* २. 💸 मोबाईलसाठी तळाची चिकटलेली ॲड (फक्त लँडिंग पेजवर असताना दिसेल) */}
       <AdMobileBottom />
-
     </div>
   );
 }

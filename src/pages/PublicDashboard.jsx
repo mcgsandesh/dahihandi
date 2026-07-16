@@ -21,6 +21,7 @@ import AdMobileBottom from '../components/AdMobileBottom';
 export default function PublicDashboard({ 
   handleLogin, 
   onBackToAdmin, 
+  directSlug,
   initialTab = 'directory',
   isEmbeddedView = false,     // पॅच: सुपर किंवा मंडळ ॲडमीनच्या आत उघडल्यास हे ट्रु होईल
   embeddedTab = 'directory',  // साईडबार कडून येणारा चालू टॅब
@@ -39,6 +40,12 @@ export default function PublicDashboard({
 
   // व्ह्यू नुसार टॅबची स्टेट निवडणे
   const [localTab, setLocalTab] = useState(() => {
+    // 🎯 कडक पॅच: जर थेट लिंकवरून (directSlug) युझर आला असेल, तर लोकल स्टोरेजमधील जुना टॅब साफ करून थेट डिरेक्टरीवर आणणे
+    if (directSlug) {
+      localStorage.removeItem('active_public_tab');
+      return 'directory';
+    }
+    
     const savedTab = localStorage.getItem('active_public_tab');
     if (savedTab) {
       localStorage.removeItem('active_public_tab');
@@ -56,6 +63,13 @@ export default function PublicDashboard({
       setLocalTab(tabId);
     }
   };
+
+  // 🎯 कडक बदल: जर कॉम्पोनेंट लोड झाल्यावर directSlug बदलला तर टॅब मॅन्युअली 'directory' वर रिसेट करणे
+  useEffect(() => {
+    if (directSlug) {
+      setCurrentTab('directory');
+    }
+  }, [directSlug]);
 
   // 🔄 ॲटो-कॅश इनव्हॅलिडेशन इंजिन
   useEffect(() => {
@@ -87,22 +101,28 @@ export default function PublicDashboard({
   const renderTabContent = () => {
     switch (currentTab) {
       case 'directory':
-      case 'govinda_katta':
-        return (
-          <PublicDirectory 
-            handleLogin={handleLogin}
-            initialDistrict={statsDistrictFilter}
-            initialArea={statsAreaFilter}
-            initialThara={statsTharaFilter}
-            initialCategory={statsCategoryFilter}
-            clearFilters={() => {
-              setStatsDistrictFilter('All');
-              setStatsAreaFilter('');
-              setStatsTharaFilter('All');
-              setStatsCategoryFilter('All');
-            }}
-          />
-        );
+            case 'govinda_katta':
+              // 📡 [DEEP LOG STEP 1]: पॅरेंट कडून डॅशबोर्डला स्लॅग मिळाला का तपासणे
+              console.log("=== 🛠️ [DASHBOARD ROUTE DIAGNOSTIC] ===");
+              console.log("📥 App.jsx कडून आलेला directSlug:", directSlug);
+              console.log("=======================================");
+
+              return (
+                <PublicDirectory 
+                  handleLogin={handleLogin}
+                  initialDistrict={statsDistrictFilter}
+                  initialArea={statsAreaFilter}
+                  initialThara={statsTharaFilter}
+                  initialCategory={statsCategoryFilter}
+                  directSlug={directSlug} // 👈 प्रॉप पुढे पाठवला
+                  clearFilters={() => {
+                    setStatsDistrictFilter('All');
+                    setStatsAreaFilter('');
+                    setStatsTharaFilter('All');
+                    setStatsCategoryFilter('All');
+                  }}
+                />
+              );
       case 'stats':
       case 'public_stats':
         return (
@@ -137,14 +157,14 @@ export default function PublicDashboard({
       case 'articles': 
         return <PublicArticles />;
       default: 
-        return <PublicDirectory handleLogin={handleLogin} />;
+        return <PublicDirectory handleLogin={handleLogin} directSlug={directSlug} />;
     }
   };
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans antialiased pb-16 md:pb-0 select-none text-slate-700">
       
-      {/* 👑 १. इंजेक्टेड ग्लोबल सामायिक साईडबार (फक्त विदाऊट लॉगिन/पब्लिक व्ह्यू असेल तरच दिसेल) */}
+      {/* 👑 १. इंजेक्टेड ग्लोबल सामायिक साईडबार */}
       {!isEmbeddedView && (
         <Sidebar 
           userRole="public"
@@ -155,8 +175,8 @@ export default function PublicDashboard({
           setIsMenuOpen={setIsMobileMenuOpen}
           onLogout={onBackToAdmin}
           lang={lang}
-          handleLogin={handleLogin} // 🎯 थेट App.jsx मधून आलेले मूळ फंक्शन इथे पास आहे
-          setEmbeddedTab={setEmbeddedTab} // 🎯 फक्त ही १ ओळ इथे पास करून द्या!
+          handleLogin={handleLogin} 
+          setEmbeddedTab={setEmbeddedTab} 
         />
       )}
 
@@ -164,7 +184,7 @@ export default function PublicDashboard({
       <div className="flex-1 p-4 md:p-6 overflow-y-auto z-10 w-full max-h-screen">
         <div className="w-full space-y-4">
           
-          {/* 🌐 ड्युअल लँग्वेज फ्रंटएंड स्विचर (फक्त पब्लिक विदाऊट लॉगिन मोडमध्ये वरती उजवीकडे क्लीन दिसेल) */}
+          {/* 🌐 ड्युअल लँग्वेज फ्रंटएंड स्विचर */}
           {!isEmbeddedView && (
             <div className="flex justify-end mb-2">
               <div className="flex bg-slate-200/60 p-0.5 rounded-lg space-x-0.5 border shadow-sm">
@@ -184,7 +204,7 @@ export default function PublicDashboard({
 
       <AdMobileBottom />
 
-      {/* 📱 मोबाईल स्क्रीनसाठी सुधारित बॉटम बार (फक्त पब्लिक विदाऊट लॉगिन मोडमध्येच दिसेल) */}
+      {/* 📱 मोबाईल स्क्रीनसाठी सुधारित बॉटम बार */}
       {!isEmbeddedView && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-1.5 flex justify-around items-center shadow-lg z-30 h-16">
           {[

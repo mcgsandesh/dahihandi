@@ -22,15 +22,28 @@ export default function PublicArticles() {
     fetchLiveArticles();
   }, []);
 
-  const handleOpenArticle = async (art) => {
-    try {
-        const docRef = doc(db, "articles", art.id);
-        await updateDoc(docRef, { views: increment(1) });
-        // UI वर व्ह्यूज लगेच अपडेट दिसण्यासाठी
-        setSelectedArticle({...art, views: (art.views || 0) + 1});
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err) { console.error(err); }
-  };
+const handleOpenArticle = async (art) => {
+  try {
+    const docRef = doc(db, "articles", art.id);
+    const viewedArticles = JSON.parse(localStorage.getItem('viewed_articles') || '{}');
+
+    // जर युझरने हा लेख आधी वाचला नसेल, तरच फायरबेसला अपडेट पाठवा
+    if (!viewedArticles[art.id]) {
+      await updateDoc(docRef, { views: increment(1) });
+      
+      // LocalStorage मध्ये नोंद करून ठेवा जेणेकरून पुन्हा Write होणार नाही
+      viewedArticles[art.id] = true;
+      localStorage.setItem('viewed_articles', JSON.stringify(viewedArticles));
+    }
+
+    setSelectedArticle({...art, views: (art.views || 0) + 1});
+  } catch (err) {
+    console.error(err);
+    setSelectedArticle(art);
+  } finally {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
 
   const renderFormattedContent = (text) => {
     if (!text) return '';

@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { Trophy, Search, X, ExternalLink, Loader2 } from 'lucide-react';
 
-export default function PublicRecords() {
+export default function PublicRecords( lang) {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -30,6 +30,16 @@ export default function PublicRecords() {
     fetchRecords();
   }, []);
 
+  // 🎯 मराठी आकडे वळवण्यासाठीचे हेल्पर फंक्शन (एरर फिक्स 🚀)
+const toMarathiNumber = (num) => {
+  if (num === null || num === undefined) return '';
+  const marathiDigits = {
+    '1': '१', '2': '२', '3': '३', '4': '४', '5': '५',
+    '6': '६', '7': '७', '8': '८', '9': '९', '0': '०'
+  };
+  return num.toString().split('').map(digit => marathiDigits[digit] || digit).join('');
+};
+
   // 🎯 युझरच्या इनपुटनुसार लाइव्ह डेटा फिल्टर करणे
   const filteredRecords = records.filter(r => {
     const matchesSearch = r.team_mr?.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -51,44 +61,65 @@ export default function PublicRecords() {
   }
 
   return (
-    <div className="w-full space-y-5 text-left animate-in fade-in duration-200 pb-12">
+<div className="w-full space-y-3 text-left animate-in fade-in duration-200 pb-12">
       
-      {/* 🔍 १. सर्च बार आणि ड्रॉपडाऊन फिल्टर्स (Future Ready Controls) */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
-        {/* सर्च इनपुट */}
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input 
-            type="text"
-            placeholder="पथकाचे नाव किंवा रेkॉर्ड शोधा..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 placeholder-slate-400 focus:outline-none focus:border-orange-500 focus:bg-white transition-all"
-          />
-        </div>
+      {/* 🔍 १. [ULTRA-COMPACT CONTROLS BOX] - ५०% जागा वाचवणारी डिझाईन 🚀 */}
+      <div className="bg-white p-3 md:p-4 rounded-2xl border border-slate-100 shadow-sm">
+        
+        {/* डेस्कटॉपवर एका ओळीत आणि मोबाईलवर सुबक मॅनेज होणारा लेआउट */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+          
+          {/* डावी बाजू: फक्त ठळक बोल्ड टायटल (नो सबटायटल, नो एक्स्ट्रा मार्जिन) */}
+          <div className="flex-shrink-0">
+            <h2 className="text-sm md:text-base font-black text-slate-800 uppercase tracking-wide">
+              {lang === 'en' ? 'Historical Records' : 'ऐतिहासिक रेकॉर्ड्स'}
+            </h2>
+          </div>
 
-        {/* फिल्टर्स ड्रॉपडाऊन */}
-        <div className="flex w-full md:w-auto items-center gap-2">
-          {/* वर्ष फिल्टर */}
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-black text-slate-700 focus:outline-none focus:border-orange-500 cursor-pointer"
-          >
-            <option value="all">🗓️ सर्व वर्षे</option>
-            {years.filter(y => y !== 'all').map(y => <option key={y} value={y}>{y} च्या नोंदी</option>)}
-          </select>
+          {/* उजवी बाजू: सर्च बार आणि फिल्टर्स ड्रॉपडाऊन एकत्र */}
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto items-center flex-1 md:justify-end">
+            
+            {/* सर्च इनपुट */}
+            <div className="relative w-full sm:w-64 md:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+              <input 
+                type="text"
+                placeholder={lang === 'en' ? "Search record..." : "शोधा..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-[34px] pl-8 pr-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 placeholder-slate-400 focus:outline-none focus:border-orange-500 focus:bg-white transition-all"
+              />
+            </div>
 
-          {/* प्रकार फिल्टर */}
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-black text-slate-700 focus:outline-none focus:border-orange-500 cursor-pointer"
-          >
-            <option value="all">👑 सर्व पथके</option>
-            <option value="men">🟠 पुरुष गोविंदा</option>
-            <option value="women">🔴 महिला गोविंदा</option>
-          </select>
+            {/* ड्रॉपडाऊन फिल्टर्स ग्रिड (मोबाईलवर शेजारी-शेजारी बसतील) */}
+            <div className="flex w-full sm:w-auto items-center gap-1.5">
+              {/* वर्ष फिल्टर */}
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="w-full sm:w-32 h-[34px] bg-slate-50 border border-slate-200/80 rounded-xl px-2 text-xs font-black text-slate-700 focus:outline-none focus:border-orange-500 cursor-pointer"
+              >
+                <option value="all">🗓️ {lang === 'en' ? 'Years' : 'सर्व वर्षे'}</option>
+                {years.filter(y => y !== 'all').map(y => (
+                  <option key={y} value={y}>
+                    {lang === 'en' ? `${y}` : `${toMarathiNumber(y)}`}
+                  </option>
+                ))}
+              </select>
+
+              {/* प्रकार फिल्टर */}
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="w-full sm:w-32 h-[34px] bg-slate-50 border border-slate-200/80 rounded-xl px-2 text-xs font-black text-slate-700 focus:outline-none focus:border-orange-500 cursor-pointer"
+              >
+                <option value="all">👑 {lang === 'en' ? 'All' : 'सर्व पथके'}</option>
+                <option value="men">🟠 {lang === 'en' ? 'Men' : 'पुरुष'}</option>
+                <option value="women">🔴 {lang === 'en' ? 'Women' : 'महिला'}</option>
+              </select>
+            </div>
+
+          </div>
         </div>
       </div>
 

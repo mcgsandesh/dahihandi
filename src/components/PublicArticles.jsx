@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, increment, query, where, orderBy } from 'firebase/firestore';
 import { User, ArrowLeft, Eye, Search, TrendingUp } from 'lucide-react';
 
-export default function PublicArticles() {
+export default function PublicArticles(lang) {
   const [articles, setArticles] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedArticle, setSelectedArticle] = useState(null);
@@ -126,12 +126,35 @@ const handleOpenArticle = async (art) => {
 
   // 📋 २. मुख्य लिस्ट व्ह्यू
   return (
-    <div className="space-y-4 p-2 text-left pt-0"> 
-      <div className="sticky top-0 z-20 bg-white p-2 rounded-xl shadow-sm border border-slate-100 flex items-center">
-        <Search size={16} className="text-slate-400 ml-2" />
-        <input type="text" placeholder="शोध..." className="w-full p-1 text-sm font-bold bg-transparent outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+<div className="space-y-3 p-2 text-left pt-0 animate-in fade-in duration-150"> 
+      
+      {/* 👑 [COMPACT ARTICLES HEADER + SEARCH] - १ ओळीत जागा वाचवणारी डिझाईन 🚀 */}
+      <div className="sticky top-0 z-20 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+          
+          {/* डावी बाजू: सुबक ट्रान्सलेटेड हेडर (नो सबटायटल, नो एक्स्ट्रा मार्जिन) */}
+          <div className="flex-shrink-0">
+            <h2 className="text-sm md:text-base font-black text-slate-800 uppercase tracking-wide">
+              {lang === 'en' ? 'Govinda Knowledge Base' : 'दहीहंडी ज्ञानपीठ'}
+            </h2>
+          </div>
+
+          {/* उजव्या बाजूला शिफ्ट केलेला सुबक सर्च बार */}
+          <div className="relative w-full md:w-64 lg:w-72 flex items-center bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 h-[34px] focus-within:border-orange-500 focus-within:bg-white transition-all">
+            <Search size={14} className="text-slate-400 mr-2 flex-shrink-0" />
+            <input 
+              type="text" 
+              placeholder={lang === 'en' ? "Search articles..." : "शोधून पहा..."} 
+              className="w-full bg-transparent text-xs font-bold text-slate-700 placeholder-slate-400 outline-none" 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+            />
+          </div>
+
+        </div>
       </div>
 
+      {/* ॲडसेन्स बॅनर जसा होता तसा सुरक्षित */}
       <div className="w-full bg-white border border-slate-100 py-2 rounded-lg text-center text-[10px] font-bold text-slate-400 shadow-sm">[AdSense Top Banner]</div>
 
       {/* ताज्या घडामोडी सेक्शन */}

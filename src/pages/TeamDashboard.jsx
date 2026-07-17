@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { collection, doc, serverTimestamp, updateDoc, query, where, onSnapshot, setDoc, getDocs, getDocsFromCache } from 'firebase/firestore'; 
 import { Plus, X, RotateCcw, Users, Shield, Shirt, User, LayoutDashboard, LogOut, Package, FileText, Settings as SettingsIcon, BarChart3, Trophy, Calendar, BookOpen, Megaphone, Edit2  } from 'lucide-react';
 import Swal from 'sweetalert2';
+import logo from '../assets/logo.png'; // 👈 योग्य पाथनुसार लोगो इंपोर्ट करा
 
 // 🎯 नवीन युनियन हब कॉम्पोनेंट इम्पोर्ट केला
 import PublicDashboard from './PublicDashboard'; 
@@ -324,7 +325,7 @@ export default function TeamDashboard({ user, onLogout }) {
       <div className="flex-1 p-4 md:p-6 overflow-y-auto max-h-screen pb-40 md:pb-6 w-full z-10">
         <div className="w-full space-y-4">
           
-          {/* हेडर टायटल आणि लँग्वेज स्किपर पॅनेल */}
+          {/* हेडर टायटल आणि लँग्वेज स्किपर पॅनेल
           <div className="border-b border-slate-200 pb-2.5 hidden md:flex items-center justify-between text-left">
             <div>
               <h1 className="text-lg font-black text-slate-800 uppercase tracking-wide">
@@ -349,7 +350,64 @@ export default function TeamDashboard({ user, onLogout }) {
               <button onClick={() => setLang('mr')} className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'mr' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}>मराठी</button>
               <button onClick={() => setLang('en')} className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'en' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}>English</button>
             </div>
+          </div> */}
+
+   {/* 👑 ब्रँडेड हेडर पॅनेल - स्वतःचा सुरक्षित लोगो इमेज टॅग */}
+      <div className="hidden md:flex border-b border-slate-200 pb-3 mb-5 items-center justify-between text-left">
+        
+        {/* डावी बाजू: लोगो आणि ब्रँड टायटल एकत्र */}
+        <div className="flex items-center space-x-3.5">
+          
+          {/* 🎯 [अचूक लोगो डिस्प्ले]: assets मधील लोगो इथे पास केला आहे */}
+          <img 
+            src={logo} 
+            alt="महाराष्ट्राचा गोविंदा लोगो" 
+            className="w-12 h-12 object-contain rounded-xl shadow-sm border border-slate-100" 
+          />
+
+          <div className="flex flex-col">
+            <h1 className="text-lg md:text-2xl font-black uppercase tracking-wide leading-tight">
+              {lang === 'mr' ? (
+                <>
+                  <span className="text-[#ff6600]">महाराष्ट्राचा</span>{" "}
+                  <span className="text-[#0b132b]">गोविंदा</span>
+                <span className="text-xs md:text-sm text-slate-400 font-bold mt-0.5"> {lang === 'mr' ? 'प्रत्येक गोविंदासाठी 🚩' : 'For Every Govinda 🚩'}</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-[#ff6600]">Maharashtracha</span>{" "}
+                  <span className="text-[#0b132b]">Govinda</span>
+                   <span className="text-xs md:text-sm text-slate-400 font-bold mt-0.5"> {lang === 'mr' ? 'प्रत्येक गोविंदासाठी 🚩' : 'For Every Govinda 🚩'}</span>
+
+                </>
+              )}
+            </h1>
+          
           </div>
+        </div>
+        
+        {/* लँग्वेज स्विचर */}
+        <div className="flex bg-slate-100 p-0.5 rounded-lg space-x-0.5 border shadow-sm">
+          <button 
+            onClick={() => setLang('mr')} 
+            className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'mr' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}
+          >
+            मराठी
+          </button>
+          <button 
+            onClick={() => setLang('en')} 
+            className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'en' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}
+          >
+            English
+          </button>
+        </div>
+      </div>
+          
+          
+          
+
+
+
 
           {/* 📊 MODERN DASHBOARD SUMMARY VIEW */}
           {activeTab === 'dashboard' && hasFormAccess && (() => {
@@ -493,12 +551,14 @@ export default function TeamDashboard({ user, onLogout }) {
                 user={user}
                 handleLogin={null}
                 onBackToAdmin={() => setActiveTab(hasFormAccess ? 'dashboard' : 'profile')}
+                lang={lang}
               />
             ) : null}
           </div>
             
         </div>
       </div>
+      
 
       <AdMobileBottom />
 

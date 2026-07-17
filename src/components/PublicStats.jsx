@@ -18,7 +18,7 @@ const toMarathiNumber = (num) => {
 };
 
 // 🎯 बदल: प्रॉप्समध्ये 'onTharaClick' सुरक्षितपणे स्वीकारला आहे
-  export default function PublicStats({ onDistrictClick, onTharaClick, onCategoryClick,onAreaClick }) {
+  export default function PublicStats({ onDistrictClick, onTharaClick, onCategoryClick,onAreaClick,lang }) {
   const [allTeamsData, setAllTeamsData] = useState([]); 
   const [stats, setStats] = useState({
     totalTeams: 0,
@@ -158,6 +158,20 @@ const toMarathiNumber = (num) => {
 return (
     <div className="space-y-5 text-slate-700">
       
+      {/* 🔝 [STATS PAGE HEADER] - सुबक आणि कॉम्पॅक्ट आकडेवारी हेडर 📊 */}
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3 -mt-1 w-full text-left">
+    <div className="flex flex-col">
+      <h2 className="text-base md:text-xl font-black text-slate-800 uppercase tracking-wide">
+        {lang === 'en' ? 'Festival Statistics' : 'उत्सव आकडेवारी'}
+      </h2>
+      <p className="text-[10px] md:text-xs text-slate-400 font-bold mt-0.5 leading-none">
+        {lang === 'en' 
+          ? 'Live insights, registered teams overview, and layer-wise records' 
+          : 'नोंदणीकृत सक्रिय पथके, थरांचे रेकॉर्ड आणि लाइव्ह आकडेवारीचा तपशील.'}
+      </p>
+    </div>
+  </div>
+
       {/* ⚡ भव्य काऊंटर्स ग्रीड */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-3">

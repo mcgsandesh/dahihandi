@@ -479,7 +479,7 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
   // =========================================================================
   // 📝 SECTION 4: EDIT MODE (मूळ ६२१ लाईन्स लेआउट)
   // =========================================================================
-  return (
+ return (
     <form onSubmit={handleSaveProfile} className="w-full space-y-4 pt-1 text-xs font-bold text-slate-600 animate-in fade-in duration-150 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm text-left">
       <div>
         <h3 className="text-sm font-black text-slate-800 mb-0.5">✏️   संघ प्रोफाईल संपादन</h3>
@@ -518,22 +518,97 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="text-[10px] font-black text-slate-400 uppercase flex items-center space-x-1"><MapPin size={11} /> <span>पूर्ण पत्ता (Address)</span></label>
-          <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 text-slate-800 focus:bg-white focus:outline-none" />
+          <label className="text-[10px] font-black text-slate-400 uppercase flex items-center space-x-1"><MapPin size={11} /> <span>पूर्ण पत्ता (Address - English ONLY)</span></label>
+          {/* 🎯 कडक पॅच: पत्ता फक्त इंग्रजीत स्वीकारणे (मराठी अक्षरे गाळणे) */}
+          <input 
+            type="text" 
+            value={address} 
+            onChange={(e) => setAddress(e.target.value.replace(/[\u0900-\u097F]/g, ''))} 
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 text-slate-800 focus:bg-white focus:outline-none" 
+            placeholder="Enter address in English"
+          />
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-black text-slate-400 uppercase flex items-center space-x-1"><Calendar size={11} /> <span>स्थापना वर्ष</span></label>
-          <input type="number" value={estYear} onChange={(e) => setEstYear(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 text-slate-800 focus:bg-white focus:outline-none" />
+          {/* 🎯 कडक पॅच: type="number" मुळे फक्त इंग्रजी आकडे टाईप होतील */}
+          <input 
+            type="number" 
+            value={estYear} 
+            onInput={(e) => e.target.value = e.target.value.slice(0, 4)}
+            onChange={(e) => setEstYear(e.target.value)} 
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 text-slate-800 focus:bg-white focus:outline-none" 
+            placeholder="YYYY"
+          />
         </div>
       </div>
 
       <div className="bg-slate-50/50 border border-slate-200/60 p-3 rounded-2xl space-y-3 w-full">
-        <span className="text-[10px] uppercase font-black tracking-wider text-orange-500 block">📍 शहर आणि परिसर तपशील</span>
+        <span className="text-[10px] uppercase font-black tracking-wider text-orange-500 block">📍 शहर आणि परिसर तपशील (English Input)</span>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="flex flex-col space-y-1"><label className="text-[10px] text-slate-500">परिसर (Area)</label><input type="text" value={areaName} onChange={(e) => setAreaName(e.target.value)} className="border border-slate-200 rounded-xl px-2.5 py-1.5 bg-white focus:outline-none" /></div>
-          <div className="flex flex-col space-y-1"><label className="text-[10px] text-slate-500">पिनकोड (Pincode)</label><input type="text" value={pincode} onChange={(e) => setPincode(e.target.value)} className="border border-slate-200 rounded-xl px-2.5 py-1.5 bg-white focus:outline-none" /></div>
-          <div className="flex flex-col space-y-1"><label className="text-[10px] text-slate-500">शहर (City)</label><input type="text" value={city} onChange={(e) => setCity(e.target.value)} className="border border-slate-200 rounded-xl px-2.5 py-1.5 bg-white focus:outline-none" /></div>
-          <div className="flex flex-col space-y-1"><label className="text-[10px] text-slate-500">जिल्हा (District)</label><input type="text" value={district} onChange={(e) => setDistrict(e.target.value)} className="border border-slate-200 rounded-xl px-2.5 py-1.5 bg-white focus:outline-none" /></div>
+          
+          {/* 🎯 परिसर: इंग्रजी रिस्ट्रिक्शन पॅच */}
+          <div className="flex flex-col space-y-1">
+            <label className="text-[10px] text-slate-500">परिसर (Area)</label>
+            <input 
+              type="text" 
+              value={areaName} 
+              onChange={(e) => setAreaName(e.target.value.replace(/[\u0900-\u097F]/g, ''))} 
+              className="border border-slate-200 rounded-xl px-2.5 py-1.5 bg-white focus:outline-none" 
+              placeholder="e.g. Dadar West"
+            />
+          </div>
+          
+          {/* 🎯 पिनकोड: ६ अंकी इंग्रजी नंबर लॉक */}
+          <div className="flex flex-col space-y-1">
+            <label className="text-[10px] text-slate-500">पिनकोड (Pincode)</label>
+            <input 
+              type="number" 
+              value={pincode} 
+              onInput={(e) => e.target.value = e.target.value.slice(0, 6)}
+              onChange={(e) => setPincode(e.target.value)} 
+              className="border border-slate-200 rounded-xl px-2.5 py-1.5 bg-white focus:outline-none" 
+              placeholder="400013"
+            />
+          </div>
+          
+          {/* 🎯 शहर: इंग्रजी रिस्ट्रिक्शन पॅच */}
+          <div className="flex flex-col space-y-1">
+            <label className="text-[10px] text-slate-500">शहर (City)</label>
+            <input 
+              type="text" 
+              value={city} 
+              onChange={(e) => setCity(e.target.value.replace(/[\u0900-\u097F]/g, ''))} 
+              className="border border-slate-200 rounded-xl px-2.5 py-1.5 bg-white focus:outline-none" 
+              placeholder="e.g. Mumbai"
+            />
+          </div>
+          
+          {/* 🎯 जिल्हा: सुरक्षित इंग्रजी ड्रॉपडाऊन (फिल्टर डेटा सुरक्षित 🔒) */}
+          <div className="flex flex-col space-y-1">
+            <label className="text-[10px] text-slate-500 font-black">जिल्हा (District)</label>
+            <select 
+              value={district} 
+              onChange={(e) => setDistrict(e.target.value)} 
+              className="border border-slate-200 rounded-xl px-2.5 py-1.5 bg-white focus:outline-none text-xs font-bold text-slate-700 h-[34px]"
+            >
+              <option value="">Select District</option>
+              <option value="Mumbai City">Mumbai City</option>
+              <option value="Mumbai Suburban">Mumbai Suburban</option>
+              <option value="Thane">Thane</option>
+              <option value="Palghar">Palghar</option>
+              <option value="Raigad">Raigad</option>
+              <option value="Pune">Pune</option>
+              <option value="Nashik">Nashik</option>
+              <option value="Nagpur">Nagpur</option>
+              <option value="Kolhapur">Kolhapur</option>
+              <option value="Sangli">Sangli</option>
+              <option value="Satara">Satara</option>
+              <option value="Ratnagiri">Ratnagiri</option>
+              <option value="Sindhudurg">Sindhudurg</option>
+              {/* तुला हवे असल्यास महाराष्ट्रातील इतर जिल्हे इथे ॲड करू शकतोस भाऊ */}
+            </select>
+          </div>
+
         </div>
       </div>
 
@@ -589,9 +664,9 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
       <div className="space-y-1 w-full">
         <div className="flex justify-between items-center">
           <label className="text-[10px] font-black text-slate-400 uppercase flex items-center space-x-1"><FileText size={11} /> <span>संघाची माहिती (About Team)</span></label>
-          <span className={`text-[10px] font-mono ${aboutTeam.length > 450 ? 'text-red-500 font-bold' : 'text-slate-400'}`}>{aboutTeam.length}/500</span>
+          <span className={`text-[10px] font-mono ${aboutTeam.length > 450 ? 'text-red-500 font-bold' : 'text-slate-400'}`}>{aboutTeam.length}/1500</span>
         </div>
-        <textarea rows="3" value={aboutTeam} maxLength={500} onChange={(e) => setAboutTeam(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 resize-none focus:bg-white focus:outline-none" placeholder="मंडळाचा संक्षिप्त इतिहास लिहा..." />
+        <textarea rows="3" value={aboutTeam} maxLength={1500} onChange={(e) => setAboutTeam(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 resize-none focus:bg-white focus:outline-none" placeholder="मंडळाचा संक्षिप्त इतिहास लिहा..." />
       </div>
 
       <div className="flex items-center space-x-2 pt-1 w-full">

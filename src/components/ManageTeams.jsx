@@ -1,4 +1,4 @@
-import React from 'react';
+ import React, { useState } from 'react'; // 👈 ही ओळ फाईलच्या अगदी टॉपला (Line 1) असावी
 import { Search, Filter, Send, UploadCloud, Plus, Link2, Eye, Edit2, RotateCcw, Trash2, CheckSquare, Square, MapPin } from 'lucide-react';
 export default function ManageTeams({
   loading,
@@ -20,8 +20,11 @@ export default function ManageTeams({
   handleToggleActiveStatus,
   // 🆕 नवीन जोडलेले अप्रूव्हल हँडलर्स (डॅशबोर्ड कडून येणारे)
   handleApproveTeam,
-  handleRejectCommentTeam
+  handleRejectCommentTeam,
+  lang
 }) {
+
+ 
 
   // 📍 डायनॅमिकली सर्व उपलब्ध जिल्ह्यांची यादी तयार करणे (Unique Districts)
   const districts = ['All', ...new Set(teamsList.map(t => t.district).filter(Boolean))];
@@ -52,32 +55,41 @@ export default function ManageTeams({
     <div className="p-4 md:p-6 w-full animate-in fade-in duration-150">
       <div className="w-full space-y-6">
         
-        {/* 🔝 हेडर सेक्शन्स आणि मुख्य ॲक्शन बटन्स */}
-        <div className="flex flex-row items-center justify-between gap-2 border-b border-slate-200 pb-4">
+{/* 🔝 [SINGLE LINE TEAM HEADER] - बोल्ड टायटल आणि एकाच रेषेत बटन्स (नो एक्स्ट्रा हाईट 🚀) */}
+        <div className="flex flex-row items-center justify-between gap-2 border-b border-slate-100 pb-3 -mt-3 w-full text-left">
+          
+          {/* डावी बाजू: ठळक आणि बोल्ड टायटल (सबटायटल उडवले जेणेकरून हाईट वाढणार नाही) */}
           <div>
-            <h1 className="text-lg md:text-2xl font-black text-slate-800">संघ व्यवस्थापन (Teams)</h1>
-            <p className="text-[10px] md:text-xs text-slate-500 mt-0.5 hidden sm:block">युनिक UID पॅटर्न, प्रगत सर्च आणि जिल्हा निहाय नियंत्रण व्यवस्था.</p>
+            <h1 className="text-base md:text-xl font-black text-slate-800 uppercase tracking-wide">
+              {lang === 'mr' ? 'संघ व्यवस्थापन' : 'Team Management'}
+            </h1>
+            <p className="text-[9px] md:text-[10px] text-slate-400 font-bold mt-0.5 leading-none">
+              {lang === 'mr' 
+                ? 'संघांचे व्यवस्थापन, संपादन, मंजुरी, अस्विकृती, डिलीट आणि थेट लाईव्ह पब्लिश व्यवस्था.' 
+                : 'Manage, edit, approve, reject, delete and publish all teams.'}
+            </p>
           </div>
 
+          {/* उजवी बाजू: बटन्स (आता टायटलच्या अगदी रेषेत वर राहतील) */}
           <div className="flex items-center space-x-1.5 flex-shrink-0">
             <button
               onClick={handlePublishLive}
               disabled={loading}
-              className="bg-slate-950 text-white p-2 md:px-3 md:py-2 rounded-xl font-bold text-xs shadow-md hover:bg-slate-800 transition-all flex items-center justify-center space-x-1.5 disabled:opacity-50 h-[36px] w-[36px] md:w-auto"
+              className="bg-slate-950 text-white p-2 md:px-3 md:py-1.5 rounded-xl font-bold text-xs shadow-sm hover:bg-slate-800 transition-all flex items-center justify-center space-x-1.5 disabled:opacity-50 h-[34px] w-[36px] md:w-auto"
               title="Publish Live वेबसाइट"
             >
-              <Send size={14} />
+              <Send size={13} />
               <span className="hidden md:inline">Publish Live</span>
             </button>
 
-            <label className={`cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white p-2 md:px-3 md:py-2 rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-1.5 active:scale-95 h-[36px] w-[36px] md:w-auto ${importLoading ? 'opacity-50 pointer-events-none' : ''}`} title="Excel Import (.csv)">
+            <label className={`cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white p-2 md:px-3 md:py-1.5 rounded-xl font-bold text-xs shadow-sm transition-all flex items-center justify-center space-x-1.5 active:scale-95 h-[34px] w-[36px] md:w-auto ${importLoading ? 'opacity-50 pointer-events-none' : ''}`} title="Excel Import (.csv)">
               <input type="file" accept=".csv" onChange={handleBulkImportCSV} className="hidden" />
-              <UploadCloud size={14} />
+              <UploadCloud size={13} />
               <span className="hidden md:inline">Excel Import</span>
             </label>
 
-            <button onClick={() => openModal()} className="hidden md:flex bg-[#ff6600] text-white px-3 py-2 rounded-xl font-bold text-xs shadow-md hover:bg-[#e65c00] transition-all items-center space-x-1.5 h-[36px]">
-              <Plus size={14} /><span>नवीन संघ जोडा</span>
+            <button onClick={() => openModal()} className="hidden md:flex bg-[#ff6600] text-white px-3 py-1.5 rounded-xl font-bold text-xs shadow-sm hover:bg-[#e65c00] transition-all items-center space-x-1.5 h-[34px]">
+              <Plus size={13} /><span>नवीन संघ जोडा</span>
             </button>
           </div>
         </div>
@@ -175,12 +187,35 @@ export default function ManageTeams({
                         </span>
                       </td>
                       <td className="p-4 flex items-center justify-center space-x-1">
-                        {/* 📞 व्हॉट्सॲप डायरेक्ट चॅट आयकॉन */}
-                        {contactNumber && (
-                          <a href={`https://wa.me/91${contactNumber}`} target="_blank" rel="noreferrer" className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all" title="थेट व्हॉट्सॲप संपर्क">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.948h.003c4.177 0 7.882-3.559 7.886-7.928A7.86 7.86 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.69-4.936c-.202-.101-1.196-.59-1.383-.658-.188-.069-.325-.101-.462.101-.138.203-.534.658-.654.793-.12.134-.241.152-.443.051-.2-.102-.843-.311-1.606-.991-.593-.529-1.002-1.182-1.118-1.382-.117-.2-.012-.307.089-.408.092-.091.202-.234.302-.351.101-.117.135-.198.203-.331.067-.133.033-.251-.017-.352-.05-.101-.423-1.018-.578-1.393-.15-.36-.3-.311-.412-.317-.107-.006-.23-.006-.353-.006a.682.682 0 0 0-.492.23c-.168.183-.641.626-.641 1.528 0 .902.656 1.773.748 1.895.093.12 1.287 1.966 3.118 2.754.436.188.776.3 1.042.384.437.139.835.119 1.15.073.351-.05 1.197-.49 1.364-.963.167-.472.167-.878.118-.963-.05-.084-.188-.134-.39-.235z"/></svg>
+                      {/* 📞 व्हॉट्सॲप डायरेक्ट चॅट आयकॉन (Pre-filled Message सह 🚀) */}
+                      {contactNumber && (() => {
+                        // १. मराठी संदेशाचा सुबक फॉरमॅट तयार करणे (\n म्हणजे नवीन लाईन)
+                        const messageText = `नमस्कार,
+
+                      संघाचे नाव: ${t.teamName || '—'}
+                      UID: ${t.uid || t.id || '—'}
+
+                      www.maharashtrachagovinda.com
+
+                      *महाराष्ट्राचा गोविंदा, प्रत्येक गोविंदासाठी!*`;
+
+                        // २. युआरएलसाठी मेसेज सुरक्षित एन्कोड करणे
+                        const encodedMessage = encodeURIComponent(messageText);
+
+                        return (
+                          <a 
+                            href={`https://wa.me/91${contactNumber}?text=${encodedMessage}`} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all" 
+                            title="थेट व्हॉट्सॲप संपर्क"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+                              <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.948h.003c4.177 0 7.882-3.559 7.886-7.928A7.86 7.86 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.69-4.936c-.202-.101-1.196-.59-1.383-.658-.188-.069-.325-.101-.462.101-.138.203-.534.658-.654.793-.12.134-.241.152-.443.051-.2-.102-.843-.311-1.606-.991-.593-.529-1.002-1.182-1.118-1.382-.117-.2-.012-.307.089-.408.092-.091.202-.234.302-.351.101-.117.135-.198.203-.331.067-.133.033-.251-.017-.352-.05-.101-.423-1.018-.578-1.393-.15-.36-.3-.311-.412-.317-.107-.006-.23-.006-.353-.006a.682.682 0 0 0-.492.23c-.168.183-.641.626-.641 1.528 0 .902.656 1.773.748 1.895.093.12 1.287 1.966 3.118 2.754.436.188.776.3 1.042.384.437.139.835.119 1.15.073.351-.05 1.197-.49 1.364-.963.167-.472.167-.878.118-.963-.05-.084-.188-.134-.39-.235z"/>
+                            </svg>
                           </a>
-                        )}
+                        );
+                      })()}
                         <button onClick={() => setSelectedTeam(t)} className="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition-all" title="पब्लिक प्रोफाईल पहा"><Eye size={15} /></button>
                         {!t.isDeleted && <button onClick={() => openModal(t)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit2 size={15} /></button>}
                         

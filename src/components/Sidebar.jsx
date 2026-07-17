@@ -83,6 +83,9 @@ export default function Sidebar({
     return false;
   };
 
+  // 🚫 जर पब्लिक शेअरिंग व्ह्यू असेल, तर साईडबार पूर्णपणे गायब करा
+//if (window.location.pathname.includes('/view')) return null;
+
   return (
     <>
       {/* 📱 मोबाईल टॉप हेडर */}

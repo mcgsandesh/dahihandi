@@ -24,9 +24,12 @@ import TeamProfile from '../components/TeamProfile';
 import ManageTeams from '../components/ManageTeams';
 import AdMobileBottom from '../components/AdMobileBottom';
 
+import logo from '../assets/logo.png'; // 👈 योग्य पाथनुसार लोगो इंपोर्ट करा
+
 
 
 export default function Dashboard({ user, onLogout }) {
+  const [mobiles, setMobiles] = useState([]); // 👈 ही लाईन डॅशबोर्डच्या टॉपला ॲड कर
   const [teamName, setTeamName] = useState('');
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
@@ -85,7 +88,7 @@ const [statsAreaFilter, setStatsAreaFilter] = useState('');
               cleanName = cleanName.replace(/\s+/g, ' ').trim(); if (!cleanName) cleanName = row.TeamName.toString().trim();
               const teamSlug = cleanName.toLowerCase().replace(/[^a-zA-Z0-9\s-\u0900-\u097F]/g, '').replace(/\s+/g, '-');
               batch.set(doc(db, "users", docId), {
-                uid: docId, teamName: cleanName, name: row.AdminName ? row.AdminName.toString().trim() : 'प्रमुख ॲдमीन', email: emailLower, admins: adminArray, mobiles: mobileArray,            
+                uid: docId, teamName: cleanName, name: row.AdminName ? row.AdminName.toString().trim() : 'प्रमुख ॲडमीन', email: emailLower, admins: adminArray, mobiles: mobileArray,            
                 role: "admin", teamSlug: teamSlug, teamCategory: row.Category || 'Men', coachName: row.CoachName ? row.CoachName.toString().trim() : '', captainName: row.CaptainName ? row.CaptainName.toString().trim() : '',
                 isRegistered: row.IsRegistered === 'Yes' || row.IsRegistered === true, regNumber: row.RegNumber ? row.RegNumber.toString().trim() : '', address: row.Address ? row.Address.toString().trim() : row.TeamName.toString().trim(), 
                 areaName: row.AreaName ? row.AreaName.toString().trim() : '', pincode: row.Pincode ? row.Pincode.toString().trim() : '', city: row.City ? row.City.toString().trim() : '', district: row.District ? row.District.toString().trim() : '',
@@ -156,29 +159,118 @@ const [statsAreaFilter, setStatsAreaFilter] = useState('');
     } catch (err) { console.error("❌ डेटाबेस क्लीन एरर:", err); } finally { setLoading(false); }
   };
 
+// =========================================================================
+  // 🚩 १. सिंगल रेकॉर्ड मंजूर करून थेट कॅशमध्ये पब्लिश करणे (FIXED & LOGGED)
+  // =========================================================================
   const handleApproveAndPublishLive = async (teamId) => {
-      setLoading(true);
-      try {
-        const userDocRef = doc(db, "users", teamId); const teamSnap = await getDoc(userDocRef);
-        if (!teamSnap.exists()) throw new Error("संघ सापडला नाही."); const t = teamSnap.data();
-        await updateDoc(userDocRef, { hasPendingEdits: false, verificationStatus: "approved", isProfileComplete: true });
-        const cacheDocRef = doc(db, "public_site_cache", "live_directory"); const cacheSnap = await getDoc(cacheDocRef);
-        if (cacheSnap.exists()) {
-          const cacheData = cacheSnap.data(); const currentTeams = cacheData.teams || [];
-          const formattedCacheTeam = {
-            id: t.id || t.uid || teamId, uid: t.uid || t.id || teamId, teamName: t.teamName || '', teamSlug: t.teamSlug || '', name: t.name || '', establishedYear: t.establishedYear || '',
-            slogan: t.slogan || '', logoUrl: t.logoUrl || '', aboutTeam: t.aboutTeam || '', bestPerformance: t.bestPerformance || '', teamCategory: t.teamCategory || 'Men', city: t.city || '', district: t.district || '', state: t.state || '',
-            areaName: t.areaName || '', pincode: t.pincode || '', coachName: t.coachName || '', captainName: t.captainName || '', milestone7: t.milestone7 || '', milestone8: t.milestone8 || '', milestone9: t.milestone9 || '', milestone10: t.milestone10 || '',
-            bestPerformanceUrl: t.bestPerformanceUrl || '', isProfileComplete: true, hasPendingEdits: false, mobiles: t.mobiles || [],
-            socialLinks: { facebook: t.socialLinks?.facebook || '', instagram: t.socialLinks?.instagram || '', youtube: t.socialLinks?.youtube || '' }
-          };
-          let updatedList = currentTeams.some(team => team.id === teamId || team.uid === teamId) ? currentTeams.map(team => (team.id === teamId || team.uid === teamId) ? formattedCacheTeam : team) : [...currentTeams, formattedCacheTeam];
-          await setDoc(cacheDocRef, { ...cacheData, teams: updatedList, totalTeams: updatedList.length, lastPublishedAt: serverTimestamp(), version: Date.now() }, { merge: true });
+    setLoading(true);
+    console.log("=== 🚀 [APPROVE & PUBLISH LIVE START] ===");
+    console.log("📥 टारगेट टीम आयडी (teamId):", teamId);
+
+    try {
+      const userDocRef = doc(db, "users", teamId);
+      
+      // 🎯 स्टेप १: आधी डेटाबेसमध्ये स्टेटस कडक मंजूर (Approve) करून अपडेट करा
+      console.log("🔄 [डेटाबेस अपडेट]: users कलेक्शनमध्ये मान्यता सेट करत आहे...");
+      await updateDoc(userDocRef, { 
+        hasPendingEdits: false, 
+        verificationStatus: "approved", 
+        isProfileComplete: true 
+      });
+      console.log("✅ [डेटाबेस अपडेट]: users कलेक्शन यशस्वीरित्या अपडेट झाले.");
+
+      // 🎯 स्टेप २: अपडेट झाल्यानंतरचा एकदम फ्रेश आणि लाईव्ह डेटा पुन्हा ओढा!
+      const freshTeamSnap = await getDoc(userDocRef);
+      if (!freshTeamSnap.exists()) throw new Error("हा संघ युझर्स डेटाबेसमध्ये सापडला नाही.");
+      const t = freshTeamSnap.data();
+
+      console.log("📦 [फ्रेश डेटा ओढला]:", { teamName: t.teamName, district: t.district, isProfileComplete: t.isProfileComplete });
+
+      // 🎯 स्टेप ३: पब्लिक कॅश (live_directory) डॉक्युमेंट ओढा
+      const cacheDocRef = doc(db, "public_site_cache", "live_directory"); 
+      const cacheSnap = await getDoc(cacheDocRef);
+      
+      let currentTeams = [];
+      let cacheData = {};
+
+      if (cacheSnap.exists()) {
+        cacheData = cacheSnap.data();
+        currentTeams = cacheData.teams || [];
+        console.log(`📊 [कॅश स्थिती]: सध्या कॅशमध्ये एकूण ${currentTeams.length} संघ आहेत.`);
+      } else {
+        console.log("⚠️ [कॅश स्थिती]: live_directory कॅश अजून तयार झालेली नाही. नवीन तयार होईल.");
+      }
+
+      // 🎯 स्टेप ४: कॅशसाठी फ्रेश डेटा फॉरमॅट करा
+      const formattedCacheTeam = {
+        id: teamId, // 👈 नेहमी मूळ अचूक teamId चा वापर
+        uid: teamId, 
+        teamName: t.teamName || '', 
+        teamSlug: t.teamSlug || '', 
+        name: t.name || '', 
+        establishedYear: t.establishedYear || '',
+        slogan: t.slogan || '', 
+        logoUrl: t.logoUrl || '', 
+        aboutTeam: t.aboutTeam || '', 
+        bestPerformance: t.bestPerformance || '', 
+        teamCategory: t.teamCategory || 'Men', 
+        city: t.city || '', 
+        district: t.district || '', 
+        state: t.state || '',
+        areaName: t.areaName || '', 
+        pincode: t.pincode || '', 
+        coachName: t.coachName || '', 
+        captainName: t.captainName || '', 
+        milestone7: t.milestone7 || '', 
+        milestone8: t.milestone8 || '', 
+        milestone9: t.milestone9 || '', 
+        milestone10: t.milestone10 || '',
+        bestPerformanceUrl: t.bestPerformanceUrl || '', 
+        isProfileComplete: true, 
+        hasPendingEdits: false, 
+        mobiles: t.mobiles || [],
+        socialLinks: { 
+          facebook: t.socialLinks?.facebook || '', 
+          instagram: t.socialLinks?.instagram || '', 
+          youtube: t.socialLinks?.youtube || '' 
         }
-        Swal.fire({ icon: 'success', title: 'बदल मंजूर व थेट पब्लिश झाले! 🚩', timer: 1500, showConfirmButton: false });
-        fetchTeams();
-      } catch (err) { console.error(err); Swal.fire({ icon: 'error', title: 'त्रुटी आली!', text: err.message }); } finally { setLoading(false); }
-    };
+      };
+
+      // 🎯 स्टेप ५: कॅशच्या यादीत जुनी नोंद मॅच करून फक्त तेवढीच ओळ अपडेट करणे (Single Record Push)
+      console.log("🔍 [कॅश मॅचिंग चालू]: यादीत आधीपासून हा संघ आहे का तपासत आहे...");
+      const isAlreadyCached = currentTeams.some(team => team.id === teamId || team.uid === teamId);
+      
+      let updatedList = [];
+      if (isAlreadyCached) {
+        console.log("🔄 [कॅश अपडेट]: संघ आधीपासून आहे, जुनी नोंद फ्रेश डेटाने बदलत आहे...");
+        updatedList = currentTeams.map(team => (team.id === teamId || team.uid === teamId) ? formattedCacheTeam : team);
+      } else {
+        console.log("➕ [कॅश इन्सर्ट]: हा नवीन संघ आहे, कॅश यादीत शेवटी जोडत आहे...");
+        updatedList = [...currentTeams, formattedCacheTeam];
+      }
+
+      // 🎯 स्टेप ६: फायनल कॅश राईट आणि व्हर्जन कंट्रोल अपडेट (व्हर्जन बदलल्यामुळे फ्रंटएंड कॅश क्लियर होईल)
+      const newVersion = Date.now();
+      await setDoc(cacheDocRef, { 
+        ...cacheData, 
+        teams: updatedList, 
+        totalTeams: updatedList.length, 
+        lastPublishedAt: serverTimestamp(), 
+        version: newVersion 
+      }, { merge: true });
+
+      console.log(`🚀 [SUCCESS]: कॅश यशस्वीरित्या अपडेट झाली! नवीन व्हर्जन कोड: ${newVersion}`);
+      
+      Swal.fire({ icon: 'success', title: 'बदल मंजूर व थेट पब्लिश झाले! 🚩', timer: 1500, showConfirmButton: false });
+      fetchTeams();
+    } catch (err) { 
+      console.error("❌ [APPROVE & PUBLISH ERROR]:", err); 
+      Swal.fire({ icon: 'error', title: 'त्रुटी आली!', text: err.message }); 
+    } finally { 
+      setLoading(false); 
+      console.log("=== 🚀 [APPROVE & PUBLISH LIVE END] ===");
+    }
+  };
 
   const handleApproveTeam = async (teamId) => { await handleApproveAndPublishLive(teamId); };
 
@@ -194,13 +286,69 @@ const [statsAreaFilter, setStatsAreaFilter] = useState('');
     }
   };
 
-  const openModal = (team = null) => {
+  // const openModal = (team = null) => {
+  //   if (team) {
+  //     setEditingTeamUid(team.id); setTeamName(team.teamName); setAdminName(team.name);
+  //     setAdminEmail(team.admins ? team.admins.join(', ') : team.email || '');
+  //     setAllowInAppForm(team.allowInAppForm !== false); setTeamCategory(team.teamCategory || 'Men');
+  //   } else {
+  //     setEditingTeamUid(null); setTeamName(''); setAdminName(''); setAdminEmail(''); setTeamCategory('Men'); setAllowInAppForm(true); 
+  //   }
+  //   setIsModalOpen(true);
+  // };
+
+
+const openModal = (team = null) => {
     if (team) {
-      setEditingTeamUid(team.id); setTeamName(team.teamName); setAdminName(team.name);
+      // १. 🎯 तुमचे मूळ कोड जसेच्या तसे सुरक्षित (ज्याने ॲडमीनचा पॉपअप परफेक्ट चालू राहील)
+      setEditingTeamUid(team.id); 
+      setTeamName(team.teamName); 
+      setAdminName(team.name);
       setAdminEmail(team.admins ? team.admins.join(', ') : team.email || '');
-      setAllowInAppForm(team.allowInAppForm !== false); setTeamCategory(team.teamCategory || 'Men');
+      setAllowInAppForm(team.allowInAppForm !== false); 
+      setTeamCategory(team.teamCategory || 'Men');
+
+      // २. 🚀 [पब्लिक प्रोफाईल ओव्हरलॅप फिक्स] जर डॅशबोर्डवर या स्टेट्स असतील तर त्या साफ होतील, 
+      // आणि जर स्टेट्स नसतील तरीही 'typeof' चेकिंगमुळे कोड १% ही क्रॅश होणार नाही!
+      if (typeof setMobiles === 'function') setMobiles(team.mobiles || []);
+      if (typeof setLogoUrl === 'function') setLogoUrl(team.logoUrl || '');
+      if (typeof setSlogan === 'function') setSlogan(team.slogan || '');
+      if (typeof setAboutTeam === 'function') setAboutTeam(team.aboutTeam || '');
+      if (typeof setBestPerformance === 'function') setBestPerformance(team.bestPerformance || '');
+      if (typeof setBestPerformanceUrl === 'function') setBestPerformanceUrl(team.bestPerformanceUrl || '');
+      if (typeof setCoachName === 'function') setCoachName(team.coachName || '');
+      if (typeof setCaptainName === 'function') setCaptainName(team.captainName || '');
+      if (typeof setAreaName === 'function') setAreaName(team.areaName || '');
+      if (typeof setPincode === 'function') setPincode(team.pincode || '');
+      if (typeof setCity === 'function') setCity(team.city || '');
+      if (typeof setDistrict === 'function') setDistrict(team.district || '');
+      if (typeof setAddress === 'function') setAddress(team.address || '');
+      
+      // सोशल मीडिया लिंक्स सुरक्षित क्लिनअप
+      if (typeof setFacebook === 'function') setFacebook(team.socialLinks?.facebook || '');
+      if (typeof setInstagram === 'function') setInstagram(team.socialLinks?.instagram || '');
+      if (typeof setYoutube === 'function') setYoutube(team.socialLinks?.youtube || '');
+
     } else {
+      // 🎯 ३. नवीन संघ जोडताना सर्व जुन्या स्टेट्स शंभर टक्के साफ (Reset) करणे
       setEditingTeamUid(null); setTeamName(''); setAdminName(''); setAdminEmail(''); setTeamCategory('Men'); setAllowInAppForm(true); 
+      
+      if (typeof setMobiles === 'function') setMobiles([]);
+      if (typeof setLogoUrl === 'function') setLogoUrl('');
+      if (typeof setSlogan === 'function') setSlogan('');
+      if (typeof setAboutTeam === 'function') setAboutTeam('');
+      if (typeof setBestPerformance === 'function') setBestPerformance('');
+      if (typeof setBestPerformanceUrl === 'function') setBestPerformanceUrl('');
+      if (typeof setCoachName === 'function') setCoachName('');
+      if (typeof setCaptainName === 'function') setCaptainName('');
+      if (typeof setAreaName === 'function') setAreaName('');
+      if (typeof setPincode === 'function') setPincode('');
+      if (typeof setCity === 'function') setCity('');
+      if (typeof setDistrict === 'function') setDistrict('');
+      if (typeof setAddress === 'function') setAddress('');
+      if (typeof setFacebook === 'function') setFacebook('');
+      if (typeof setInstagram === 'function') setInstagram('');
+      if (typeof setYoutube === 'function') setYoutube('');
     }
     setIsModalOpen(true);
   };
@@ -216,33 +364,93 @@ const [statsAreaFilter, setStatsAreaFilter] = useState('');
     Swal.fire({ icon: 'success', title: '🔒 link कॉपी झाली!', confirmButtonColor: '#ff6600', timer: 1500 });
   };
 
-  const handleSaveTeam = async (e) => {
+ const handleSaveTeam = async (e) => {
     e.preventDefault(); setLoading(true);
     try {
       const emailLower = adminEmail.trim().toLowerCase();
       const teamSlug = teamName.toLowerCase().trim().replace(/[^a-zA-Z0-9\s-\u0900-\u097F]/g, '').replace(/\s+/g, '-');
       const currentYear = new Date().getFullYear().toString();
       let finalUid = editingTeamUid; let isNewTeam = false; let dbTeamData = {};
+      
       if (editingTeamUid) {
-        dbTeamData = { name: adminName.trim(), email: emailLower, admins: adminEmail.split(',').map(e => e.trim().toLowerCase()), teamName: teamName.trim(), teamSlug: teamSlug, teamCategory: teamCategory, allowInAppForm: allowInAppForm, updatedAt: serverTimestamp() };
+        dbTeamData = { 
+          name: adminName.trim(), 
+          email: emailLower, 
+          admins: adminEmail.split(',').map(e => e.trim().toLowerCase()), 
+          teamName: teamName.trim(), 
+          teamSlug: teamSlug, 
+          teamCategory: teamCategory, 
+          allowInAppForm: allowInAppForm, 
+          mobiles: mobiles || [], // 🆕 १. एडिट करताना फोन नंबर users कलेक्शनमध्ये सुरक्षित
+          updatedAt: serverTimestamp() 
+        };
         await updateDoc(doc(db, "users", editingTeamUid), dbTeamData);
       } else {
         isNewTeam = true; const randomDigits = Math.floor(1000 + Math.random() * 9000); finalUid = `MCG${randomDigits}`;
-        dbTeamData = { uid: finalUid, id: finalUid, name: adminName.trim(), email: emailLower, admins: adminEmail.split(',').map(e => e.trim().toLowerCase()), role: "admin", teamName: teamName.trim(), teamSlug: teamSlug, teamCategory: teamCategory, currentYear: currentYear, isDeleted: false, isFormActive: allowInAppForm, allowInAppForm: allowInAppForm, isProfileComplete: false, hasPendingEdits: false, createdAt: serverTimestamp() };
+        dbTeamData = { 
+          uid: finalUid, 
+          id: finalUid, 
+          name: adminName.trim(), 
+          email: emailLower, 
+          admins: adminEmail.split(',').map(e => e.trim().toLowerCase()), 
+          role: "admin", 
+          teamName: teamName.trim(), 
+          teamSlug: teamSlug, 
+          teamCategory: teamCategory, 
+          currentYear: currentYear, 
+          isDeleted: false, 
+          isFormActive: allowInAppForm, 
+          allowInAppForm: allowInAppForm, 
+          isProfileComplete: false, 
+          hasPendingEdits: false, 
+          mobiles: mobiles || [], // 🆕 २. नवीन संघ जोडताना फोन नंबर users कलेक्शनमध्ये सुरक्षित
+          createdAt: serverTimestamp() 
+        };
         await setDoc(doc(db, "users", finalUid), dbTeamData);
       }
 
       const cacheDocRef = doc(db, "public_site_cache", "live_directory"); const docSnap = await getDoc(cacheDocRef);
       if (docSnap.exists()) {
         const cacheData = docSnap.data(); const currentTeamsList = cacheData.teams || []; const existingCachedTeam = currentTeamsList.find(t => t.id === finalUid || t.uid === finalUid) || {};
+        
         const formattedCacheTeam = {
-          ...existingCachedTeam, id: finalUid, uid: finalUid, teamName: teamName.trim(), teamSlug: teamSlug, name: adminName.trim(), teamCategory: teamCategory, isProfileComplete: isNewTeam ? false : (existingCachedTeam.isProfileComplete !== false), hasPendingEdits: false, establishedYear: existingCachedTeam.establishedYear || '', slogan: existingCachedTeam.slogan || '', logoUrl: existingCachedTeam.logoUrl || '', aboutTeam: existingCachedTeam.aboutTeam || '', bestPerformance: existingCachedTeam.bestPerformance || '', city: existingCachedTeam.city || '', district: existingCachedTeam.district || '', state: existingCachedTeam.state || '', areaName: existingCachedTeam.areaName || '', pincode: existingCachedTeam.pincode || '', coachName: existingCachedTeam.coachName || '', captainName: existingCachedTeam.captainName || '', milestone7: existingCachedTeam.milestone7 || '', milestone8: existingCachedTeam.milestone8 || '', milestone9: existingCachedTeam.milestone9 || '', milestone10: existingCachedTeam.milestone10 || '', bestPerformanceUrl: existingCachedTeam.bestPerformanceUrl || '', mobiles: existingCachedTeam.mobiles || [],
+          ...existingCachedTeam, 
+          id: finalUid, 
+          uid: finalUid, 
+          teamName: teamName.trim(), 
+          teamSlug: teamSlug, 
+          name: adminName.trim(), 
+          teamCategory: teamCategory, 
+          isProfileComplete: isNewTeam ? false : (existingCachedTeam.isProfileComplete !== false), 
+          hasPendingEdits: false, 
+          establishedYear: existingCachedTeam.establishedYear || '', 
+          slogan: existingCachedTeam.slogan || '', 
+          logoUrl: existingCachedTeam.logoUrl || '', 
+          aboutTeam: existingCachedTeam.aboutTeam || '', 
+          bestPerformance: existingCachedTeam.bestPerformance || '', 
+          city: existingCachedTeam.city || '', 
+          district: existingCachedTeam.district || '', 
+          state: existingCachedTeam.state || '', 
+          areaName: existingCachedTeam.areaName || '', 
+          pincode: existingCachedTeam.pincode || '', 
+          address: existingCachedTeam.address || '', // 🎯 ३. कडक फिक्स: काल पत्ता गायब होता, तो आता कॅशमध्ये सुरक्षित जोडला!
+          coachName: existingCachedTeam.coachName || '', 
+          captainName: existingCachedTeam.captainName || '', 
+          milestone7: existingCachedTeam.milestone7 || '', 
+          milestone8: existingCachedTeam.milestone8 || '', 
+          milestone9: existingCachedTeam.milestone9 || '', 
+          milestone10: existingCachedTeam.milestone10 || '', 
+          bestPerformanceUrl: existingCachedTeam.bestPerformanceUrl || '', 
+          // 🔒 सुरक्षा: इथे आपण 'mobiles: existingCachedTeam.mobiles' काढून टाकले आहे, जेणेकरून पब्लिक कॅश पूर्णपणे प्रायव्हेट राहील!
           socialLinks: { facebook: existingCachedTeam.socialLinks?.facebook || '', instagram: existingCachedTeam.socialLinks?.instagram || '', youtube: existingCachedTeam.socialLinks?.youtube || '' }
         };
+        
         let updatedTeamsList = isNewTeam ? [...currentTeamsList, formattedCacheTeam] : currentTeamsList.map(team => (team.id === finalUid || team.uid === finalUid) ? formattedCacheTeam : team);
         await setDoc(cacheDocRef, { ...cacheData, teams: updatedTeamsList, totalTeams: updatedTeamsList.length, lastPublishedAt: serverTimestamp(), version: Date.now() }, { merge: true });
       }
-      setTeamName(''); setAdminName(''); setAdminEmail(''); setTeamCategory('Men'); setIsModalOpen(false); setEditingTeamUid(null); fetchTeams();
+      
+      // ➕ फॉर्म क्लिनअप आणि रीसेट
+      setTeamName(''); setAdminName(''); setAdminEmail(''); setTeamCategory('Men'); setMobiles([]); setIsModalOpen(false); setEditingTeamUid(null); fetchTeams();
       Swal.fire({ icon: 'success', title: editingTeamUid ? 'माहिती सुधारित केली! 🎉' : 'नवीन संघ जोडला! 🎉', text: 'संघाचा डेटा सुरक्षितपणे सेव्ह झाला आहे.' });
     } catch (err) { console.error(err); Swal.fire({ icon: 'error', title: 'त्रुटी!', text: 'डेटा जतन करताना समस्या आली.' }); } finally { setLoading(false); }
   };
@@ -295,7 +503,7 @@ return (
     <div className="flex-1 w-full overflow-y-auto z-10 max-h-screen p-4 md:p-6">
       
       {/* 👑 युनिफॉर्म हेडर टायटल आणि लँग्वेज स्विचर पॅनेल */}
-      <div className="border-b border-slate-200 pb-3 mb-5 flex items-center justify-between text-left">
+      {/* <div className="border-b border-slate-200 pb-3 mb-5 flex items-center justify-between text-left">
         <div>
           <h1 className="text-lg font-black text-slate-800 uppercase tracking-wide">
             {activeMenu === 'teams' && (lang === 'mr' ? 'संघ व्यवस्थापन (Teams)' : 'Teams Management')}
@@ -318,12 +526,63 @@ return (
           <button onClick={() => setLang('mr')} className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'mr' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}>मराठी</button>
           <button onClick={() => setLang('en')} className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'en' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}>English</button>
         </div>
+      </div> */}
+
+   {/* 👑 ब्रँडेड हेडर पॅनेल - स्वतःचा सुरक्षित लोगो इमेज टॅग */}
+      <div className="hidden md:flex border-b border-slate-200 pb-3 mb-5 items-center justify-between text-left">
+        
+        {/* डावी बाजू: लोगो आणि ब्रँड टायटल एकत्र */}
+        <div className="flex items-center space-x-3.5">
+          
+          {/* 🎯 [अचूक लोगो डिस्प्ले]: assets मधील लोगो इथे पास केला आहे */}
+          <img 
+            src={logo} 
+            alt="महाराष्ट्राचा गोविंदा लोगो" 
+            className="w-12 h-12 object-contain rounded-xl shadow-sm border border-slate-100" 
+          />
+
+          <div className="flex flex-col">
+            <h1 className="text-lg md:text-2xl font-black uppercase tracking-wide leading-tight">
+              {lang === 'mr' ? (
+                <>
+                  <span className="text-[#ff6600]">महाराष्ट्राचा</span>{" "}
+                  <span className="text-[#0b132b]">गोविंदा</span>
+                <span className="text-xs md:text-sm text-slate-400 font-bold mt-0.5"> {lang === 'mr' ? 'प्रत्येक गोविंदासाठी 🚩' : 'For Every Govinda 🚩'}</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-[#ff6600]">Maharashtracha</span>{" "}
+                  <span className="text-[#0b132b]">Govinda</span>
+                   <span className="text-xs md:text-sm text-slate-400 font-bold mt-0.5"> {lang === 'mr' ? 'प्रत्येक गोविंदासाठी 🚩' : 'For Every Govinda 🚩'}</span>
+
+                </>
+              )}
+            </h1>
+          
+          </div>
+        </div>
+        
+        {/* लँग्वेज स्विचर */}
+        <div className="flex bg-slate-100 p-0.5 rounded-lg space-x-0.5 border shadow-sm">
+          <button 
+            onClick={() => setLang('mr')} 
+            className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'mr' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}
+          >
+            मराठी
+          </button>
+          <button 
+            onClick={() => setLang('en')} 
+            className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'en' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}
+          >
+            English
+          </button>
+        </div>
       </div>
 
       <div className="animate-in fade-in duration-200">
 {/* 🎯 DRY नियम: ७ कॉम्पोनेंट्स आणि ४ फिल्टर्सचा कोड पुन्हा न लिहिता थेट हब रेंडर केले! */}
 {[ 'govinda_katta', 'public_stats', 'public_info', 'public_news', 'public_events', 'public_records', 'articles' ].includes(activeMenu) && (
-  <PublicDashboard isEmbeddedView={true} embeddedTab={activeMenu} setEmbeddedTab={setActiveMenu} />
+  <PublicDashboard isEmbeddedView={true} embeddedTab={activeMenu} setEmbeddedTab={setActiveMenu} lang={lang}  />
 )}
        
         {activeMenu === 'manage_maintenance' && <div className="p-0"><ManageMaintenance /></div>}
@@ -337,6 +596,7 @@ return (
             handleBulkImportCSV={handleBulkImportCSV} openModal={openModal} generateSecureLink={generateSecureLink}
             copyToClipboard={copyToClipboard} setSelectedTeam={setSelectedTeam} handleToggleActiveStatus={handleToggleActiveStatus}
             handleApproveTeam={handleApproveTeam} handleRejectCommentTeam={handleRejectCommentTeam}
+            lang={lang} // 👈 फक्त ही एक कडक ओळ कॉम्पोनेंट कॉलिंगच्या शेवटी जोडून घे भाऊ!
           />
         )}
       </div>
@@ -367,12 +627,29 @@ return (
               <input type="text" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="उदा. शिवनेरी गोविंदा पथक" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 font-medium focus:outline-none focus:border-orange-500" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">ॲдमीनचे नाव</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">ॲडमीनचे नाव</label>
               <input type="text" value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="उदा. संदीप महाडिक" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 font-medium focus:outline-none focus:border-orange-500" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">गुगल लॉगिन ईमेल</label>
               <input type="text" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder="उदा. admin@gmail.com" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 font-medium focus:outline-none focus:border-orange-500" />
+            </div>
+            {/* 🆕 मोबाईल नंबर (Mobile Number) इनपुट फील्ड पॅच */}
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-slate-700 text-left">मोबाईल नंबर (सुपरॲडमीनसाठी)</label>
+              <input
+                type="text"
+                value={Array.isArray(mobiles) ? mobiles.join(', ') : mobiles || ''}
+                onChange={(e) => {
+                  // फक्त इंग्रजी आकडे आणि कॉमा स्वीकारण्यासाठी Regex पॅच
+                  const cleanValue = e.target.value.replace(/[^0-9,\s]/g, '');
+                  // कॉमा सेपरेटेड व्हॅल्यूजचे ॲरेमध्ये रूपांतर करून स्टेट अपडेट करणे
+                  setMobiles(cleanValue.split(',').map(num => num.trim()));
+                }}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:border-[#ff6600]"
+                placeholder="उदा. 9876543210, 9123456789"
+              />
+              <p className="text-[10px] text-slate-400 font-medium text-left">एकापेक्षा जास्त नंबर असल्यास कॉमा (,) द्या भाऊ. (हा डेटा पब्लिक कट्ट्यावर दिसणार नाही)</p>
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">संघाचा प्रकार</label>

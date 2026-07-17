@@ -25,7 +25,11 @@ export default function PublicDashboard({
   initialTab = 'directory',
   isEmbeddedView = false,     // पॅच: सुपर किंवा मंडळ ॲडमीनच्या आत उघडल्यास हे ट्रु होईल
   embeddedTab = 'directory',  // साईडबार कडून येणारा चालू टॅब
-  setEmbeddedTab              // साईडबारचा टॅब बदलण्याचे फंक्शन
+  setEmbeddedTab ,
+  lang ,
+  selectedTeam ,
+  directViewSlug 
+             // साईडबारचा टॅब बदलण्याचे फंक्शन
 }) {
   
   // डॅशबोर्डमधील फिल्टर्स स्टेट्स (आता एकाच जागी सुरक्षित लॉक 🔒)
@@ -36,7 +40,7 @@ export default function PublicDashboard({
 
   // मोबाईल मेनू ओपन/क्लोज स्टेट
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [lang, setLang] = useState('mr'); 
+ // const [lang, setLang] = useState('mr'); 
 
   // व्ह्यू नुसार टॅबची स्टेट निवडणे
   const [localTab, setLocalTab] = useState(() => {
@@ -115,6 +119,7 @@ export default function PublicDashboard({
                   initialThara={statsTharaFilter}
                   initialCategory={statsCategoryFilter}
                   directSlug={directSlug} // 👈 प्रॉप पुढे पाठवला
+                  lang={lang}
                   clearFilters={() => {
                     setStatsDistrictFilter('All');
                     setStatsAreaFilter('');
@@ -143,15 +148,16 @@ export default function PublicDashboard({
               setStatsDistrictFilter('All'); setStatsAreaFilter(''); setStatsTharaFilter('All'); setStatsCategoryFilter(categoryName);
               setCurrentTab(isEmbeddedView ? 'govinda_katta' : 'directory');
             }}
+            lang={lang}
           />
         );
       case 'rules':
       case 'public_info': 
         return <PublicInfo />;
       case 'public_news': 
-        return <PublicNews />;
+        return <PublicNews lang={lang}/>;
       case 'public_events': 
-        return <PublicEvents />;
+        return <PublicEvents lang={lang} />;
       case 'public_records': 
         return <PublicRecords />;
       case 'articles': 
@@ -161,11 +167,30 @@ export default function PublicDashboard({
     }
   };
 
+  // 📡 चालू युआरएल मध्ये पब्लिक व्यू स्लॅग आहे का ते लाईव्ह तपासणे
+const isPublicSingleView = window.location.pathname.includes('/view/');
+
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans antialiased pb-16 md:pb-0 select-none text-slate-700">
       
       {/* 👑 १. इंजेक्टेड ग्लोबल सामायिक साईडबार */}
-      {!isEmbeddedView && (
+      {/* {!isEmbeddedView && (
+        <Sidebar 
+          userRole="public"
+          hasFormAccess={false}
+          activeTab={currentTab}
+          setActiveTab={setCurrentTab}
+          isMenuOpen={isMobileMenuOpen}
+          setIsMenuOpen={setIsMobileMenuOpen}
+          onLogout={onBackToAdmin}
+          lang={lang}
+          handleLogin={handleLogin} 
+          setEmbeddedTab={setEmbeddedTab} 
+        />
+      )} */}
+
+      {/* 🌍 २. पब्लिक साईडबार - एम्बेडेड नसेल आणि सिंगल व्ह्यू नसेल तरच दाखवा */}
+      {!isEmbeddedView && !isPublicSingleView && (
         <Sidebar 
           userRole="public"
           hasFormAccess={false}
@@ -184,15 +209,15 @@ export default function PublicDashboard({
       <div className="flex-1 p-4 md:p-6 overflow-y-auto z-10 w-full max-h-screen">
         <div className="w-full space-y-4">
           
-          {/* 🌐 ड्युअल लँग्वेज फ्रंटएंड स्विचर */}
-          {!isEmbeddedView && (
-            <div className="flex justify-end mb-2">
-              <div className="flex bg-slate-200/60 p-0.5 rounded-lg space-x-0.5 border shadow-sm">
-                <button onClick={() => setLang('mr')} className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'mr' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}>मराठी</button>
-                <button onClick={() => setLang('en')} className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'en' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}>English</button>
-              </div>
-            </div>
-          )}
+{/* 🌐 ड्युअल लँग्वेज फ्रंटएंड स्विचर - एम्बेडेड नसेल आणि सिंगल टीम प्रोफाइल ओपन नसेल तरच दाखवा 🚀 */}
+      {/* {!isEmbeddedView && !selectedTeam && !directViewSlug && (
+        <div className="flex justify-end mb-2">
+          <div className="flex bg-slate-200/60 p-0.5 rounded-lg space-x-0.5 border shadow-sm">
+            <button onClick={() => setLang('mr')} className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'mr' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}>मराठी</button>
+            <button onClick={() => setLang('en')} className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'en' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}>English</button>
+          </div>
+        </div>
+      )} */}
 
           {/* कॉम्पोनेंट लोड AREA */}
           <div className="w-full animate-in fade-in duration-200">

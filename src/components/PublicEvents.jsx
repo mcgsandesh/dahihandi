@@ -23,7 +23,7 @@ const toMarathiNumber = (num) => {
   return num.toString().split('').map(digit => marathiDigits[digit] || digit).join('');
 };
 
-export default function PublicEvents() {
+export default function PublicEvents(lang) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null); 
@@ -183,13 +183,22 @@ export default function PublicEvents() {
     );
   }
 
-  return (
-    /* 🎯 लवचिक चाइल्ड कंटेनर (बॉटम बार सुरक्षित राहण्यासाठी) */
+return (
     <div className="w-full space-y-4 text-left animate-in fade-in duration-150 pb-24 text-white">
       
-      {/* 🖥️ SEARCH & ADVANCED FILTERS BAR */}
-      <div className="space-y-3 bg-[#0d1527] p-3 rounded-2xl border border-slate-800 backdrop-blur-md sticky top-0 z-30 shadow-2xl">
+      {/* 🖥️ BRANDED COMPACT HEADER & SEARCH BAR SYSTEM (FIXED 🚀) */}
+      <div className="space-y-4 bg-[#0d1527] p-4 rounded-3xl border border-slate-800 backdrop-blur-md sticky top-0 z-30 shadow-2xl">
         
+        {/* 👑 सुबक डार्क थीम हेडर टायटल */}
+        <div className="flex flex-col text-left border-b border-slate-800 pb-2.5">
+          <h2 className="text-base md:text-xl font-black text-slate-100 uppercase tracking-wide">
+            {lang === 'en' ? 'Events & Practice Katta' : 'उत्सव व सराव कट्टा'}
+          </h2>
+          <p className="text-[10px] md:text-xs text-slate-500 font-bold mt-0.5 leading-none">
+            {lang === 'en' ? 'Upcoming festivals, practice schedules, and events' : 'येणारे आगामी उत्सव, सराव सत्रांचे वेळापत्रक आणि कार्यक्रम.'}
+          </p>
+        </div>
+
         {/* सर्च आणि तारीख फिल्टर ग्रिड */}
         <div className="grid grid-cols-3 gap-2">
           <div className="relative col-span-2">
@@ -198,7 +207,7 @@ export default function PublicEvents() {
               type="text" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="🔍 इव्हेंट किंवा मंडळ..."
+              placeholder={lang === 'en' ? "Search events or mandals..." : "इव्हेंट किंवा मंडळ शोधून पहा..."}
               className="w-full bg-[#03060f] border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-orange-500 text-slate-200 font-semibold shadow-inner"
             />
           </div>
@@ -224,24 +233,24 @@ export default function PublicEvents() {
             onClick={() => setSelectedCategory('all')} 
             className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all border whitespace-nowrap ${selectedCategory === 'all' ? 'bg-orange-600 text-white border-orange-600' : 'bg-[#03060f] text-slate-400 border-slate-800'}`}
           >
-            🚩 सर्व कार्यक्रम
+            🚩 {lang === 'en' ? 'All Events' : 'सर्व कार्यक्रम'}
           </button>
-          <button onClick={() => setSelectedCategory('practice_session')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all border whitespace-nowrap ${selectedCategory === 'practice_session' ? 'bg-orange-600 text-white border-orange-600' : 'bg-[#03060f] text-slate-400 border-slate-800'}`}>🎯 सराव शिबीर</button>
-          <button onClick={() => setSelectedCategory('dahihandi_venue')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all border whitespace-nowrap ${selectedCategory === 'dahihandi_venue' ? 'bg-orange-600 text-white border-orange-600' : 'bg-[#03060f] text-slate-400 border-slate-800'}`}>🏰 उत्सव ठिकाण</button>
-          <button onClick={() => setSelectedCategory('competition')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all border whitespace-nowrap ${selectedCategory === 'competition' ? 'bg-orange-600 text-white border-orange-600' : 'bg-[#03060f] text-slate-400 border-slate-800'}`}>🏆 स्पर्धा / सामने</button>
-          <button onClick={() => setSelectedCategory('practice_start')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all border whitespace-nowrap ${selectedCategory === 'practice_start' ? 'bg-orange-600 text-white border-orange-600' : 'bg-[#03060f] text-slate-400 border-slate-800'}`}>🚀 सराव प्रारंभ</button>
+          <button onClick={() => setSelectedCategory('practice_session')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all border whitespace-nowrap ${selectedCategory === 'practice_session' ? 'bg-orange-600 text-white border-orange-600' : 'bg-[#03060f] text-slate-400 border-slate-800'}`}>{lang === 'en' ? '🎯 Practice Camps' : '🎯 सराव शिबीर'}</button>
+          <button onClick={() => setSelectedCategory('dahihandi_venue')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all border whitespace-nowrap ${selectedCategory === 'dahihandi_venue' ? 'bg-orange-600 text-white border-orange-600' : 'bg-[#03060f] text-slate-400 border-slate-800'}`}>{lang === 'en' ? '🏰 Venues' : '🏰 उत्सव ठिकाण'}</button>
+          <button onClick={() => setSelectedCategory('competition')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all border whitespace-nowrap ${selectedCategory === 'competition' ? 'bg-orange-600 text-white border-orange-600' : 'bg-[#03060f] text-slate-400 border-slate-800'}`}>{lang === 'en' ? '🏆 Competitions' : '🏆 स्पर्धा / सामने'}</button>
+          <button onClick={() => setSelectedCategory('practice_start')} className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all border whitespace-nowrap ${selectedCategory === 'practice_start' ? 'bg-orange-600 text-white border-orange-600' : 'bg-[#03060f] text-slate-400 border-slate-800'}`}>{lang === 'en' ? '🚀 Practice Start' : '🚀 सराव प्रारंभ'}</button>
         </div>
 
         {userLoc && (
           <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 px-0.5">
             <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
-              <Filter size={11} className="text-orange-500" /> मांडणी पर्याय
+              <Filter size={11} className="text-orange-500" /> {lang === 'en' ? 'Sorting Options' : 'मांडणी पर्याय'}
             </span>
             <button 
               onClick={() => setSortByNearest(!sortByNearest)}
               className={`text-[9px] font-black px-2.5 py-1 rounded-lg border transition-all ${sortByNearest ? 'bg-orange-500/20 text-orange-400 border-orange-500/30 shadow-md' : 'bg-[#03060f] text-slate-500 border-slate-800'}`}
             >
-              📍 माझ्या सर्वात जवळचे आधी दाखवा
+              📍 {lang === 'en' ? 'Show Nearest First' : 'माझ्या सर्वात जवळचे आधी दाखवा'}
             </button>
           </div>
         )}
@@ -251,78 +260,75 @@ export default function PublicEvents() {
       {!userLoc && (
         <div className="bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-transparent border border-orange-500/20 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="text-left">
-            <h4 className="text-xs font-black text-slate-200 flex items-center gap-1.5">📍 तुमच्या जवळची दहीहंडी / सराव शिबीर पाहायचे आहे का?</h4>
-            <p className="text-[10px] text-slate-400 font-medium mt-0.5">लोकेशन परमिशन दिल्यास अचूक अंतर किलोमीटरमध्ये समजेल.</p>
+            <h4 className="text-xs font-black text-slate-200 flex items-center gap-1.5">📍 {lang === 'en' ? 'Want to see nearby Dahi Handi / Practice Camps?' : 'तुमच्या जवळची दहीहंडी / सराव शिबीर पाहायचे आहे का?'}</h4>
+            <p className="text-[10px] text-slate-400 font-medium mt-0.5">{lang === 'en' ? 'Enabling location permission calculates exact distance in kilometers.' : 'लोकेशन परमिशन दिल्यास अचूक अंतर किलोमीटरमध्ये समजेल.'}</p>
           </div>
-          <button onClick={requestUserLocation} className="flex-shrink-0 bg-orange-600 hover:bg-orange-700 text-white font-black text-[10px] px-3 py-2 rounded-xl transition-all">🚩 लोकेशन ऑन करा</button>
+          <button onClick={requestUserLocation} className="flex-shrink-0 bg-orange-600 hover:bg-orange-700 text-white font-black text-[10px] px-3 py-2 rounded-xl transition-all">🚩 {lang === 'en' ? 'Turn On Location' : 'लोकेशन ऑन करा'}</button>
         </div>
       )}
 
-{/* 📅 मुख्य यादी (डेस्कटॉपवर २ कॉलम ग्रिड फिक्ससह 🚀) */}
+      {/* 📅 मुख्य यादी */}
       {processedEvents.length === 0 ? (
         <div className="bg-[#0d1527] rounded-2xl p-10 text-center text-slate-500 border border-dashed border-slate-800 text-xs font-bold">
-          कार्यक्रम उपलब्ध नाही किंवा सर्च मॅच झाला नाही.
+          {lang === 'en' ? 'No events available or search criteria not matched.' : 'कार्यक्रम उपलब्ध नाही किंवा सर्च मॅच झाला नाही.'}
         </div>
       ) : (
-        
-        
-        /* 🎯 मोबाईलवर १ कॉलम आणि डेस्कटॉपवर (md:) २ कॉलमचे कडक ग्रिड लेआउट केले */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {processedEvents.map((e) => {
+            const dateInfo = formatEventDate(e.fromDate);
+            const finalImg = e.posterUrl || e.photoUrl || DEFAULT_IMAGES[e.type] || DEFAULT_IMAGES.practice_session;
+            const badge = categoryBadges[e.type] || categoryBadges.practice_session;
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+            const isToday = e.fromDate <= todayStr && e.toDate >= todayStr;
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  {processedEvents.map((e) => {
-    const dateInfo = formatEventDate(e.fromDate);
-    const finalImg = e.posterUrl || e.photoUrl || DEFAULT_IMAGES[e.type] || DEFAULT_IMAGES.practice_session;
-    const badge = categoryBadges[e.type] || categoryBadges.practice_session;
-    
-    // ⏰ हा व्हेरिएबल इथे डिफाइन केला आहे
-    const todayStr = new Date().toISOString().split('T')[0];
-    const isToday = e.fromDate <= todayStr && e.toDate >= todayStr;
+            return (
+              <div 
+                key={e.id}
+                onClick={() => setSelectedEvent(e)}
+                className={`bg-[#03060f] border rounded-2xl p-2.5 flex items-center gap-3 cursor-pointer hover:border-orange-500/40 hover:shadow-lg transition-all group ${
+                  isToday ? 'border-orange-500/40 bg-gradient-to-r from-orange-500/5 to-transparent' : 'border-slate-800/90'
+                }`}
+              >
+                {/* 📆 डाव्या बाजूचा मोठा मराठी डेट बॉक्स */}
+                <div className="flex flex-col items-center justify-center bg-[#0d1527] border border-slate-800 rounded-xl w-[58px] h-[64px] flex-shrink-0 shadow-inner group-hover:border-orange-500/40 transition-all">
+                  <span className="text-lg font-black text-orange-500 font-mono tracking-tighter leading-none">{dateInfo.day}</span>
+                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider mt-1">{dateInfo.month}</span>
+                </div>
 
-    return (
-      <div 
-        key={e.id}
-        onClick={() => setSelectedEvent(e)}
-        className={`bg-[#03060f] border rounded-2xl p-2.5 flex items-center gap-3 cursor-pointer hover:border-orange-500/40 hover:shadow-lg transition-all group ${
-          isToday ? 'border-orange-500/40 bg-gradient-to-r from-orange-500/5 to-transparent' : 'border-slate-800/90'
-        }`}
-      >
-        {/* 📆 डाव्या बाजूचा मोठा मराठी डेट बॉक्स */}
-        <div className="flex flex-col items-center justify-center bg-[#0d1527] border border-slate-800 rounded-xl w-[58px] h-[64px] flex-shrink-0 shadow-inner group-hover:border-orange-500/40 transition-all">
-          <span className="text-lg font-black text-orange-500 font-mono tracking-tighter leading-none">{dateInfo.day}</span>
-          <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider mt-1">{dateInfo.month}</span>
+                {/* इमेज थंबनेल */}
+                <div className="w-[65px] h-[54px] rounded-lg overflow-hidden bg-slate-950 flex-shrink-0 border border-slate-800 relative">
+                  <img src={finalImg} alt={e.title_mr} className="w-full h-full object-cover" />
+                  {isToday && <span className="absolute top-0.5 left-0.5 bg-orange-600 text-white font-black text-[6px] px-1 py-0.2 rounded animate-pulse">LIVE</span>}
+                </div>
+
+                {/* माहिती भाग */}
+                <div className="flex-1 min-w-0 text-left space-y-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`text-[7px] font-black uppercase px-1.5 py-0.2 rounded border ${badge.bg}`}>
+                      {lang === 'en' ? (e.type?.replace('_', ' ')) : badge.label}
+                    </span>
+                  </div>
+                  
+                  <h4 className="text-xs font-black text-slate-200 line-clamp-1 group-hover:text-white transition-all leading-tight">
+                    {lang === 'en' ? (e.title_en || e.title_mr) : e.title_mr}
+                  </h4>
+                  <p className="text-[10px] text-slate-400 font-bold truncate">🏰 {e.mandalName || (lang === 'en' ? 'Organizing Mandal' : 'आयोजक मंडळ')}</p>
+                </div>
+
+                {/* 📍 उजव्या बाजूचा मोठा डिस्टन्स बॉक्स */}
+                {e.distanceKm && (
+                  <div className="flex flex-col items-center justify-center bg-[#0d1527]/60 border border-orange-500/20 rounded-xl w-[54px] h-[54px] flex-shrink-0 shadow-inner group-hover:border-orange-500/40 transition-all ml-auto">
+                    <span className="text-sm font-black text-orange-400 font-mono tracking-tighter leading-none">
+                      {toMarathiNumber(e.distanceKm)}
+                    </span>
+                    <span className="text-[9px] font-bold text-slate-400 tracking-wide mt-1">{lang === 'en' ? 'KM' : 'किमी'}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-
-        {/* इमेज थंबनेल */}
-        <div className="w-[65px] h-[54px] rounded-lg overflow-hidden bg-slate-950 flex-shrink-0 border border-slate-800 relative">
-          <img src={finalImg} alt={e.title_mr} className="w-full h-full object-cover" />
-          {isToday && <span className="absolute top-0.5 left-0.5 bg-orange-600 text-white font-black text-[6px] px-1 py-0.2 rounded animate-pulse">LIVE</span>}
-        </div>
-
-        {/* माहिती भाग */}
-        <div className="flex-1 min-w-0 text-left space-y-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className={`text-[7px] font-black uppercase px-1.5 py-0.2 rounded border ${badge.bg}`}>
-              {badge.label}
-            </span>
-          </div>
-          
-          <h4 className="text-xs font-black text-slate-200 line-clamp-1 group-hover:text-white transition-all leading-tight">{e.title_mr}</h4>
-          <p className="text-[10px] text-slate-400 font-bold truncate">🏰 {e.mandalName || 'आयोजक मंडळ'}</p>
-        </div>
-
-        {/* 📍 उजव्या बाजूचा मोठा डिस्टन्स बॉक्स */}
-        {e.distanceKm && (
-          <div className="flex flex-col items-center justify-center bg-[#0d1527]/60 border border-orange-500/20 rounded-xl w-[54px] h-[54px] flex-shrink-0 shadow-inner group-hover:border-orange-500/40 transition-all ml-auto">
-            <span className="text-sm font-black text-orange-400 font-mono tracking-tighter leading-none">
-              {toMarathiNumber(e.distanceKm)}
-            </span>
-            <span className="text-[9px] font-bold text-slate-400 tracking-wide mt-1">किमी</span>
-          </div>
-        )}
-      </div>
-    );
-  })}
-</div>
       )}
 
       {/* पॉपअप मोडल */}
@@ -337,8 +343,10 @@ export default function PublicEvents() {
               <span className="text-[9px] font-black px-2 py-0.5 rounded border bg-orange-550/10 text-orange-600 border-orange-100 uppercase">
                 {categoryBadges[selectedEvent.type]?.label || selectedEvent.type}
               </span>
-              <h3 className="text-sm md:text-base font-black text-slate-900 leading-snug">{selectedEvent.title_mr}</h3>
-              <p className="text-xs font-bold text-slate-600 bg-slate-100 p-2.5 rounded-xl border border-slate-200/60">🏰 आयोजक: <span className="text-slate-900">{selectedEvent.mandalName || '—'}</span></p>
+              <h3 className="text-sm md:text-base font-black text-slate-900 leading-snug">
+                {lang === 'en' ? (selectedEvent.title_en || selectedEvent.title_mr) : selectedEvent.title_mr}
+              </h3>
+              <p className="text-xs font-bold text-slate-600 bg-slate-100 p-2.5 rounded-xl border border-slate-200/60">{lang === 'en' ? '🏰 Organizer:' : '🏰 आयोजक:'} <span className="text-slate-900">{selectedEvent.mandalName || '—'}</span></p>
               
               {(() => {
                 const modalDist = (selectedEvent.lat && selectedEvent.lng && userLoc?.lat && userLoc?.lng) 
@@ -346,22 +354,26 @@ export default function PublicEvents() {
                   : null;
                 return modalDist ? (
                   <p className="text-xs font-black text-orange-600 bg-orange-50 p-2.5 rounded-xl border border-orange-100 flex items-center">
-                    📍 तुमच्या स्थानापासून हे ठिकाण साधारण <b>{toMarathiNumber(modalDist)} किमी</b> अंतरावर आहे.
+                    {lang === 'en' ? (
+                      <>📍 This location is approximately <b>{modalDist} km</b> away from you.</>
+                    ) : (
+                      <>📍 तुमच्या स्थानापासून हे ठिकाण साधारण <b>{toMarathiNumber(modalDist)} किमी</b> अंतरावर आहे.</>
+                    )}
                   </p>
                 ) : null;
               })()}
 
-              <p className="text-[11px] text-slate-500 font-bold">⏱️ कालावधी: {toMarathiNumber(selectedEvent.fromDate)} ते {toMarathiNumber(selectedEvent.toDate)}</p>
+              <p className="text-[11px] text-slate-500 font-bold">⏱️ {lang === 'en' ? 'Duration:' : 'कालावधी:'} {lang === 'en' ? selectedEvent.fromDate : toMarathiNumber(selectedEvent.fromDate)} ते {lang === 'en' ? selectedEvent.toDate : toMarathiNumber(selectedEvent.toDate)}</p>
               
               <div className="space-y-2 pt-2 border-t border-slate-100 mt-3">
                 {selectedEvent.mapLink ? (
                   <a href={selectedEvent.mapLink} target="_blank" rel="noreferrer" className="w-full bg-[#ff6600] hover:bg-[#e65c00] text-white text-xs font-black py-3 rounded-xl flex items-center justify-center space-x-1.5 transition-all shadow-md active:scale-95">
-                    <Navigation size={14} /> <span>🚩 थेट गुगल मॅपवर दिशा पहा</span>
+                    <Navigation size={14} /> <span>{lang === 'en' ? 'Get Directions on Google Maps' : '🚩 थेट गुगल मॅपवर दिशा पहा'}</span>
                   </a>
                 ) : (
                   selectedEvent.postLink && selectedEvent.postLink.toLowerCase().includes('maps') && (
                     <a href={selectedEvent.postLink} target="_blank" rel="noreferrer" className="w-full bg-[#ff6600] hover:bg-[#e65c00] text-white text-xs font-black py-3 rounded-xl flex items-center justify-center space-x-1.5 transition-all shadow-md active:scale-95">
-                      <Navigation size={14} /> <span>🚩 थेट गुगल मॅपवर दिशा पहा</span>
+                      <Navigation size={14} /> <span>{lang === 'en' ? 'Get Directions on Google Maps' : '🚩 थेट गुगल मॅपवर दिशा पहा'}</span>
                     </a>
                   )
                 )}
@@ -371,7 +383,7 @@ export default function PublicEvents() {
                     const isInstagram = selectedEvent.postLink.toLowerCase().includes('instagram.com');
                     return (
                       <a href={selectedEvent.postLink} target="_blank" rel="noreferrer" className={`w-full text-white text-xs font-black py-3 rounded-xl flex items-center justify-center space-x-1.5 shadow-md active:scale-95 ${isInstagram ? 'bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045]' : 'bg-[#1877f2] hover:bg-[#166fe5]'}`}>
-                        <span>{isInstagram ? '📸 अधिकृत इन्स्टाग्राम... ' : '👥 अधिकृत फेसबुक...'}</span>
+                        <span>{isInstagram ? (lang === 'en' ? '📸 Official Instagram...' : '📸 अधिकृत इन्स्टाग्राम... ') : (lang === 'en' ? '👥 Official Facebook...' : '👥 अधिकृत फेसबुक...')}</span>
                       </a>
                     );
                   })()

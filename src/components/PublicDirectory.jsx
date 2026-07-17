@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import PublicTeamProfile from './PublicTeamProfile';
 
 // 🎯 बदल: पॅरेंट कडून येणारे सर्व डीफॉल्ट फिल्टर्स प्रॉप्स इथे स्वीकारले आहेत (initialCategory सह 🚀)
-export default function PublicDirectory({ handleLogin, initialDistrict, initialArea, initialThara, initialCategory, clearFilters,directSlug,items  }) {
+export default function PublicDirectory({ handleLogin, initialDistrict, initialArea, initialThara, initialCategory, clearFilters,directSlug,items, lang  }) {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [teams, setTeams] = useState([]);
   const [filteredTeams, setFilteredTeams] = useState([]);
@@ -292,10 +292,10 @@ export default function PublicDirectory({ handleLogin, initialDistrict, initialA
   return (
     <div className="space-y-4 text-left">
       
-      {/* 📊 टॉप सर्च आणि सुधारित फिल्टर बार */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm space-y-3">
+{/* 📊 टॉप सर्च, कडक हेडिंग आणि सुधारित फिल्टर बार */}
+      <div className="bg-white p-4 md:p-5 rounded-3xl border border-slate-100 shadow-sm space-y-4">
         
-        {/* 🆕 जर आकडेवारीवरून काही फिल्टर लागला असेल तर वर體 'रिसेट' करायला एक कडक बॅज दाखवणे */}
+        {/* 🆕 जर आकडेवारीवरून काही फिल्टर लागला असेल तर वर 'रिसेट' करायला एक कडक बॅज दाखवणे */}
         {(selectedDistrict !== 'All' || selectedThar !== 'All' || searchTerm !== '' || selectedCategory !== 'All') && (
           <div className="flex items-center justify-between bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-xl text-xs font-bold text-orange-700">
             <span>📊 आकडेवारीनुसार फिल्टर सक्रिय आहे!</span>
@@ -303,18 +303,36 @@ export default function PublicDirectory({ handleLogin, initialDistrict, initialA
           </div>
         )}
 
-        <div className="relative">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><Search size={18} /></span>
-          <input 
-            type="text" 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="मंडळाचे नाव, परिसर किंवा UID ने शोधा..." 
-            className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:border-[#ff6600] focus:bg-white font-medium transition-all"
-          />
+    {/* 👑 [HEADER + SEARCH SYSTEM]: मराठी आणि इंग्रजी दोन्ही भाषांमध्ये १००% चालणारा पॅच */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 text-left">
+          
+          {/* डावी बाजू: ट्रान्सलेटेड हेडर */}
+          <div className="flex-shrink-0">
+            <h2 className="text-base md:text-xl font-black text-slate-800 uppercase tracking-wide">
+              {lang === 'en' ? 'Govinda Directory' : 'गोविंदा डिरेक्टरी'}
+            </h2>
+            <p className="text-[10px] md:text-xs text-slate-400 font-bold mt-0.5">
+              {lang === 'en' ? 'Search registered active teams' : 'नोंदणीकृत सक्रिय पथके शोधा'}
+            </p>
+          </div>
+
+          {/* उजवी बाजू: प्रगत सर्च बार */}
+          <div className="relative w-full md:max-w-md">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+              <Search size={16} />
+            </span>
+            <input 
+              type="text" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={lang === 'en' ? "Search by team name, area or UID..." : "मंडळाचे नाव, परिसर किंवा UID ने शोधा..."} 
+              className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl pl-10 pr-4 py-2 text-xs md:text-sm focus:outline-none focus:border-[#ff6600] focus:bg-white font-medium transition-all h-[38px]"
+            />
+          </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-0.5">
+        {/* 📑 फिल्टर सिस्टीम (जशी होती तशीच १००% सुरक्षित) */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1 border-t border-slate-50">
           <div className="flex bg-slate-100 p-1 rounded-xl space-x-1 self-start">
             <button onClick={() => { setSelectedCategory('All'); setSelectedThar('All'); if(clearFilters) clearFilters(); }} className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all ${selectedCategory === 'All' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>सर्व पथके</button>
             <button onClick={() => { setSelectedCategory('Men'); setSelectedThar('All'); if(clearFilters) clearFilters(); }} className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all ${selectedCategory === 'Men' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>👨‍👦 पुरुष</button>
@@ -359,7 +377,6 @@ export default function PublicDirectory({ handleLogin, initialDistrict, initialA
                 ))}
               </select>
             </div>
-
           </div>
         </div>
       </div>

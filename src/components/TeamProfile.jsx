@@ -9,13 +9,17 @@ import {
 import Swal from 'sweetalert2';
 
 // 💸 मोबाईलसाठी तळाची चिकटलेली मॅन्युअल ॲड इम्पॉर्ट केली
-import AdMobileBottom from '../components/AdMobileBottom'; // कॉम्पोनंटचा अचूक पाथ तपासून घ्या
+import AdMobileBottom from '../components/AdMobileBottom';
 
 // 🖨️ ग्लोबल प्रिंट कॉम्पोनेंट इम्पोर्ट
 import PrintableTeamProfile from './PrintableTeamProfile';
 import { handleProfilePrint } from '../components/PrintableTeamProfile';
-// 🎯 मुख्य लोगोचा पाथ (तुमच्या प्रोजेक्ट स्ट्रक्चरनुसार मॅच करा)
+
+// 🎯 मुख्य लोगोचा पाथ
 import logoIcon from '../assets/logo.png'; 
+
+// 📸 ImgBB Image Uploader Component
+import ImageUploader from './ImageUploader';
 
 export default function TeamProfile({ user, teamData, setTeamData, isEditMode, setIsEditMode, fetchUserData, handleProfileComplete }) {
   
@@ -52,15 +56,11 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
   const [milestone10, setMilestone10] = useState('');
 
   // =========================================================================
-  // 🔍 SECTION 1: डेटाबेस आणि प्रॉप्स रिअल-टाइम सिंकिंग (UNDEFINED ERROR FIX 🚀)
+  // 🔍 SECTION 1: डेटाबेस आणि प्रॉप्स रिअल-टाइम सिंकिंग
   // =========================================================================
   useEffect(() => {
-    console.log("🔍 [PROPS CHECK]: पॅरेंट कडून आलेला मूळ teamData:", teamData);
-
     if (teamData) {
       const targetData = teamData.data ? teamData.data : teamData;
-      
-      console.log("=== 🔥 [START] TeamProfile अचूक डेटायादी पडताळणी कक्ष ===");
       
       setTeamCategory(targetData.teamCategory || 'Men');
       setAddress(targetData.address || '');
@@ -91,13 +91,11 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
       setMilestone8(targetData.milestone8 || '');
       setMilestone9(targetData.milestone9 || '');
       setMilestone10(targetData.milestone10 || '');
-      
-      console.log("=== ✓ [SUCCESS] सर्व लोकल स्टेट्स मॅप झाल्या! ===");
     }
   }, [teamData]);
   
   // =========================================================================
-  // 💾 SECTION 2: सेव्ह हँडलर (अचूक फ्रंटएंड री-रेंडर फिक्स 🚀)
+  // 💾 SECTION 2: सेव्ह हँडलर
   // =========================================================================
   const handleSaveProfile = async (e) => {
     e.preventDefault();
@@ -178,7 +176,7 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
   };
 
   // =========================================================================
-  // 🔐 शेअर लिंक लॉक करण्यासाठी कडक सुधारित व्हॅलिडेशन चेक 🚀
+  // 🔐 शेअर लिंक लॉक व्हॅलिडेशन चेक
   // =========================================================================
   const isProfileReadyForShare = 
     (aboutTeam && aboutTeam.trim().length >= 300) && 
@@ -187,29 +185,24 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
     (milestone7 || milestone8 || milestone9 || milestone10);
 
   // =========================================================================
-  // 🖥️ SECTION 3: VIEW MODE (अल्ट्रा-कॉम्पॅक्ट ओव्हरलॅप फ्री डिझाईन 🚀)
+  // 🖥️ SECTION 3: VIEW MODE
   // =========================================================================
   if (!isEditMode) {
     return (
       <div className="w-full space-y-4 animate-in fade-in duration-150 p-0 m-0 text-left text-slate-900 bg-[#f8fafc]">
         
-        {/* 🚩 १. अल्ट्रा-कॉम्पॅक्ट बॅनर */}
+        {/* 🚩 १. बॅनर */}
         <div className="bg-gradient-to-br from-[#070b19] via-[#0f172a] to-[#1e293b] text-white p-4 md:p-6 rounded-3xl shadow-md relative overflow-hidden w-full border border-slate-800">
           <div className="absolute -right-16 -bottom-16 w-80 h-80 bg-orange-600 opacity-10 blur-3xl rounded-full pointer-events-none"></div>
           
-          {/* 🛠️ डेस्कटॉप ॲक्शन बटणे */}
           <div className="hidden md:flex absolute top-5 right-5 z-20 items-center gap-2.5">
-            {/* 🔗 शेअर बटण (डेस्कटॉप - व्हॅलिडेशन लॉक फिक्स) */}
             {isProfileReadyForShare ? (
               <button 
                 type="button"
                 onClick={async () => {
-                  // 🎯 क्लीन युआरएल स्लॅग मॅपिंग: teamname-UID
                   const cleanName = (teamData?.teamName || user?.teamName || 'team').toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-');
                   const cleanUID = (teamData?.uid || user?.teamUID || user?.uid || 'id').toLowerCase();
                   const shareUrl = `${window.location.origin}/view/${cleanName}-${cleanUID}`;
-                  
-                  console.log("🔗 [DEBUG SHARE LINK GENERATED]:", shareUrl);
 
                   if (navigator.share) {
                     try {
@@ -294,7 +287,6 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
             </div>
           </div>
 
-          {/* 📱 केवळ मोबाईल व्ह्यूसाठी तळाशी बटणे */}
           <div className="flex md:hidden items-center gap-2 mt-3 pt-2.5 border-t border-slate-800/60 relative z-20">
             {isProfileReadyForShare ? (
               <button 
@@ -345,7 +337,7 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
 
         </div>
 
-        {/* 📊 २. २-कॉलम प्रो वेबसाईट लेआउट */}
+        {/* 📊 २. २-कॉलम लेआउट */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-stretch">
           <div className="lg:col-span-7 space-y-6 flex flex-col justify-between">
             <div className="bg-gradient-to-r from-orange-600 to-amber-500 p-4 rounded-3xl text-white shadow-md flex items-center justify-between border border-orange-400/20">
@@ -439,7 +431,6 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
             </div>
           </div>
 
-          {/* उजवी बाजू (कॉलम ५) */}
           <div className="lg:col-span-5 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between w-full h-full min-h-[460px] lg:min-h-full">
             <div className="w-full h-full flex flex-col flex-1 justify-between space-y-4">
               <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col flex-1 justify-between">
@@ -459,12 +450,6 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
               </div>
 
               <AdMobileBottom/>      
-              {/* 💸 गुगल जाहिरात स्लॉट */}
-              <div className="w-full bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 p-4 rounded-3xl text-center relative overflow-hidden flex-shrink-0 h-[90px] flex flex-col justify-center items-center shadow-inner">
-                <span className="absolute top-1 right-2 text-[6px] font-black uppercase text-slate-600 tracking-widest">Google AdSense</span>
-                <p className="text-[10px] font-black text-orange-500 uppercase tracking-wide">🎯 तुमच्या ब्रँड किंवा मंडळाची जाहिरात लावा!</p>
-                <p className="text-[9px] text-slate-400 font-medium mt-0.5">अधिक माहितीसाठी संपर्क साधा भाऊ.</p>
-              </div>
             </div>
           </div>
         </div>
@@ -477,13 +462,13 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
   }
 
   // =========================================================================
-  // 📝 SECTION 4: EDIT MODE (मूळ ६२१ लाईन्स लेआउट)
+  // 📝 SECTION 4: EDIT MODE (नवीन ImageUploader सह)
   // =========================================================================
- return (
+  return (
     <form onSubmit={handleSaveProfile} className="w-full space-y-4 pt-1 text-xs font-bold text-slate-600 animate-in fade-in duration-150 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm text-left">
       <div>
         <h3 className="text-sm font-black text-slate-800 mb-0.5">✏️   संघ प्रोफाईल संपादन</h3>
-        <p className="text-[10px] text-slate-400 font-medium">माहिती अचूक भरून अपडेट करा भाऊ. (कॅरेक्टर मर्यादा लागू आहे)</p>
+        <p className="text-[10px] text-slate-400 font-medium">माहिती अचूक भरून अपडेट करा भाऊ. फोटो थेट गॅलरीतून निवडून अपलोड करू शकता.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
@@ -519,7 +504,6 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-[10px] font-black text-slate-400 uppercase flex items-center space-x-1"><MapPin size={11} /> <span>पूर्ण पत्ता (Address - English ONLY)</span></label>
-          {/* 🎯 कडक पॅच: पत्ता फक्त इंग्रजीत स्वीकारणे (मराठी अक्षरे गाळणे) */}
           <input 
             type="text" 
             value={address} 
@@ -530,7 +514,6 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-black text-slate-400 uppercase flex items-center space-x-1"><Calendar size={11} /> <span>स्थापना वर्ष</span></label>
-          {/* 🎯 कडक पॅच: type="number" मुळे फक्त इंग्रजी आकडे टाईप होतील */}
           <input 
             type="number" 
             value={estYear} 
@@ -545,8 +528,6 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
       <div className="bg-slate-50/50 border border-slate-200/60 p-3 rounded-2xl space-y-3 w-full">
         <span className="text-[10px] uppercase font-black tracking-wider text-orange-500 block">📍 शहर आणि परिसर तपशील (English Input)</span>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          
-          {/* 🎯 परिसर: इंग्रजी रिस्ट्रिक्शन पॅच */}
           <div className="flex flex-col space-y-1">
             <label className="text-[10px] text-slate-500">परिसर (Area)</label>
             <input 
@@ -558,7 +539,6 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
             />
           </div>
           
-          {/* 🎯 पिनकोड: ६ अंकी इंग्रजी नंबर लॉक */}
           <div className="flex flex-col space-y-1">
             <label className="text-[10px] text-slate-500">पिनकोड (Pincode)</label>
             <input 
@@ -571,7 +551,6 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
             />
           </div>
           
-          {/* 🎯 शहर: इंग्रजी रिस्ट्रिक्शन पॅच */}
           <div className="flex flex-col space-y-1">
             <label className="text-[10px] text-slate-500">शहर (City)</label>
             <input 
@@ -583,7 +562,6 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
             />
           </div>
           
-          {/* 🎯 जिल्हा: सुरक्षित इंग्रजी ड्रॉपडाऊन (फिल्टर डेटा सुरक्षित 🔒) */}
           <div className="flex flex-col space-y-1">
             <label className="text-[10px] text-slate-500 font-black">जिल्हा (District)</label>
             <select 
@@ -605,10 +583,8 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
               <option value="Satara">Satara</option>
               <option value="Ratnagiri">Ratnagiri</option>
               <option value="Sindhudurg">Sindhudurg</option>
-              {/* तुला हवे असल्यास महाराष्ट्रातील इतर जिल्हे इथे ॲड करू शकतोस भाऊ */}
             </select>
           </div>
-
         </div>
       </div>
 
@@ -630,26 +606,30 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
         )}
       </div>
 
+      {/* 🎯 [न्यू फीचर]: लोगो अपलोडर + डायरेक्ट टेक्स्ट */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-[10px] font-black text-slate-400 uppercase flex items-center space-x-1"><Image size={11} /> <span>लोगो लिंक (Logo URL)</span></label>
-          <input type="url" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:bg-white focus:outline-none" />
-        </div>
+        <ImageUploader 
+          label="संघाचा लोगो अपलोड करा (Gallery)"
+          currentImageUrl={logoUrl}
+          onImageUploaded={(url) => setLogoUrl(url)}
+        />
         <div className="space-y-1">
           <label className="text-[10px] font-black text-slate-400 uppercase flex items-center space-x-1"><Info size={11} /> <span>घोषवाक्य (Slogan - कमाल ६० अक्षरे)</span></label>
           <input type="text" value={slogan} maxLength={60} onChange={(e) => setSlogan(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:bg-white focus:outline-none" />
         </div>
       </div>
 
+      {/* 🎯 [न्यू फीचर]: सलामी फोटो अपलोडर + डायरेक्ट टेक्स्ट */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-[10px] font-black text-slate-400 uppercase flex items-center space-x-1"><Trophy size={11} /> <span>सर्वोत्कृष्ट कामगिरी (Record - कमाल १५० अक्षरे)</span></label>
           <input type="text" value={bestPerformance} maxLength={150} onChange={(e) => setBestPerformance(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:bg-white focus:outline-none" />
         </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-black text-slate-400 uppercase flex items-center space-x-1"><ImageIcon size={11} /> <span>सलामी फोटो लिंक (Performance Photo URL)</span></label>
-          <input type="url" value={bestPerformanceUrl} onChange={(e) => setBestPerformanceUrl(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:bg-white focus:outline-none" />
-        </div>
+        <ImageUploader 
+          label="सलामी फोटो अपलोड करा (Gallery)"
+          currentImageUrl={bestPerformanceUrl}
+          onImageUploaded={(url) => setBestPerformanceUrl(url)}
+        />
       </div>
 
       <div className="bg-slate-50/50 border border-slate-200/60 p-3 rounded-2xl space-y-3 w-full">

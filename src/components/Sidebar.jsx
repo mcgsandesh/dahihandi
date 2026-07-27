@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { 
   Users, BarChart3, BookOpen, Menu, X, Home,
   Megaphone, Calendar, Trophy, LogOut, LayoutDashboard, 
-  Package, FileText, Settings, Layers, User, Lock 
+  Package, FileText, Settings, Layers, User, Lock, Bell 
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -31,7 +31,8 @@ export default function Sidebar({
       settings: "सेटिंग्ज", katta: "गोविंदा कट्टा", stats: "उत्सव आकडेवारी",
       rules: "उत्सव नियमावली", news: "ताज्या घडामोडी", events: "उत्सव व सराव कट्टा",
       records: "ऐतिहासिक रेकॉर्ड्स", articles: "दहीहंडी ज्ञानपीठ",
-      manage_articles: "लेख व्यवस्थापन", manage_maintenance: "सिस्टीम मेंटेनन्स"
+      manage_articles: "लेख व्यवस्थापन", manage_maintenance: "सिस्टीम मेंटेनन्स",
+      manage_notifications: "नोटिफिकेशन सेंटर"
     },
     en: {
       brand: "Maharashtracha", subBrand: "Govinda",
@@ -43,7 +44,8 @@ export default function Sidebar({
       settings: "Settings", katta: "Govinda Katta", stats: "Festival Stats",
       rules: "Festival Rules", news: "Latest Updates", events: "Events & Practice",
       records: "Historical Records", articles: "Govinda Knowledge Base",
-      manage_articles: "Manage Articles", manage_maintenance: "System Maintenance"
+      manage_articles: "Manage Articles", manage_maintenance: "System Maintenance",
+      manage_notifications: "Notification Center"
     }
   };
 
@@ -67,7 +69,8 @@ export default function Sidebar({
     { id: 'articles', label: t.articles, icon: <BookOpen size={16} />, show: true },
 
     { id: 'manage_articles', label: t.manage_articles, icon: <FileText size={16} />, show: userRole === 'superadmin' },
-    { id: 'manage_maintenance', label: t.manage_maintenance, icon: <Settings size={16} />, show: userRole === 'superadmin' }
+    { id: 'manage_maintenance', label: t.manage_maintenance, icon: <Settings size={16} />, show: userRole === 'superadmin' },
+    { id: 'manage_notifications', label: t.manage_notifications, icon: <Bell size={16} />, show: userRole === 'superadmin' }
   ];
 
   const visibleMenu = masterMenu.filter(item => item.show);
@@ -83,9 +86,6 @@ export default function Sidebar({
     return false;
   };
 
-  // 🚫 जर पब्लिक शेअरिंग व्ह्यू असेल, तर साईडबार पूर्णपणे गायब करा
-//if (window.location.pathname.includes('/view')) return null;
-
   return (
     <>
       {/* 📱 मोबाईल टॉप हेडर */}
@@ -97,7 +97,7 @@ export default function Sidebar({
           <div className="flex flex-col text-left min-w-0">
             <span className="text-[24px] font-black tracking-wide text-slate-100">
               {t.brand} <span className="text-orange-500">{t.subBrand}</span>
-              <p className="text-[10px]  text-slate-400">{t.defaultSub}</p >
+              <p className="text-[10px] text-slate-400">{t.defaultSub}</p>
             </span>
             {teamName && <span className="text-xs font-bold uppercase truncate tracking-tight text-white max-w-[150px]">{teamName}</span>}
           </div>
@@ -120,34 +120,27 @@ export default function Sidebar({
             </p>
           </div>
 
-          {/* 🏠 होम बटण: Deep Logging System 🕵️‍♂️ */}
+          {/* 🏠 होम बटण */}
           <div className="mb-4 border-b border-slate-800 pb-3 flex-shrink-0">
-          <button 
-  type="button"
-  onClick={(e) => { 
-    e.preventDefault();
-    console.warn("🔍 [DEEP LOG]: होम बटण क्लिक झाले!");
-    setIsMenuOpen(false); 
-    
-    if (userRole === 'public') {
-      if (onLogout) onLogout(); 
-    } else {
-      const targetTab = userRole === 'superadmin' ? 'teams' : (hasFormAccess ? 'dashboard' : 'profile');
-      
-      console.log(`⚡ [Executing]: पॅरेंट टॅब ${targetTab} वर स्विच करत आहे...`);
-      
-      // दोन्ही फंक्शन्सना एकाच वेळी फायर करूया
-      if (setActiveTab) setActiveTab(targetTab);
-      if (setEmbeddedTab) setEmbeddedTab(targetTab);
-      
-      console.log("✅ [Success]: टॅब स्टेट अपडेट कमांड पाठवली!");
-    }
-  }}
-  className="w-full flex items-center space-x-3 px-4 py-2.5 bg-slate-800/60 hover:bg-slate-800 text-orange-400 hover:text-orange-500 rounded-xl font-black text-xs transition-all border border-slate-700/50 shadow-sm active:scale-98"
->
-  <Home size={16} />
-  <span>{t.goHome}</span>
-</button>
+            <button 
+              type="button"
+              onClick={(e) => { 
+                e.preventDefault();
+                setIsMenuOpen(false); 
+                
+                if (userRole === 'public') {
+                  if (onLogout) onLogout(); 
+                } else {
+                  const targetTab = userRole === 'superadmin' ? 'teams' : (hasFormAccess ? 'dashboard' : 'profile');
+                  if (setActiveTab) setActiveTab(targetTab);
+                  if (setEmbeddedTab) setEmbeddedTab(targetTab);
+                }
+              }}
+              className="w-full flex items-center space-x-3 px-4 py-2.5 bg-slate-800/60 hover:bg-slate-800 text-orange-400 hover:text-orange-500 rounded-xl font-black text-xs transition-all border border-slate-700/50 shadow-sm active:scale-98"
+            >
+              <Home size={16} />
+              <span>{t.goHome}</span>
+            </button>
           </div>
 
           {/* मेनू यादी */}

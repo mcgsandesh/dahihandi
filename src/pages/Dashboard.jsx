@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import { db } from '../firebase';
 import { collection, doc, setDoc, updateDoc, getDoc, getDocs, getDocsFromCache, serverTimestamp, query, where, writeBatch } from 'firebase/firestore'; 
-import { PlusCircle, X, Plus, Search, Edit2, Trash2, Link2, RotateCcw, CheckSquare, Square, Bell, Eye, UploadCloud, Send, Filter } from 'lucide-react';
+import { PlusCircle, X, Plus, Search, Edit2, Trash2, Link2, RotateCcw, CheckSquare, Square, Bell, Eye, UploadCloud, Send, Filter,
+     Calendar, Users, RefreshCw } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 // 🎯 नवीन युनियन हब कॉम्पोनेंट इम्पोर्ट केला
@@ -23,6 +24,11 @@ import ManageArticles from '../components/ManageArticles';
 import TeamProfile from '../components/TeamProfile';
 import ManageTeams from '../components/ManageTeams';
 import AdMobileBottom from '../components/AdMobileBottom';
+
+// वरती कॉम्पोनेंट इंपोर्ट करा
+import ManageNotifications from '../components/ManageNotifications'; // (तुमच्या फोल्डरनुसार पाथ द्या)
+
+
 
 import logo from '../assets/logo.png'; // 👈 योग्य पाथनुसार लोगो इंपोर्ट करा
 
@@ -497,6 +503,7 @@ return (
     <Sidebar 
       userRole="superadmin" hasFormAccess={true} activeTab={activeMenu} setActiveTab={setActiveMenu}
       isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} onLogout={onLogout} lang={lang}
+      
     />
 
     {/* मुख्य कार्यक्षेत्र */}
@@ -580,10 +587,11 @@ return (
       </div>
 
       <div className="animate-in fade-in duration-200">
-{/* 🎯 DRY नियम: ७ कॉम्पोनेंट्स आणि ४ फिल्टर्सचा कोड पुन्हा न लिहिता थेट हब रेंडर केले! */}
-{[ 'govinda_katta', 'public_stats', 'public_info', 'public_news', 'public_events', 'public_records', 'articles' ].includes(activeMenu) && (
-  <PublicDashboard isEmbeddedView={true} embeddedTab={activeMenu} setEmbeddedTab={setActiveMenu} lang={lang}  />
-)}
+
+        {/* 🎯 DRY नियम: ७ कॉम्पोनेंट्स आणि ४ फिल्टर्सचा कोड पुन्हा न लिहिता थेट हब रेंडर केले! */}
+        {[ 'govinda_katta', 'public_stats', 'public_info', 'public_news', 'public_events', 'public_records', 'articles' ].includes(activeMenu) && (
+          <PublicDashboard isEmbeddedView={true} embeddedTab={activeMenu} setEmbeddedTab={setActiveMenu} lang={lang} />
+        )}
        
         {activeMenu === 'manage_maintenance' && <div className="p-0"><ManageMaintenance /></div>}
         {activeMenu === 'manage_articles' && <div className="p-0"><ManageArticles /></div>}
@@ -599,7 +607,12 @@ return (
             lang={lang} // 👈 फक्त ही एक कडक ओळ कॉम्पोनेंट कॉलिंगच्या शेवटी जोडून घे भाऊ!
           />
         )}
-      </div>
+
+       {activeMenu === 'manage_notifications' && (
+  <ManageNotifications lang={lang} />
+)}
+
+        </div>
     </div>
 
     <AdMobileBottom />
@@ -613,6 +626,8 @@ return (
         <Plus size={22} />
       </button>
     )}
+
+
 
     {/* पॉप-अप मॉडेल फॉर्म */}
     {isModalOpen && (

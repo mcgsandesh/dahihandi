@@ -25,7 +25,7 @@ export default function PublicTeamProfile({ team, onBack, isSuperAdminView, onEd
 
   // 🔐 पब्लिक शेअर लिंक लॉक कडक व्हॅलिडेशन चेक
   const isProfileReadyForShare = 
-    (team?.aboutTeam && team.aboutTeam.trim().length >= 300) && 
+    (team?.aboutTeam && team.aboutTeam.trim().length >= 200) && 
     team?.logoUrl && 
     team?.slogan && 
     team?.bestPerformance && 

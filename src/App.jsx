@@ -24,6 +24,8 @@ import TeamProfile from './components/TeamProfile';
 
 // 💸 मोबाईलसाठी तळाची चिकटलेली मॅन्युअल ॲड इम्पॉर्ट केली
 import AdMobileBottom from './components/AdMobileBottom'; // कॉम्पोनंटचा अचूक पाथ तपासून घ्या
+import { requestNotificationPermission } from './firebase'; // तुमच्या firebase.js चा अचूक पाथ
+
 
 export default function App() {
 
@@ -81,6 +83,43 @@ export default function App() {
     } catch (err) {
       console.error("❌ Version check/clear error:", err);
     }
+  }, []);
+
+  // ==========================================
+  // ⚡ handleAutoNotificationPermission
+  // ==========================================
+useEffect(() => {
+    const triggerAutoNotification = async () => {
+      // 1. ब्राउझरमध्ये नोटिफिकेशन सपोर्ट आहे का ते तपासणे
+      if (!('Notification' in window)) {
+        console.warn("⚠️ या ब्राउझरमध्ये Push Notifications चा सपोर्ट नाही.");
+        return;
+      }
+
+      const currentPermission = Notification.permission;
+      console.log("📌 Current Notification Permission State:", currentPermission);
+
+      // 2. जर परवानगी 'granted' असेल (आधीच होय म्हटले असेल)
+      if (currentPermission === 'granted') {
+        console.log("ℹ️ Permission आधीच मिळालेली आहे. Silent Token Refresh...");
+        await requestNotificationPermission();
+      } 
+      // 3. जर परवानगी 'default' असेल (पब्लिक युझर / First Time User)
+      else if (currentPermission === 'default') {
+        console.log("🚀 Public / First Time User Detected! Asking Notification Permission...");
+        
+        // ॲप पूर्ण लोड होण्यासाठी १.५ सेकंदाचा डिले
+        setTimeout(async () => {
+          const token = await requestNotificationPermission();
+          if (token) {
+            console.log("🎉 Public User ने नोटिफिकेशन अलाऊ केले! Token Stored.");
+          }
+        }, 1500);
+      }
+      // 4. जर 'denied' (ब्लॉक) असेल तर ब्राउझर पुन्हा पॉप-अप दाखवणार नाही.
+    };
+
+    triggerAutoNotification();
   }, []);
 
   // ==========================================

@@ -4,6 +4,9 @@ import { collection, doc, setDoc, updateDoc, deleteDoc, getDocs, serverTimestamp
 import { Megaphone, Calendar, Trophy, Plus, Trash2, Edit2, X, Save, Loader2, Search } from 'lucide-react';
 import Swal from 'sweetalert2';
 
+// 📸 ImgBB Image Uploader Component
+import ImageUploader from './ImageUploader';
+
 export default function ManageMaintenance() {
   const [activeTab, setActiveTab] = useState('news'); // 'news', 'events', 'records'
   const [globalLoading, setGlobalLoading] = useState(false);
@@ -31,7 +34,7 @@ export default function ManageMaintenance() {
 
   const [eventRawCoordinates, setEventRawCoordinates] = useState('');
 
-  // 📝 १. न्यूज फॉर्म स्टेट्स (🎯 सुधारित नवीन फिल्ड्स)
+  // 📝 १. न्यूज फॉर्म स्टेट्स
   const [newsSubjectMr, setNewsSubjectMr] = useState('');
   const [newsDetailsMr, setNewsDetailsMr] = useState('');
   const [newsExpiryDate, setNewsExpiryDate] = useState('');
@@ -93,7 +96,6 @@ export default function ManageMaintenance() {
     if (data) {
       setEditId(data.id);
       if (type === 'news') {
-        // 🎯 एडिट करताना जुना डेटा सेट करणे
         setNewsSubjectMr(data.subject_mr || data.text_mr || '');
         setNewsDetailsMr(data.details_mr || '');
         setNewsExpiryDate(data.expiryDate || '');
@@ -125,7 +127,6 @@ export default function ManageMaintenance() {
       }
     } else {
       setEditId(null);
-      // 🎯 नवीन नोंदणी वेळी सर्व रिकामे करणे
       setNewsSubjectMr('');
       setNewsDetailsMr('');
       setNewsExpiryDate('');
@@ -166,9 +167,8 @@ export default function ManageMaintenance() {
       if (activeTab === 'news') {
         if (!newsSubjectMr.trim()) throw new Error("बातमीचा विषय / हेडलाईन आवश्यक आहे!");
         
-        // 🎯 नवीन डेटा स्ट्रक्चर मॅपिंग (पब्लिक पेज सुसंगत)
         updateData.subject_mr = newsSubjectMr.trim();
-        updateData.text_mr = newsSubjectMr.trim(); // जुन्या सपोर्टसाठी
+        updateData.text_mr = newsSubjectMr.trim();
         updateData.details_mr = newsDetailsMr.trim();
         updateData.expiryDate = newsExpiryDate;
         updateData.refLink = newsRefLink.trim();
@@ -305,7 +305,7 @@ export default function ManageMaintenance() {
   return (
     <div className="w-full bg-white rounded-3xl p-4 md:p-6 border border-slate-100 shadow-sm relative">
       
-      {/* 📑 अंतर्गत टॅब स्विचर सिस्टीम */}
+      {/* 📑 टॅब स्विचर सिस्टीम */}
       <div className="flex space-x-2 border-b border-slate-100 pb-3 mb-4 overflow-x-auto scrollbar-none">
         <button onClick={() => { setActiveTab('news'); setSearchQuery(''); }} className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-black rounded-xl transition-all whitespace-nowrap ${activeTab === 'news' ? 'bg-[#0b132b] text-white shadow' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><Megaphone size={14} /> <span>📢   बातम्या / सूचना</span></button>
         <button onClick={() => { setActiveTab('events'); setSearchQuery(''); }} className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-black rounded-xl transition-all whitespace-nowrap ${activeTab === 'events' ? 'bg-[#0b132b] text-white shadow' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><Calendar size={14} /> <span>📅   उत्सव व सराव कट्टा</span></button>
@@ -389,7 +389,7 @@ export default function ManageMaintenance() {
       {!globalLoading && activeTab === 'events' && (
         <div className="space-y-4 animate-in fade-in duration-100 text-left">
           <div className="flex justify-between items-center">
-            <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">📅 सराव शिबिरे आणि दहीहंडी ठिकाणे ({filteredItems.length})</h4>
+            <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">📅 सराव शििबरे आणि दहीहंडी ठिकाणे ({filteredItems.length})</h4>
             <button onClick={() => openFormModal('events')} className="bg-[#ff6600] hover:bg-[#e65c00] text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center space-x-1.5 shadow-sm active:scale-95 transition-all"><Plus size={14} /> <span>नवीन इव्हेंट जोडा</span></button>
           </div>
           <div className="bg-slate-50/50 rounded-2xl p-2 border border-slate-100 space-y-1.5">
@@ -460,7 +460,7 @@ export default function ManageMaintenance() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               
-              {/* 🎯 सुधारित न्यूज इनपुट ब्लॉक */}
+              {/* 🎯 न्यूज इनपुट ब्लॉक */}
               {activeTab === 'news' && (
                 <div className="space-y-3">
                   <div>
@@ -484,6 +484,7 @@ export default function ManageMaintenance() {
                 </div>
               )}
 
+              {/* 🎯 इव्हेंट्स इनपुट ब्लॉक (ImageUploader सह) */}
               {activeTab === 'events' && (
                 <div className="space-y-3">
                   <div>
@@ -539,13 +540,17 @@ export default function ManageMaintenance() {
                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">सोशल मीडिया पोस्ट लिंक (Instagram/FB URL)</label>
                     <input type="url" value={postLink} onChange={(e) => setPostLink(e.target.value)} placeholder="https://instagram.com/p/..." className="w-full border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none bg-slate-50 font-mono" />
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">पोस्टर इमेज लिंक (Web URL)</label>
-                    <input type="url" value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} placeholder="https://..." className="w-full border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none bg-slate-50 font-mono" />
-                  </div>
+
+                  {/* 🎯 [NEW]: इव्हेंट पोस्टर डायरेक्ट गॅलरी अपलोडर */}
+                  <ImageUploader 
+                    label="इव्हेंटचे पोस्टर इमेज (Gallery Upload)"
+                    currentImageUrl={posterUrl}
+                    onImageUploaded={(url) => setPosterUrl(url)}
+                  />
                 </div>
               )}
 
+              {/* 🎯 रेकॉर्ड्स इनपुट ब्लॉक (ImageUploader सह) */}
               {activeTab === 'records' && (
                 <div className="space-y-3">
                   <div>
@@ -573,10 +578,14 @@ export default function ManageMaintenance() {
                       <option value="women">👩‍👧   महिला गोविंदा पथक</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">उभा (Vertical) थर फोटो लिंक</label>
-                    <input type="url" value={recPhotoUrl} onChange={(e) => setRecPhotoUrl(e.target.value)} placeholder="https://..." className="w-full border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none bg-slate-50 font-mono" />
-                  </div>
+
+                  {/* 🎯 [NEW]: थर फोटो डायरेक्ट गॅलरी अपलोडर */}
+                  <ImageUploader 
+                    label="उभा (Vertical) थर फोटो (Gallery Upload)"
+                    currentImageUrl={recPhotoUrl}
+                    onImageUploaded={(url) => setRecPhotoUrl(url)}
+                  />
+
                   <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-100">
                     <span className="text-xs font-bold text-slate-700">🖥️   मुख्य होमपेज कॅरोसेलमध्ये दाखवायचा का?</span>
                     <input type="checkbox" checked={showOnDashboard} onChange={(e) => setShowOnDashboard(e.target.checked)} className="w-4 h-4 accent-orange-600 cursor-pointer" />

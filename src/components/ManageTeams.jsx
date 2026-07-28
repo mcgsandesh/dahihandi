@@ -197,7 +197,39 @@ export default function ManageTeams({
 
                       www.maharashtrachagovinda.com
 
-                      *महाराष्ट्राचा गोविंदा, प्रत्येक गोविंदासाठी!*`;
+                     🏆 महाराष्ट्राचा गोविंदा, प्रत्येक गोविंदासाठी! 🏆
+आपल्या सर्व संघांना विनंती आहे की कृपया नवीन Website वर Login करून आपल्या मंडळाची संपूर्ण Profile Update करा.
+
+✅ Profile पूर्ण Update केल्यानंतर आपल्या मंडळाच्या Profile ची स्वतंत्र (Separate) Link तयार होईल. ही Link तुम्ही सहज Share करू शकता.
+
+> Login कसे करायचे?
+
+1️⃣ यापूर्वी महाराष्ट्राचा गोविंदा येथे नोंदणी करताना जो Email ID दिला होता, त्याच Email ID ने थेट Login करा.
+2️⃣ जर Email ID आठवत नसेल, तर Admin ला Message करून Email ID जाणून घ्या.
+3️⃣ जर यापूर्वी Email ID दिलाच नसेल, तर तुमचा Gmail Email ID Admin ला पाठवा. आम्ही तो Update करून दिल्यानंतर तुम्ही Login करू शकता.
+
+📌 सर्व संघांनी शक्य तितक्या लवकर आपली Profile पूर्ण Update करावी.
+धन्यवाद! 🙏
+
+📲 App Install कसे करायचे?
+ही Website PWA (Progressive Web App) असल्यामुळे तुम्ही ती Mobile किंवा Computer वर App प्रमाणे Install करू शकता.
+Android (Chrome):
+Website उघडा.
+Browser मधील ⋮ (Three Dots) वर क्लिक करा.
+"Install App" किंवा "Add to Home Screen" निवडा.
+Install वर क्लिक करा.
+
+iPhone (Safari):
+Website उघडा.
+Share (⬆️) बटणावर क्लिक करा.
+"Add to Home Screen" निवडा.
+Add वर क्लिक करा.
+
+Computer (Chrome / Edge):
+Website उघडा.
+Address Bar मध्ये दिसणाऱ्या Install (💻➕) आयकॉनवर क्लिक करा.
+Install निवडा.
+✅ Install केल्यानंतर App इतर Mobile Apps प्रमाणेच Home Screen वर दिसेल आणि अधिक सोयीस्करपणे वापरता येईल.`;
 
                         // २. युआरएलसाठी मेसेज सुरक्षित एन्कोड करणे
                         const encodedMessage = encodeURIComponent(messageText);

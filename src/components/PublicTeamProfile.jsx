@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { 
   ArrowLeft, MapPin, Trophy, Users, Shield, Calendar, Share2, 
   User, Award, Link as LinkIcon, Info, FileText, Image as ImageIcon, Edit2
-  
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -50,23 +49,19 @@ export default function PublicTeamProfile({ team, onBack, isSuperAdminView, onEd
     }
   };
 
-  // 🎯 [SIDEBAR RECOVERY TRIGGER]: मागे जाताना साईडबार परत आणण्याचा कडक तोडगा 🚀
-// 🎯 [MANDATORY SIDEBAR RECOVERY]: मागे जाताना साईडबार दिसण्यासाठी १००% हार्ड रिलोड फिक्स 🚀
+  // 🎯 मागे जाताना साईडबार दिसण्यासाठी नेव्हिगेशन फिक्स
   const handleCustomBack = () => {
-    console.log("🔄 [REFRESH NAV LOG] युझर मागे जात आहे, साईडबार रिकव्हरीसाठी हार्ड रिलोड करत आहे...");
-    
-    // १. मूळ डॅशबोर्डवरील क्लोजर ट्रिगर करणे
+    console.log("🔄 [REFRESH NAV LOG] युझर मागे जात आहे...");
     if (typeof onBack === 'function') {
       onBack();
+    } else {
+      window.location.href = window.location.origin + '/';
     }
-    
-    // २. थेट विंडो लोकेशन बदलून पूर्ण पेज रिलोडेड मोडमध्ये मूळ पाथवर नेणे
-    window.location.href = window.location.origin + '/';
   };
 
-
-  // 🚨 [MANUAL ENTRY SECURITY LOCK]: मॅन्युअल युआरएल टाईपिंग रोखण्याचा कडक तोडगा 🔒
-  if (!isProfileReadyForShare) {
+  // 🚨 [MANUAL ENTRY SECURITY LOCK]: मॅन्युअल युआरएल टाईपिंग रोखणे (फक्त पब्लिक युझर्ससाठी!)
+  // 🎯 फिक्स: जर superadmin पाहत असेल, तर ही लॉक स्क्रीन बायपास होईल!
+  if (!isSuperAdminView && !isProfileReadyForShare) {
     return (
       <div className="w-full min-h-[60vh] flex flex-col items-center justify-center p-6 text-center bg-[#f8fafc] animate-in fade-in">
         <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl max-w-sm space-y-4">
@@ -88,17 +83,14 @@ export default function PublicTeamProfile({ team, onBack, isSuperAdminView, onEd
     );
   }
 
-  // 🎯 याच्या खाली तुमचा मूळचा मुख्य 'return (...)' सुरू राहील जो आपण मघाशी सेट केला
   if (!team) return null;
-
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200 w-full p-0 m-0 text-left text-slate-900 bg-[#f8fafc]">
 
-      {/* 👑 [ULTRA-SLIM BRANDED GLOBAL HEADER] - १ ओळीत नाव, स्लोगन आणि सोशल मीडिया सिस्टीम */}
+      {/* 👑 [ULTRA-SLIM BRANDED GLOBAL HEADER] */}
       <div className="flex border-b border-slate-200 pb-2 items-center justify-between text-left w-full gap-2">
         
-        {/* डावी बाजू: लोगो + नाव आणि शेजारीच स्लोगन (एकत्र सिंगल लाईन 🚀) */}
         <div className="flex items-center space-x-2.5 min-w-0">
           <img 
             src={logo} 
@@ -119,10 +111,7 @@ export default function PublicTeamProfile({ team, onBack, isSuperAdminView, onEd
           </div>
         </div>
         
-{/* उजवी बाजू: अधिकृत सोशल चॅनेल्स (मोबाईल व डेस्कटॉप दोन्हीवर १००% विजिबल आणि क्लियर डिझाईन 🚀) */}
         <div className="flex items-center flex-shrink-0">
-          
-          {/* 🌐 हाय-कॉन्ट्रास्ट सोशल ब्रँडिंग बार */}
           <div className="flex items-center bg-slate-100 border border-slate-200/80 rounded-xl p-0.5 text-[10px] font-black shadow-sm flex-wrap gap-0.5">
             <a href="https://www.facebook.com/maharashtrachagovinda" target="_blank" rel="noreferrer" className="px-2 py-0.5 rounded-lg text-blue-700 hover:bg-blue-50 transition-all font-black">
               FB
@@ -138,7 +127,6 @@ export default function PublicTeamProfile({ team, onBack, isSuperAdminView, onEd
               WA Channel
             </a>
           </div>
-
         </div>
       </div>
       

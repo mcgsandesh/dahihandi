@@ -4,6 +4,9 @@ import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, serverTimestamp
 import { PenTool, Image, User, Link2, Trash2, Globe, Layers, Eye, EyeOff, Bold, List, Heading, Plus, Edit3, X } from 'lucide-react';
 import Swal from 'sweetalert2';
 
+// 📸 ImgBB Image Uploader Component
+import ImageUploader from './ImageUploader';
+
 export default function ManageArticles() {
   // फॉर्म दृश्यता आणि एडिट स्टेट्स
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -197,7 +200,7 @@ export default function ManageArticles() {
         )}
       </div>
 
-      {/* ✍️ डायनॅमिक फ्लूइड लेख निर्मिती फॉर्म (टोगल ओपन 🚀) */}
+      {/* ✍️ डायनॅमिक लेख निर्मिती फॉर्म */}
       {isFormOpen && (
         <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3 animate-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between border-b border-slate-50 pb-2">
@@ -236,10 +239,12 @@ export default function ManageArticles() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">मुख्य फोटो लिंक (Image URL)</label>
-              <input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://image-link.com/photo.jpg" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:border-orange-500" />
-            </div>
+            {/* 🎯 [NEW]: मुख्य फोटो डायरेक्ट गॅलरी अपलोडर */}
+            <ImageUploader 
+              label="लेखाचा मुख्य फोटो अपलोड करा (Gallery Upload)"
+              currentImageUrl={imageUrl}
+              onImageUploaded={(url) => setImageUrl(url)}
+            />
 
             {/* भाषा स्विच आणि मिनी टूलबार कप्पा */}
             <div className="flex flex-wrap items-center justify-between border-t pt-2 gap-2">
@@ -281,7 +286,7 @@ export default function ManageArticles() {
         </div>
       )}
 
-      {/* 📋 ३. पूर्ण फ्लूइड (`w-full`) लेखांची यादी कक्ष */}
+      {/* 📋 लेखांची यादी कक्ष */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-2 w-full">
         <div className="flex items-center space-x-2 border-b border-slate-50 pb-1.5">
           <Globe className="text-slate-400" size={14} />
@@ -306,7 +311,6 @@ export default function ManageArticles() {
                   <p className="text-[9px] text-slate-400 font-bold">लेखक: {art.authorName} | हुद्दा: {art.authorRole}</p>
                 </div>
 
-                {/* ॲक्शन पॅनेल: एडिट + सॉफ्ट डिलीट टोगल */}
                 <div className="flex items-center space-x-0.5 flex-shrink-0">
                   <button type="button" onClick={() => handleEditClick(art)} title="लेख सुधारा (Edit)" className="p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg transition-all active:scale-90">
                     <Edit3 size={14} />

@@ -4,19 +4,20 @@
     <meta charset="utf-8">
     <title>Maharashtracha Govinda</title>
     <script type="text/javascript">
-      // 🎯 गिटहब सब-फोल्डर आणि तुमच्या App.jsx च्या रचनेसाठी परफेक्ट मॅच
+      // 🎯 डायनॅमिक SPA Redirect Script (Custom Domain + Subfolder दोनहीसाठी सुरक्षित)
+      var pathSegmentsToKeep = 0; // custom domain साठी 0, जर github subfolder असेल तर ते ऑटो डिटेक्ट होईल
       var l = window.location;
-      var repoName = 'dahihandi'; 
-      var repoPath = '/' + repoName;
-      
-      // युझरने उघडलेल्या लिंकमधून राऊट पाथ वेगळा करणे
-      var routePath = l.pathname.slice(repoPath.length);
-      
-      // रिडायरेक्ट करताना '/dahihandi/' च्या आतच index.html कडे पाथ सुरक्षित पाठवणे
+
+      // जर GitHub pages subfolder असेल तर repo path सांभाळणे
+      if (l.hostname.indexOf('github.io') !== -1) {
+        pathSegmentsToKeep = 1;
+      }
+
       l.replace(
         l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        repoPath + '/?p=' + routePath.replace(/&/g, '~and~') +
-        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?p=' +
+        l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+        (l.search ? '&q=' + l.search.slice(1).replace(/&/g, '~and~') : '') +
         l.hash
       );
     </script>

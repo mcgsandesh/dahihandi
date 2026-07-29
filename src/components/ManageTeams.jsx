@@ -1,4 +1,4 @@
- import React, { useState } from 'react'; // 👈 ही ओळ फाईलच्या अगदी टॉपला (Line 1) असावी
+import React, { useState } from 'react'; // 👈 ही ओळ फाईलच्या अगदी टॉपला (Line 1) असावी
 import { Search, Filter, Send, UploadCloud, Plus, Link2, Eye, Edit2, RotateCcw, Trash2, CheckSquare, Square, MapPin } from 'lucide-react';
 export default function ManageTeams({
   loading,
@@ -23,8 +23,6 @@ export default function ManageTeams({
   handleRejectCommentTeam,
   lang
 }) {
-
- 
 
   // 📍 डायनॅमिकली सर्व उपलब्ध जिल्ह्यांची यादी तयार करणे (Unique Districts)
   const districts = ['All', ...new Set(teamsList.map(t => t.district).filter(Boolean))];
@@ -121,7 +119,7 @@ export default function ManageTeams({
               </select>
             </div>
 
-            {/* 🆕 नवीन कडक फीचर: जिल्हा निहाय ड्रॉपडाउन फिल्टर */}
+            {/* 🆕 जिल्हा निहाय ड्रॉपडाउन फिल्टर */}
             <div className="relative flex-1 sm:flex-none">
               <span className="absolute inset-y-0 left-2.5 flex items-center pointer-events-none text-slate-500"><MapPin size={13} className="text-slate-400" /></span>
               <select value={selectedDistrict} onChange={(e) => setSelectedDistrict(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl pl-7 pr-7 py-2 text-xs font-bold text-slate-700 outline-none focus:border-[#ff6600] shadow-sm h-[38px] appearance-none cursor-pointer">
@@ -152,7 +150,6 @@ export default function ManageTeams({
               ) : (
                 finalFilteredTeams.map((t, idx) => {
                   const secureLink = generateSecureLink(t);
-                  // व्हॉट्सॲपवर चॅट करण्यासाठी नंबर काढणे
                   const contactNumber = t.mobiles && t.mobiles.length > 0 ? t.mobiles[0] : '';
                   return (
                     <tr key={idx} className="hover:bg-slate-50/50 transition-all text-slate-700">
@@ -187,71 +184,35 @@ export default function ManageTeams({
                         </span>
                       </td>
                       <td className="p-4 flex items-center justify-center space-x-1">
-                      {/* 📞 व्हॉट्सॲप डायरेक्ट चॅट आयकॉन (Pre-filled Message सह 🚀) */}
-                      {contactNumber && (() => {
-                        // १. मराठी संदेशाचा सुबक फॉरमॅट तयार करणे (\n म्हणजे नवीन लाईन)
-                        const messageText = `नमस्कार,
+                        {contactNumber && (() => {
+                          const messageText = `नमस्कार,
 
-                      संघाचे नाव: ${t.teamName || '—'}
-                      UID: ${t.uid || t.id || '—'}
+संघाचे नाव: ${t.teamName || '—'}
+UID: ${t.uid || t.id || '—'}
 
-                      www.maharashtrachagovinda.com
+www.maharashtrachagovinda.com
 
-                     🏆 महाराष्ट्राचा गोविंदा, प्रत्येक गोविंदासाठी! 🏆
-आपल्या सर्व संघांना विनंती आहे की कृपया नवीन Website वर Login करून आपल्या मंडळाची संपूर्ण Profile Update करा.
+🏆 महाराष्ट्राचा गोविंदा, प्रत्येक गोविंदासाठी! 🏆`;
+                          const encodedMessage = encodeURIComponent(messageText);
 
-✅ Profile पूर्ण Update केल्यानंतर आपल्या मंडळाच्या Profile ची स्वतंत्र (Separate) Link तयार होईल. ही Link तुम्ही सहज Share करू शकता.
-
-> Login कसे करायचे?
-
-1️⃣ यापूर्वी महाराष्ट्राचा गोविंदा येथे नोंदणी करताना जो Email ID दिला होता, त्याच Email ID ने थेट Login करा.
-2️⃣ जर Email ID आठवत नसेल, तर Admin ला Message करून Email ID जाणून घ्या.
-3️⃣ जर यापूर्वी Email ID दिलाच नसेल, तर तुमचा Gmail Email ID Admin ला पाठवा. आम्ही तो Update करून दिल्यानंतर तुम्ही Login करू शकता.
-
-📌 सर्व संघांनी शक्य तितक्या लवकर आपली Profile पूर्ण Update करावी.
-धन्यवाद! 🙏
-
-📲 App Install कसे करायचे?
-ही Website PWA (Progressive Web App) असल्यामुळे तुम्ही ती Mobile किंवा Computer वर App प्रमाणे Install करू शकता.
-Android (Chrome):
-Website उघडा.
-Browser मधील ⋮ (Three Dots) वर क्लिक करा.
-"Install App" किंवा "Add to Home Screen" निवडा.
-Install वर क्लिक करा.
-
-iPhone (Safari):
-Website उघडा.
-Share (⬆️) बटणावर क्लिक करा.
-"Add to Home Screen" निवडा.
-Add वर क्लिक करा.
-
-Computer (Chrome / Edge):
-Website उघडा.
-Address Bar मध्ये दिसणाऱ्या Install (💻➕) आयकॉनवर क्लिक करा.
-Install निवडा.
-✅ Install केल्यानंतर App इतर Mobile Apps प्रमाणेच Home Screen वर दिसेल आणि अधिक सोयीस्करपणे वापरता येईल.`;
-
-                        // २. युआरएलसाठी मेसेज सुरक्षित एन्कोड करणे
-                        const encodedMessage = encodeURIComponent(messageText);
-
-                        return (
-                          <a 
-                            href={`https://wa.me/91${contactNumber}?text=${encodedMessage}`} 
-                            target="_blank" 
-                            rel="noreferrer" 
-                            className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all" 
-                            title="थेट व्हॉट्सॲप संपर्क"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
-                              <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.948h.003c4.177 0 7.882-3.559 7.886-7.928A7.86 7.86 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.69-4.936c-.202-.101-1.196-.59-1.383-.658-.188-.069-.325-.101-.462.101-.138.203-.534.658-.654.793-.12.134-.241.152-.443.051-.2-.102-.843-.311-1.606-.991-.593-.529-1.002-1.182-1.118-1.382-.117-.2-.012-.307.089-.408.092-.091.202-.234.302-.351.101-.117.135-.198.203-.331.067-.133.033-.251-.017-.352-.05-.101-.423-1.018-.578-1.393-.15-.36-.3-.311-.412-.317-.107-.006-.23-.006-.353-.006a.682.682 0 0 0-.492.23c-.168.183-.641.626-.641 1.528 0 .902.656 1.773.748 1.895.093.12 1.287 1.966 3.118 2.754.436.188.776.3 1.042.384.437.139.835.119 1.15.073.351-.05 1.197-.49 1.364-.963.167-.472.167-.878.118-.963-.05-.084-.188-.134-.39-.235z"/>
-                            </svg>
-                          </a>
-                        );
-                      })()}
+                          return (
+                            <a 
+                              href={`https://wa.me/91${contactNumber}?text=${encodedMessage}`} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all" 
+                              title="थेट व्हॉट्सॲप संपर्क"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.948h.003c4.177 0 7.882-3.559 7.886-7.928A7.86 7.86 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.69-4.936c-.202-.101-1.196-.59-1.383-.658-.188-.069-.325-.101-.462.101-.138.203-.534.658-.654.793-.12.134-.241.152-.443.051-.2-.102-.843-.311-1.606-.991-.593-.529-1.002-1.182-1.118-1.382-.117-.2-.012-.307.089-.408.092-.091.202-.234.302-.351.101-.117.135-.198.203-.331.067-.133.033-.251-.017-.352-.05-.101-.423-1.018-.578-1.393-.15-.36-.3-.311-.412-.317-.107-.006-.23-.006-.353-.006a.682.682 0 0 0-.492.23c-.168.183-.641.626-.641 1.528 0 .902.656 1.773.748 1.895.093.12 1.287 1.966 3.118 2.754.436.188.776.3 1.042.384.437.139.835.119 1.15.073.351-.05 1.197-.49 1.364-.963.167-.472.167-.878.118-.963-.05-.084-.188-.134-.39-.235z"/>
+                              </svg>
+                            </a>
+                          );
+                        })()}
                         <button onClick={() => setSelectedTeam(t)} className="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition-all" title="पब्लिक प्रोफाईल पहा"><Eye size={15} /></button>
                         {!t.isDeleted && <button onClick={() => openModal(t)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit2 size={15} /></button>}
                         
-                        {/* ⚠️ प्रलंबित मंजुरी बटणे (टॅब व्हेरिफिकेशन ॲक्शन्स) */}
+                        {/* ⚠️ प्रलंबित मंजुरी बटणे */}
                         {viewTab === 'edited_pending' && (
                           <div className="flex items-center space-x-1">
                             <button onClick={() => handleApproveTeam(t.id || t.uid)} className="bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-black hover:bg-emerald-700 transition-all">Approve</button>
@@ -271,7 +232,7 @@ Install निवडा.
           </table>
         </div>
 
-        {/* 📱 मोबाईल कॉम्पॅक्ट यादी व्ह्यू */}
+        {/* 📱 मोबाईल कॉम्पॅक्ट यादी व्ह्यू (आता इथे approve आणि comment बटणे जोडली आहेत 🚀) */}
         <div className="block md:hidden space-y-2 text-left">
           {finalFilteredTeams.length === 0 ? (
             <div className="bg-white rounded-2xl p-6 text-center text-slate-400 text-xs border border-slate-100">या फिल्टरमध्ये कोणताही संघ उपलब्ध नाही भाऊ.</div>
@@ -280,31 +241,41 @@ Install निवडा.
               const secureLink = generateSecureLink(t);
               const contactNumber = t.mobiles && t.mobiles.length > 0 ? t.mobiles[0] : '';
               return (
-                <div key={idx} className="bg-white rounded-xl p-3 shadow-sm border border-slate-100 flex items-center justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
-                      <span className={`font-mono text-[9px] font-black px-1.5 py-0.5 rounded-md ${t.isDeleted ? 'bg-red-50 text-red-600' : 'bg-[#ff6600]/10 text-[#ff6600]'}`}>{t.uid || t.id || 'No UID'}</span>
-                      <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wide">{t.teamCategory || 'Men'}</span>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${t.isDeleted ? 'bg-red-50 text-red-500' : (t.hasPendingEdits ? 'bg-orange-50 text-orange-600' : t.isProfileComplete ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600')}`}>
-                        {t.isDeleted ? 'बंद' : (t.hasPendingEdits ? 'एडिट प्रलंबित' : t.isProfileComplete ? 'पूर्ण' : 'प्रलंबित')}
-                      </span>
+                <div key={idx} className="bg-white rounded-xl p-3 shadow-sm border border-slate-100 flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                        <span className={`font-mono text-[9px] font-black px-1.5 py-0.5 rounded-md ${t.isDeleted ? 'bg-red-50 text-red-600' : 'bg-[#ff6600]/10 text-[#ff6600]'}`}>{t.uid || t.id || 'No UID'}</span>
+                        <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wide">{t.teamCategory || 'Men'}</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${t.isDeleted ? 'bg-red-50 text-red-500' : (t.hasPendingEdits ? 'bg-orange-50 text-orange-600' : t.isProfileComplete ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600')}`}>
+                          {t.isDeleted ? 'बंद' : (t.hasPendingEdits ? 'एडिट प्रलंबित' : t.isProfileComplete ? 'पूर्ण' : 'प्रलंबित')}
+                        </span>
+                      </div>
+                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide truncate mt-1">{t.teamName}</h4>
+                      <p className="text-[10px] text-slate-400 font-medium truncate">{t.areaName || t.city || '—'}, {t.district || '—'}</p>
                     </div>
-                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide truncate mt-1">{t.teamName}</h4>
-                    <p className="text-[10px] text-slate-400 font-medium truncate">{t.areaName || t.city || '—'}, {t.district || '—'}</p>
+                    
+                    <div className="flex items-center space-x-1 flex-shrink-0">
+                      {contactNumber && (
+                        <a href={`https://wa.me/91${contactNumber}`} target="_blank" rel="noreferrer" className="p-2 text-emerald-600 bg-emerald-50 rounded-lg border border-emerald-100">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16"><path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.948h.003c4.177 0 7.882-3.559 7.886-7.928A7.86 7.86 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.69-4.936c-.202-.101-1.196-.59-1.383-.658-.188-.069-.325-.101-.462.101-.138.203-.534.658-.654.793-.12.134-.241.152-.443.051-.2-.102-.843-.311-1.606-.991-.593-.529-1.002-1.182-1.118-1.382-.117-.2-.012-.307.089-.408.092-.091.202-.234.302-.351.101-.117.135-.198.203-.331.067-.133.033-.251-.017-.352-.05-.101-.423-1.018-.578-1.393-.15-.36-.3-.311-.412-.317-.107-.006-.23-.006-.353-.006a.682.682 0 0 0-.492.23c-.168.183-.641.626-.641 1.528 0 .902.656 1.773.748 1.895.093.12 1.287 1.966 3.118 2.754.436.188.776.3 1.042.384.437.139.835.119 1.15.073.351-.05 1.197-.49 1.364-.963.167-.472.167-.878.118-.963-.05-.084-.188-.134-.39-.235z"/></svg>
+                        </a>
+                      )}
+                      <button onClick={() => setSelectedTeam(t)} className="p-2 text-slate-700 bg-slate-50 active:bg-slate-100 rounded-lg border border-slate-100" title="पब्लिक प्रोफाईल पहा"><Eye size={13} /></button>
+                      {!t.isDeleted && <button onClick={() => openModal(t)} className="p-2 text-blue-600 bg-blue-50 active:bg-blue-100 rounded-lg border border-blue-100" title="एडिट"><Edit2 size={13} /></button>}
+                      <button onClick={() => handleToggleActiveStatus(t.id, t.isDeleted)} className={`p-2 rounded-lg border ${t.isDeleted ? 'text-green-600 bg-green-50 border-green-100' : 'text-red-500 bg-red-50 border-red-100'}`}>
+                        {t.isDeleted ? <RotateCcw size={13} /> : <Trash2 size={13} />}
+                      </button>
+                    </div>
                   </div>
-                  
-                  <div className="flex items-center space-x-1 flex-shrink-0">
-                    {contactNumber && (
-                      <a href={`https://wa.me/91${contactNumber}`} target="_blank" rel="noreferrer" className="p-2 text-emerald-600 bg-emerald-50 rounded-lg border border-emerald-100">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16"><path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.948h.003c4.177 0 7.882-3.559 7.886-7.928A7.86 7.86 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.69-4.936c-.202-.101-1.196-.59-1.383-.658-.188-.069-.325-.101-.462.101-.138.203-.534.658-.654.793-.12.134-.241.152-.443.051-.2-.102-.843-.311-1.606-.991-.593-.529-1.002-1.182-1.118-1.382-.117-.2-.012-.307.089-.408.092-.091.202-.234.302-.351.101-.117.135-.198.203-.331.067-.133.033-.251-.017-.352-.05-.101-.423-1.018-.578-1.393-.15-.36-.3-.311-.412-.317-.107-.006-.23-.006-.353-.006a.682.682 0 0 0-.492.23c-.168.183-.641.626-.641 1.528 0 .902.656 1.773.748 1.895.093.12 1.287 1.966 3.118 2.754.436.188.776.3 1.042.384.437.139.835.119 1.15.073.351-.05 1.197-.49 1.364-.963.167-.472.167-.878.118-.963-.05-.084-.188-.134-.39-.235z"/></svg>
-                      </a>
-                    )}
-                    <button onClick={() => setSelectedTeam(t)} className="p-2 text-slate-700 bg-slate-50 active:bg-slate-100 rounded-lg border border-slate-100"><Eye size={13} /></button>
-                    {!t.isDeleted && <button onClick={() => openModal(t)} className="p-2 text-blue-600 bg-blue-50 active:bg-blue-100 rounded-lg border border-blue-100"><Edit2 size={13} /></button>}
-                    <button onClick={() => handleToggleActiveStatus(t.id, t.isDeleted)} className={`p-2 rounded-lg border ${t.isDeleted ? 'text-green-600 bg-green-50 border-green-100' : 'text-red-500 bg-red-50 border-red-100'}`}>
-                      {t.isDeleted ? <RotateCcw size={13} /> : <Trash2 size={13} />}
-                    </button>
-                  </div>
+
+                  {/* 📱 मोबाईल कार्ड व्ह्यूमध्ये सुद्धा ॲप्रुव्हल बटणे दिसण्यासाठी */}
+                  {viewTab === 'edited_pending' && (
+                    <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-50">
+                      <button onClick={() => handleApproveTeam(t.id || t.uid)} className="bg-emerald-600 text-white px-3 py-1 rounded text-xs font-black hover:bg-emerald-700 transition-all">Approve</button>
+                      <button onClick={() => handleRejectCommentTeam(t.id || t.uid)} className="bg-red-50 text-red-600 px-3 py-1 rounded text-xs font-black hover:bg-red-100 transition-all">Comment</button>
+                    </div>
+                  )}
                 </div>
               );
             })

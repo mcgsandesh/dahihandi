@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { collection, doc, serverTimestamp, updateDoc, query, where, onSnapshot, setDoc, getDocs, getDocsFromCache } from 'firebase/firestore'; 
 import { Plus, X, RotateCcw, Users, Shield, Shirt, User, LayoutDashboard, LogOut, Package, FileText, Settings as SettingsIcon, BarChart3, Trophy, Calendar, BookOpen, Megaphone, Edit2  } from 'lucide-react';
 import Swal from 'sweetalert2';
-import logo from '../assets/logo.png'; // 👈 योग्य पाथनुसार लोगो इंपोर्ट करा
+import logo from '../assets/logo.png';
 
 // 🎯 नवीन युनियन हब कॉम्पोनेंट इम्पोर्ट केला
 import PublicDashboard from './PublicDashboard'; 
@@ -30,13 +30,16 @@ import PublicArticles from '../components/PublicArticles';
 // मोबाईलसाठी तळाची चिकटलेली ॲड बार
 import AdMobileBottom from '../components/AdMobileBottom';
 
+// 🎯 [NEW]: टीम ॲडमिन इव्हेंट नोंदणी कॉम्पोनेंट
+import TeamEventModal from '../components/TeamEventModal';
+
 export default function TeamDashboard({ user, onLogout }) {
   
-  // जर सूपरॲडमीनने फॉर्म बंद केला असेल, तर थेट 'profile' टॅब ओपन होईल
   const hasFormAccess = user.allowInAppForm !== false;
   const [activeTab, setActiveTab] = useState(hasFormAccess ? 'dashboard' : 'profile'); 
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false); // 🎯 इव्हेंट मॉडेल स्टेट
   const [searchTerm, setSearchTerm] = useState('');
   const [playersList, setPlayersList] = useState([]);
   const [copied, setCopied] = useState(false);
@@ -305,7 +308,7 @@ export default function TeamDashboard({ user, onLogout }) {
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans antialiased pb-16 md:pb-0 text-slate-800 select-none">
       
-      {/* 👑 १. इंजेक्टेड ग्लोबल सामायिक साईडबार (Admin Role) */}
+      {/* 👑 १. ग्लोबल साईडबार (Admin Role) */}
       <Sidebar 
         userRole="admin"
         hasFormAccess={hasFormAccess}
@@ -318,96 +321,56 @@ export default function TeamDashboard({ user, onLogout }) {
         uid={user.uid}
         lang={lang}
         setEmbeddedTab={setActiveTab} 
-        
       />
 
       {/* 🖥️ २. मुख्य कार्यक्षेत्र */}
       <div className="flex-1 p-4 md:p-6 overflow-y-auto max-h-screen pb-40 md:pb-6 w-full z-10">
         <div className="w-full space-y-4">
-          
-          {/* हेडर टायटल आणि लँग्वेज स्किपर पॅनेल
-          <div className="border-b border-slate-200 pb-2.5 hidden md:flex items-center justify-between text-left">
-            <div>
-              <h1 className="text-lg font-black text-slate-800 uppercase tracking-wide">
-                {activeTab === 'dashboard' && 'डॅशबोर्ड सारांश'}
-                {activeTab === 'players' && 'खेळाडू व्यवस्थापन यादी'}
-                {activeTab === 'inventory' && 'इव्हेंटरी स्टॉक मॅनेजमेंट'}
-                {activeTab === 'reports' && 'रिपोर्ट पॅनेल'}
-                {activeTab === 'profile' && 'संघ अधिकृत प्रोफाईल'}
-                {activeTab === 'settings' && 'पॅनेल कॉन्फिगरेशन賽टिंग्ज'}
-                {activeTab === 'govinda_katta' && '🚩 गोविंदा कट्टा'}
-                {activeTab === 'public_stats' && 'उत्सव आकडेवारी'}
-                {activeTab === 'public_info' && 'उत्सव नियमावली'}
-                {activeTab === 'public_news' && 'ताज्या घडामोडी'}
-                {activeTab === 'public_events' && 'उत्सव व सराव कट्टा'}
-                {activeTab === 'public_records' && 'ऐतिहासिक रेकॉर्ड्स'}
-                {activeTab === 'articles' && 'दहीहंडी ज्ञानपीठ'}
-              </h1>
-              <p className="text-[11px] text-slate-400 font-bold mt-0.5">संघाची अंतर्गत माहिती आणि डिजिटल मॅनेजमेंट पॅनेल.</p>
+
+          {/* 👑 ब्रँडेड हेडर पॅनेल */}
+          <div className="hidden md:flex border-b border-slate-200 pb-3 mb-5 items-center justify-between text-left">
+            <div className="flex items-center space-x-3.5">
+              <img 
+                src={logo} 
+                alt="महाराष्ट्राचा गोविंदा लोगो" 
+                className="w-12 h-12 object-contain rounded-xl shadow-sm border border-slate-100" 
+              />
+
+              <div className="flex flex-col">
+                <h1 className="text-lg md:text-2xl font-black uppercase tracking-wide leading-tight">
+                  {lang === 'mr' ? (
+                    <>
+                      <span className="text-[#ff6600]">महाराष्ट्राचा</span>{" "}
+                      <span className="text-[#0b132b]">गोविंदा</span>
+                      <span className="text-xs md:text-sm text-slate-400 font-bold mt-0.5"> {lang === 'mr' ? 'प्रत्येक गोविंदासाठी 🚩' : 'For Every Govinda 🚩'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-[#ff6600]">Maharashtracha</span>{" "}
+                      <span className="text-[#0b132b]">Govinda</span>
+                      <span className="text-xs md:text-sm text-slate-400 font-bold mt-0.5"> {lang === 'mr' ? 'प्रत्येक गोविंदासाठी 🚩' : 'For Every Govinda 🚩'}</span>
+                    </>
+                  )}
+                </h1>
+              </div>
             </div>
             
+            {/* लँग्वेज स्विचर */}
             <div className="flex bg-slate-100 p-0.5 rounded-lg space-x-0.5 border shadow-sm">
-              <button onClick={() => setLang('mr')} className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'mr' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}>मराठी</button>
-              <button onClick={() => setLang('en')} className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'en' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}>English</button>
+              <button 
+                onClick={() => setLang('mr')} 
+                className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'mr' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                मराठी
+              </button>
+              <button 
+                onClick={() => setLang('en')} 
+                className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'en' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                English
+              </button>
             </div>
-          </div> */}
-
-   {/* 👑 ब्रँडेड हेडर पॅनेल - स्वतःचा सुरक्षित लोगो इमेज टॅग */}
-      <div className="hidden md:flex border-b border-slate-200 pb-3 mb-5 items-center justify-between text-left">
-        
-        {/* डावी बाजू: लोगो आणि ब्रँड टायटल एकत्र */}
-        <div className="flex items-center space-x-3.5">
-          
-          {/* 🎯 [अचूक लोगो डिस्प्ले]: assets मधील लोगो इथे पास केला आहे */}
-          <img 
-            src={logo} 
-            alt="महाराष्ट्राचा गोविंदा लोगो" 
-            className="w-12 h-12 object-contain rounded-xl shadow-sm border border-slate-100" 
-          />
-
-          <div className="flex flex-col">
-            <h1 className="text-lg md:text-2xl font-black uppercase tracking-wide leading-tight">
-              {lang === 'mr' ? (
-                <>
-                  <span className="text-[#ff6600]">महाराष्ट्राचा</span>{" "}
-                  <span className="text-[#0b132b]">गोविंदा</span>
-                <span className="text-xs md:text-sm text-slate-400 font-bold mt-0.5"> {lang === 'mr' ? 'प्रत्येक गोविंदासाठी 🚩' : 'For Every Govinda 🚩'}</span>
-                </>
-              ) : (
-                <>
-                  <span className="text-[#ff6600]">Maharashtracha</span>{" "}
-                  <span className="text-[#0b132b]">Govinda</span>
-                   <span className="text-xs md:text-sm text-slate-400 font-bold mt-0.5"> {lang === 'mr' ? 'प्रत्येक गोविंदासाठी 🚩' : 'For Every Govinda 🚩'}</span>
-
-                </>
-              )}
-            </h1>
-          
           </div>
-        </div>
-        
-        {/* लँग्वेज स्विचर */}
-        <div className="flex bg-slate-100 p-0.5 rounded-lg space-x-0.5 border shadow-sm">
-          <button 
-            onClick={() => setLang('mr')} 
-            className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'mr' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}
-          >
-            मराठी
-          </button>
-          <button 
-            onClick={() => setLang('en')} 
-            className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${lang === 'en' ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:text-slate-900'}`}
-          >
-            English
-          </button>
-        </div>
-      </div>
-          
-          
-          
-
-
-
 
           {/* 📊 MODERN DASHBOARD SUMMARY VIEW */}
           {activeTab === 'dashboard' && hasFormAccess && (() => {
@@ -527,8 +490,18 @@ export default function TeamDashboard({ user, onLogout }) {
           {activeTab === 'profile' && (
             <div className="w-full mx-auto animate-in fade-in duration-200">              
               <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs relative">
-                <div className="absolute top-4 right-4"><button onClick={() => setIsEditMode(!isEditMode)} className={`p-1.5 rounded-xl transition-all shadow-xs ${isEditMode ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><Edit2 size={14} /></button></div>
-                <TeamProfile user={user} teamData={teamData} setTeamData={setTeamData} isEditMode={isEditMode} setIsEditMode={setIsEditMode} />
+                <div className="absolute top-4 right-4 z-30">
+                  <button onClick={() => setIsEditMode(!isEditMode)} className={`p-1.5 rounded-xl transition-all shadow-xs ${isEditMode ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><Edit2 size={14} /></button>
+                </div>
+                {/* 🎯 [HERE IS THE FIX]: onOpenEventModal प्रॉप पास केली आहे */}
+                <TeamProfile 
+                  user={user} 
+                  teamData={teamData} 
+                  setTeamData={setTeamData} 
+                  isEditMode={isEditMode} 
+                  setIsEditMode={setIsEditMode}
+                  onOpenEventModal={() => setIsEventModalOpen(true)}
+                />
               </div>
             </div>
           )}
@@ -539,8 +512,6 @@ export default function TeamDashboard({ user, onLogout }) {
           )}
 
           {/* 🌐 PUBLIC SYNC VIEWS */}
-          {/* 🌐 PUBLIC SYNC VIEWS (🎯 कोअर फिक्स: पॅरेंट टॅब मॅपिंगनुसारच हब रेंडर होईल आणि होम क्लिकवर पूर्ण अनमाउंट होईल!) */}
-{/* 🌐 PUBLIC SYNC VIEWS: 'key' मुळे स्टेट बदलताच हा कॉम्पोनेंट पूर्णपणे री-लोड होईल आणि पॅरेंटच्या मुख्य डॅशबोर्डवर उडी मारता येईल! */}
           <div key={activeTab}>
             {['govinda_katta', 'public_stats', 'public_info', 'public_news', 'public_events', 'public_records', 'articles'].includes(activeTab) ? (
               <PublicDashboard 
@@ -558,12 +529,11 @@ export default function TeamDashboard({ user, onLogout }) {
             
         </div>
       </div>
-      
 
       <AdMobileBottom />
 
       {/* 📱 मोबाईल स्क्रीनसाठी बॉटम बार */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-1.5 flex justify-around items-center shadow-lg z-30 h-16">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0d1527] border-t border-slate-800 py-1.5 flex justify-around items-center shadow-lg z-30 h-16">
         {mobileTabs.map((btn) => (
           <button 
             key={btn.id} 
@@ -599,6 +569,13 @@ export default function TeamDashboard({ user, onLogout }) {
           </div>
         </div>
       )}
+
+      {/* 🎯 [NEW]: इव्हेंट नोंदणी मॉडेल पॉप-अप */}
+      <TeamEventModal 
+        isOpen={isEventModalOpen} 
+        onClose={() => setIsEventModalOpen(false)} 
+        user={user} 
+      />
 
     </div>
   );

@@ -21,7 +21,7 @@ import logoIcon from '../assets/logo.png';
 // 📸 ImgBB Image Uploader Component
 import ImageUploader from './ImageUploader';
 
-export default function TeamProfile({ user, teamData, setTeamData, isEditMode, setIsEditMode, fetchUserData, handleProfileComplete }) {
+export default function TeamProfile({ user, teamData, setTeamData, isEditMode, setIsEditMode, fetchUserData, handleProfileComplete, onOpenEventModal }) {
   
   // 🎯 फॉर्म स्टेट्स (Blank Screen फॉलबॅक)
   const [teamCategory, setTeamCategory] = useState('Men');
@@ -196,6 +196,18 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
           <div className="absolute -right-16 -bottom-16 w-80 h-80 bg-orange-600 opacity-10 blur-3xl rounded-full pointer-events-none"></div>
           
           <div className="hidden md:flex absolute top-5 right-5 z-20 items-center gap-2.5">
+            {/* 🎯 [NEW FEATURE]: सर्व संघांसाठी सराव कट्टा इव्हेंट जोडण्याचे बटण */}
+            {onOpenEventModal && (
+              <button 
+                type="button"
+                onClick={onOpenEventModal} 
+                className="bg-orange-600 hover:bg-orange-700 text-white px-3.5 py-2 rounded-xl transition-all shadow-md flex items-center space-x-1.5 text-xs font-black cursor-pointer active:scale-95 border border-orange-400/30"
+              >
+                <Calendar size={14} />
+                <span>+ इव्हेंट जोडा</span>
+              </button>
+            )}
+
             {isProfileReadyForShare ? (
               <button 
                 type="button"
@@ -243,7 +255,7 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
             </button>
           </div>
 
-          <div className="flex flex-row items-center md:items-start gap-3.5 relative z-10 text-left md:pr-56">
+          <div className="flex flex-row items-center md:items-start gap-3.5 relative z-10 text-left md:pr-80">
             <div className="w-16 h-16 md:w-28 md:h-28 bg-white rounded-xl md:rounded-2xl border border-slate-700/40 flex items-center justify-center p-1 md:p-2 flex-shrink-0 overflow-hidden shadow-2xl">
               {teamData?.logoUrl ? (
                 <img src={teamData.logoUrl} alt="Logo" className="w-full h-full object-contain" />
@@ -287,7 +299,20 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
             </div>
           </div>
 
-          <div className="flex md:hidden items-center gap-2 mt-3 pt-2.5 border-t border-slate-800/60 relative z-20">
+          {/* 📱 मोबाईल व्ह्यू ॲक्शन बटणे */}
+          <div className="flex md:hidden items-center gap-1.5 mt-3 pt-2.5 border-t border-slate-800/60 relative z-20 flex-wrap">
+            {/* 🎯 [NEW]: मोबाईलवर इव्हेंट जोडण्याचे बटण */}
+            {onOpenEventModal && (
+              <button 
+                type="button"
+                onClick={onOpenEventModal}
+                className="w-full bg-orange-600 text-white py-2 rounded-lg flex items-center justify-center space-x-1 text-xs font-black shadow-sm mb-1"
+              >
+                <Calendar size={13} />
+                <span>+ सराव शिबीर / इव्हेंट जोडा</span>
+              </button>
+            )}
+
             {isProfileReadyForShare ? (
               <button 
                 type="button"
@@ -305,14 +330,14 @@ export default function TeamProfile({ user, teamData, setTeamData, isEditMode, s
                     Swal.fire({ icon: 'success', title: 'लिंक कॉपी झाली! 🔗', confirmButtonColor: '#ff6600', timer: 1500, customClass: { popup: 'rounded-3xl' } });
                   }
                 }} 
-                className="flex-1 bg-orange-600 text-white py-1.5 rounded-lg flex items-center justify-center space-x-1 text-[11px] font-black shadow-sm"
+                className="flex-1 bg-orange-600/20 text-orange-400 border border-orange-500/30 py-1.5 rounded-lg flex items-center justify-center space-x-1 text-[11px] font-black shadow-sm"
               >
                 <Share2 size={12} />
                 <span>शेअर लिंक</span>
               </button>
             ) : (
               <div className="flex-1 bg-amber-500/5 border border-amber-500/10 text-amber-500 py-1.5 rounded-lg text-center text-[9px] font-black leading-tight">
-                ⚠️ शेअर लॉक आहे
+                ⚠️ शेअर लॉक
               </div>
             )}
             

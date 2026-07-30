@@ -3,8 +3,8 @@ import { db } from '../firebase';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { Loader2, Flame, Award, ShieldAlert, Sparkles, X, Navigation, MapPin, Search, Filter, Calendar as CalendarIcon } from 'lucide-react';
 
-const CACHE_KEY = 'govinda_events_cache';
-const CACHE_TIME_KEY = 'govinda_events_cache_time';
+const CACHE_KEY = 'govinda_events_cache_v2';
+const CACHE_TIME_KEY = 'govinda_events_cache_time_v2';
 const CACHE_DURATION = 15 * 60 * 1000; // १५ मिनिटे कॅश
 
 const DEFAULT_IMAGES = {
@@ -23,7 +23,7 @@ const toMarathiNumber = (num) => {
   return num.toString().split('').map(digit => marathiDigits[digit] || digit).join('');
 };
 
-export default function PublicEvents(lang) {
+export default function PublicEvents({ lang = 'mr' }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null); 
@@ -79,13 +79,20 @@ export default function PublicEvents(lang) {
       const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
       const now = Date.now();
 
+      // कॅश उघडताना सुद्धा फिल्टर लावणे
       if (cachedData && cachedTime && (now - cachedTime < CACHE_DURATION)) {
-        setEvents(JSON.parse(cachedData));
+        const parsed = JSON.parse(cachedData);
+        setEvents(parsed.filter(e => e.isApproved === true));
         setLoading(false);
+        
         setTimeout(async () => {
           try {
             const snap = await getDocs(query(collection(db, "events"), orderBy("fromDate", "asc")));
-            const freshEvents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // 🎯 फिक्स: फक्त approved === true असलेले इव्हेंट्सच कॅशमध्ये सेव्ह करणे
+            const freshEvents = snap.docs
+              .map(doc => ({ id: doc.id, ...doc.data() }))
+              .filter(e => e.isApproved === true);
+
             if (JSON.stringify(freshEvents) !== cachedData) {
               localStorage.setItem(CACHE_KEY, JSON.stringify(freshEvents));
               localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
@@ -98,7 +105,11 @@ export default function PublicEvents(lang) {
 
       try {
         const snap = await getDocs(query(collection(db, "events"), orderBy("fromDate", "asc")));
-        const fetchedEvents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // 🎯 फिक्स: फक्त approved === true असलेले इव्हेंट्सच दाखवणे
+        const fetchedEvents = snap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(e => e.isApproved === true);
+
         localStorage.setItem(CACHE_KEY, JSON.stringify(fetchedEvents));
         localStorage.setItem(CACHE_TIME_KEY, now.toString());
         setEvents(fetchedEvents);
@@ -116,33 +127,36 @@ export default function PublicEvents(lang) {
   const getProcessedEvents = () => {
     const todayStr = new Date().toISOString().split('T')[0];
 
-    let result = events.map(e => {
-      const dist = (e.lat && e.lng && userLoc?.lat && userLoc?.lng) 
-        ? calculateDistance(userLoc.lat, userLoc.lng, e.lat, e.lng) 
-        : null;
-      return { ...e, distanceKm: dist };
-    });
+    // 🎯 🔒 १. सर्वात महत्त्वाचा सुरक्षा कप्पा: फक्त isApproved === true आणि चालू असणारे इव्हेंट्स!
+    let result = events
+      .filter(e => e.isApproved === true)
+      .map(e => {
+        const dist = (e.lat && e.lng && userLoc?.lat && userLoc?.lng) 
+          ? calculateDistance(userLoc.lat, userLoc.lng, e.lat, e.lng) 
+          : null;
+        return { ...e, distanceKm: dist };
+      });
 
-    // १. जुने/संपलेले कार्यक्रम लपवणे
+    // २. जुने/संपलेले कार्यक्रम लपवणे
     result = result.filter(e => !e.toDate || e.toDate >= todayStr);
 
-    // २. सर्च फिल्टर
+    // ३. सर्च फिल्टर
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(e => e.title_mr?.toLowerCase().includes(q) || e.mandalName?.toLowerCase().includes(q));
     }
 
-    // ३. कॅटेगरी फिल्टर
+    // ४. कॅटेगरी फिल्टर
     if (selectedCategory !== 'all') {
       result = result.filter(e => e.type === selectedCategory);
     }
 
-    // ४. तारीख फिल्टर
+    // ५. तारीख फिल्टर
     if (selectedDateFilter) {
       result = result.filter(e => e.fromDate <= selectedDateFilter && e.toDate >= selectedDateFilter);
     }
 
-    // 🎯 ५. क्रोनोलॉजिकल सॉर्टिंग ऑर्डर (महिना निहाय: जुलै -> ऑगस्ट -> सप्टेंबर) 🚀
+    // 🎯 ६. क्रोनोलॉजिकल सॉर्टिंग ऑर्डर
     result.sort((a, b) => {
       if (sortByNearest && userLoc) {
         if (!a.distanceKm) return 1;
@@ -183,10 +197,10 @@ export default function PublicEvents(lang) {
     );
   }
 
-return (
+  return (
     <div className="w-full space-y-4 text-left animate-in fade-in duration-150 pb-24 text-white">
       
-      {/* 🖥️ BRANDED COMPACT HEADER & SEARCH BAR SYSTEM (FIXED 🚀) */}
+      {/* 🖥️ BRANDED COMPACT HEADER & SEARCH BAR SYSTEM */}
       <div className="space-y-4 bg-[#0d1527] p-4 rounded-3xl border border-slate-800 backdrop-blur-md sticky top-0 z-30 shadow-2xl">
         
         {/* 👑 सुबक डार्क थीम हेडर टायटल */}
@@ -290,7 +304,7 @@ return (
                   isToday ? 'border-orange-500/40 bg-gradient-to-r from-orange-500/5 to-transparent' : 'border-slate-800/90'
                 }`}
               >
-                {/* 📆 डाव्या बाजूचा मोठा मराठी डेट बॉक्स */}
+                {/* 📆 डाव्या बाजूचा मोठा डेट बॉक्स */}
                 <div className="flex flex-col items-center justify-center bg-[#0d1527] border border-slate-800 rounded-xl w-[58px] h-[64px] flex-shrink-0 shadow-inner group-hover:border-orange-500/40 transition-all">
                   <span className="text-lg font-black text-orange-500 font-mono tracking-tighter leading-none">{dateInfo.day}</span>
                   <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider mt-1">{dateInfo.month}</span>
@@ -316,7 +330,7 @@ return (
                   <p className="text-[10px] text-slate-400 font-bold truncate">🏰 {e.mandalName || (lang === 'en' ? 'Organizing Mandal' : 'आयोजक मंडळ')}</p>
                 </div>
 
-                {/* 📍 उजव्या बाजूचा मोठा डिस्टन्स बॉक्स */}
+                {/* 📍 उजव्या बाजूचा डिस्टन्स बॉक्स */}
                 {e.distanceKm && (
                   <div className="flex flex-col items-center justify-center bg-[#0d1527]/60 border border-orange-500/20 rounded-xl w-[54px] h-[54px] flex-shrink-0 shadow-inner group-hover:border-orange-500/40 transition-all ml-auto">
                     <span className="text-sm font-black text-orange-400 font-mono tracking-tighter leading-none">

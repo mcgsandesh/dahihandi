@@ -19,6 +19,18 @@ export default function PlayersList({
   const inv = inventoryData || {};
   const safePlayers = playersList || [];
   
+  // 🎯 [NEW HELPER]: नाव ट्रिम करून प्रॉपर केस (Title Case) मध्ये दाखवणारे फंकशन
+  const toProperCase = (str) => {
+    if (!str) return '';
+    return str
+      .trim()
+      .replaceAll(/\s+/g, ' ')
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   // पॉपअप कंट्रोल करण्यासाठी स्टेट
   const [showCustomPopup, setShowCustomPopup] = useState(false);
 
@@ -96,10 +108,10 @@ export default function PlayersList({
         </button>
       </div>
 
-{/* टेबल मॅट्रिक्स लेआउट (डेस्कटॉपवर २ भागांत विभागून जागा वाचवली 🎯) */}
+      {/* टेबल मॅट्रिक्स लेआउट */}
       <div className="bg-white border border-slate-200/80 p-3 rounded-2xl shadow-sm text-[11px] font-black text-slate-700 flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6 relative">
         
-        {/* 📦 भाग १: मुख्य साईझ टेबल मॅट्रिक्स (डेस्कटॉपवर विड्थ ऑटो आणि आकडे मोठे ⚡) */}
+        {/* 📦 भाग १: मुख्य साईझ टेबल मॅट्रिक्स */}
         <div className="overflow-x-auto flex-1 w-full md:w-auto">
           <table className="w-full text-center border-collapse">
             <thead>
@@ -127,7 +139,7 @@ export default function PlayersList({
           </table>
         </div>
 
-        {/* 📦 भाग २: बेल्ट, टॉवेल आणि इतर साईझ बटण पॅकेज (मोबाईलवर खाली, डेस्कटॉपवर उजव्या कोपऱ्यात फिट 🛠️) */}
+        {/* 📦 भाग २: बेल्ट, टॉवेल आणि इतर साईझ बटण पॅकेज */}
         <div className="flex items-center justify-between md:justify-end pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 flex-wrap md:flex-nowrap gap-3 relative md:self-center flex-shrink-0">
           
           {/* बेल्ट आणि टॉवेल स्टॉक्स डिस्प्ले */}
@@ -154,7 +166,7 @@ export default function PlayersList({
                 <span>✏️ इतर साईझ ({customSizesData.length})</span>
               </button>
 
-              {/* फ्लोटिंग पॉपअप ड्रॉपडाऊन कार्ड (डेस्कटॉपवर पोझिशन `bottom-9` सुरक्षित ठेवली) */}
+              {/* फ्लोटिंग पॉपअप ड्रॉपडाऊन कार्ड */}
               {showCustomPopup && (
                 <div 
                   className="absolute right-0 bottom-8 md:bottom-9 bg-[#0b132b] text-white p-3 rounded-xl shadow-2xl border border-slate-800 w-48 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150 font-sans"
@@ -180,10 +192,6 @@ export default function PlayersList({
 
       </div>
 
-      {/* इथून खाली तुमची फिल्टर प्लेयर्स यादी सुरू राहू दे... */}
-
-      {/* इथून खाली तुझा ओरिजिनल सर्च बार आणि प्लेयर्स लिस्ट कार्ड्स चालू होतील... */}
-
       {/* सर्च बार */}
       <div className="w-full relative">
         <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><Search size={18} /></span>
@@ -196,38 +204,38 @@ export default function PlayersList({
         />
       </div>
 
-    {/* 📱 खेळाडू कार्ड्सची मुख्य कंटेनर यादी (pb-32 सुरक्षित) */}
+      {/* 📱 खेळाडू कार्ड्सची मुख्य कंटेनर यादी */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 divide-y divide-slate-100 overflow-hidden pb-32">
         {filteredPlayers.map((p, index) => {
           const isLastRecords = index >= filteredPlayers.length - 2 && filteredPlayers.length > 2;
-          
+          const properName = toProperCase(p.name); // 🎯 ट्रिम आणि प्रॉपर केस नाव
+
           return (
             <div 
               key={p.id} 
               className="p-3 md:py-2.5 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 hover:bg-slate-50/50 transition-all relative min-h-[75px] md:min-h-[55px]"
             >
               
-              {/* 🏢 डावी बाजू: प्रोफाईल आणि एका ओळीत डेटा ॲडजस्टमेंट (डेस्कटॉपवर कडक सिंगल लाईन 🎯) */}
+              {/* 🏢 डावी बाजू: प्रोफाईल आणि नाव */}
               <div className="flex items-center space-x-3.5 min-w-0 flex-1 pr-8 md:pr-4">
-                {/* इनिशियल्स गोल राऊंड (डेस्कटॉपवर थोडा बारीक केला जेणेकरून सुबक दिसेल) */}
+                {/* इनिशियल्स गोल राऊंड */}
                 <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-xs font-black text-slate-700 flex-shrink-0">
-                  {getInitials(p.name)}
+                  {getInitials(properName)}
                 </div>
                 
-                {/* 🎯 कडक मॅजिक कंटेनर: मोबाईलवर एकाखाली एक, डेस्कटॉपवर एकाच ओळीत! */}
+                {/* नाव आणि वय पॅकेज */}
                 <div className="min-w-0 flex-1 flex flex-col md:flex-row md:items-center md:space-x-4">
                   
-                  {/* नाव आणि वय पॅकेज */}
                   <div className="flex items-center space-x-2 flex-shrink-0">
                     <h4 className="text-sm font-black text-slate-800 tracking-wide truncate max-w-[160px] md:max-w-[220px]">
-                      {p.name}
+                      {properName}
                     </h4>
                     <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-1.5 py-0.5 rounded-md font-sans flex-shrink-0">
                       वय: {calculateAge(p.dob)}
                     </span>
                   </div>
                   
-                  {/* 🎯 कडक बदल: हे सर्व बॅजेस आता डेस्कटॉपवर `md:mt-0` मुळे वरच्या ओळीत सरळ शेजारी फिट होतील! */}
+                  {/* बॅजेस पॅकेज */}
                   <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 font-bold mt-1.5 md:mt-0">
                     {p.tshirt && (
                       <span className="bg-slate-50 text-slate-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border border-slate-200/50 font-mono flex-shrink-0">
@@ -256,7 +264,7 @@ export default function PlayersList({
                 </div>
               </div>
 
-              {/* मोबाईलवर ३-डॉट्स बटण (Top Right Position - जसेच्या तसे सुरक्षित) */}
+              {/* मोबाईलवर ३-डॉट्स बटण */}
               <div className="absolute top-2 right-2 md:hidden">
                 <div className="relative group">
                   <button className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-all focus:outline-none active:bg-slate-200">
@@ -269,12 +277,12 @@ export default function PlayersList({
                     <a href={`tel:${p.mobile}`} className="flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Phone size={13} className="text-emerald-500" /> <span>कॉल करा</span></a>
                     <a href={`https://wa.me/91${p.mobile}`} target="_blank" rel="noreferrer" className="flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><MessageSquare size={13} className="text-green-500" /> <span>व्हॉट्सॲप</span></a>
                     <button onClick={() => openPlayerModal(p)} className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 text-left"><Edit2 size={13} className="text-blue-500" /> <span>सुधार करा</span></button>
-                    <button onClick={() => handleSoftDelete(p.id, p.name)} className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 text-left border-t border-slate-100"><Trash2 size={13} /> <span>काढून टाका</span></button>
+                    <button onClick={() => handleSoftDelete(p.id, properName)} className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 text-left border-t border-slate-100"><Trash2 size={13} /> <span>काढून टाकले</span></button>
                   </div>
                 </div>
               </div>
 
-              {/* प्रोफेशनल मॉडर्न टॉगल बटन्स आणि ॲक्शन्स */}
+              {/* टॉगल बटन्स आणि ॲक्शन्स */}
               <div className="flex items-center space-x-2.5 justify-between md:justify-end w-full md:w-auto">
                 <div className="flex items-center space-x-2 w-full md:w-auto">
                   <button 
@@ -300,12 +308,12 @@ export default function PlayersList({
                   </button>
                 </div>
 
-                {/* डेस्कटॉप स्क्रीन ॲक्शन बटन्स (पूर्णपणे सुरक्षित) */}
+                {/* डेस्कटॉप स्क्रीन ॲक्शन बटन्स */}
                 <div className="hidden md:flex items-center space-x-1 pl-1">
                   <a href={`tel:${p.mobile}`} title="कॉल करा" className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-xl transition-all"><Phone size={14} /></a>
                   <a href={`https://wa.me/91${p.mobile}`} target="_blank" rel="noreferrer" title="व्हॉट्सॲप" className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-xl transition-all"><MessageSquare size={14} /></a>
                   <button onClick={() => openPlayerModal(p)} title="सुधार करा" className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-xl transition-all"><Edit2 size={14} /></button>
-                  <button onClick={() => handleSoftDelete(p.id, p.name)} title="काढून टाका" className="p-1.5 hover:bg-red-50 text-red-500 rounded-xl transition-all"><Trash2 size={14} /></button>
+                  <button onClick={() => handleSoftDelete(p.id, properName)} title="काढून टाका" className="p-1.5 hover:bg-red-50 text-red-500 rounded-xl transition-all"><Trash2 size={14} /></button>
                 </div>
               </div>
 

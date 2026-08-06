@@ -83,6 +83,19 @@ export default function TeamDashboard({ user, onLogout }) {
   // ==========================================
   // 📌 CORE FUNCTIONS & HELPERS
   // ==========================================
+
+  // 🎯 [NEW HELPER]: नाव ट्रिम करून प्रॉपर केस (Title Case) मध्ये रूपांतरित करणारे फंकशन
+  const toProperCase = (str) => {
+    if (!str) return '';
+    return str
+      .trim()
+      .replaceAll(/\s+/g, ' ')
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   const shareLink = `${window.location.origin}${import.meta.env.BASE_URL}${(user.teamName || '').toLowerCase().trim().replace(/\s+/g, '-')}/register?t=${btoa(user.uid)}`;
 
   const handleCopyLink = () => {
@@ -177,12 +190,13 @@ export default function TeamDashboard({ user, onLogout }) {
 
     const CACHE_KEY = `govinda_players_cache_${teamIdentifier}`;
 
-    // 1️⃣ पायरी १: लोकल मेमरीमधून डेटा तात्काळ दाखवणे
+    // 1️⃣ पायरी १: लोकल मेमरीमधून डेटा तात्काळ दाखवणे (Proper Case सह)
     try {
       const cachedPlayers = localStorage.getItem(CACHE_KEY);
       if (cachedPlayers) {
         const parsedData = JSON.parse(cachedPlayers);
-        setPlayersList(parsedData);
+        const formatted = parsedData.map(p => ({ ...p, name: toProperCase(p.name) }));
+        setPlayersList(formatted);
       }
     } catch (err) {
       console.error("Cache read error:", err);
@@ -197,7 +211,11 @@ export default function TeamDashboard({ user, onLogout }) {
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
         if (data.isDeleted !== true) {
-          freshPlayers.push({ id: docSnap.id, ...data });
+          freshPlayers.push({ 
+            id: docSnap.id, 
+            ...data,
+            name: toProperCase(data.name) // 🎯 लाइव्ह रेंडर करताना नाव प्रॉपर केस करणे
+          });
         }
       });
 
@@ -242,7 +260,11 @@ export default function TeamDashboard({ user, onLogout }) {
       querySnapshot.forEach((docSnap) => {
         const data = docSnap.data();
         if (data.isDeleted !== true) {
-          players.push({ id: docSnap.id, ...data });
+          players.push({ 
+            id: docSnap.id, 
+            ...data,
+            name: toProperCase(data.name)
+          });
         }
       });
       setPlayersList(players);
@@ -272,7 +294,7 @@ export default function TeamDashboard({ user, onLogout }) {
   const openPlayerModal = (player = null) => {
     if (!hasFormAccess) return;
     if (player) {
-      setEditingPlayerId(player.id); setPlayerName(player.name); setGender(player.gender || 'Male'); setBirthDate(player.dob || ''); setMobileNumber(player.mobile || ''); setBloodGroup(player.blood || 'B+');
+      setEditingPlayerId(player.id); setPlayerName(toProperCase(player.name)); setGender(player.gender || 'Male'); setBirthDate(player.dob || ''); setMobileNumber(player.mobile || ''); setBloodGroup(player.blood || 'B+');
       const standardSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
       if (player.tshirt && !standardSizes.includes(player.tshirt)) { setTshirtSize('Custom'); setCustomTshirt(player.tshirt); } else { setTshirtSize(player.tshirt || 'M'); setCustomTshirt(''); }
       if (player.shorts && !standardSizes.includes(player.shorts)) { setShortsSize('Custom'); setCustomShorts(player.shorts); } else { setShortsSize(player.shorts || 'M'); setCustomShorts(''); }
@@ -299,6 +321,7 @@ export default function TeamDashboard({ user, onLogout }) {
     const finalTshirt = tshirtSize === 'Custom' ? customTshirt.trim() : tshirtSize;
     const finalShorts = shortsSize === 'Custom' ? customShorts.trim() : shortsSize;
     const teamIdentifier = user.teamUID || user.uid;
+    const formattedPlayerName = toProperCase(playerName); // 🎯 नाव प्रॉपर केस करून सेव्ह करणे
 
     if (!teamIdentifier) {
       Swal.fire({ icon: 'error', title: 'त्रुटी!', text: 'संघ आयडी मिळाला नाही.', confirmButtonColor: '#ff6600' });
@@ -308,14 +331,14 @@ export default function TeamDashboard({ user, onLogout }) {
     try {
       if (editingPlayerId) {
         await updateDoc(doc(db, "players", editingPlayerId), {
-          name: playerName.trim(), gender, dob: birthDate, mobile: mobileNumber.trim(), blood: bloodGroup, tshirt: finalTshirt, shorts: finalShorts, belt: needBelt, towel: needTowel, pyramidPlace, insurance: insuranceStatus, tshirtGiven: tshirtGiven, teamUID: teamIdentifier, updatedAt: serverTimestamp()
+          name: formattedPlayerName, gender, dob: birthDate, mobile: mobileNumber.trim(), blood: bloodGroup, tshirt: finalTshirt, shorts: finalShorts, belt: needBelt, towel: needTowel, pyramidPlace, insurance: insuranceStatus, tshirtGiven: tshirtGiven, teamUID: teamIdentifier, updatedAt: serverTimestamp()
         });
         Swal.fire({ icon: 'success', title: 'यशस्वी!', text: 'खेळाडूची माहिती सुधारली!', confirmButtonColor: '#0b132b' });
       } 
       else {
         const playerId = `PLY_${Date.now()}`;
         await setDoc(doc(db, "players", playerId), {
-          name: playerName.trim(), gender, dob: birthDate, mobile: mobileNumber.trim(), blood: bloodGroup, tshirt: finalTshirt, shorts: finalShorts, belt: needBelt, towel: needTowel, pyramidPlace, insurance: insuranceStatus, tshirtGiven: tshirtGiven, teamUID: teamIdentifier, teamName: user.teamName, year: user.currentYear || "2026", createdAt: serverTimestamp()
+          name: formattedPlayerName, gender, dob: birthDate, mobile: mobileNumber.trim(), blood: bloodGroup, tshirt: finalTshirt, shorts: finalShorts, belt: needBelt, towel: needTowel, pyramidPlace, insurance: insuranceStatus, tshirtGiven: tshirtGiven, teamUID: teamIdentifier, teamName: user.teamName, year: user.currentYear || "2026", createdAt: serverTimestamp()
         });
         Swal.fire({ icon: 'success', title: 'नोंदणी पूर्ण!', text: 'खेळाडू यशस्वी जोडला गेला.', confirmButtonColor: '#ff6600' });
       }
@@ -423,102 +446,145 @@ export default function TeamDashboard({ user, onLogout }) {
             </div>
           </div>
 
-          {/* 📊 MODERN DASHBOARD SUMMARY VIEW */}
-          {activeTab === 'dashboard' && hasFormAccess && (() => {
-            const tshirtCounts = {}; const shortsCounts = {}; let totalBelt = 0; let totalTowel = 0;
-            playersList.forEach(p => {
-              if (p.tshirt) tshirtCounts[p.tshirt] = (tshirtCounts[p.tshirt] || 0) + 1;
-              if (p.shorts) shortsCounts[p.shorts] = (shortsCounts[p.shorts] || 0) + 1;
-              if (p.belt === 'Yes') totalBelt++; if (p.towel === 'Yes') totalTowel++;
-            });
-            const recentPlayers = [...playersList].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5);
+       {/* 📊 MODERN DASHBOARD SUMMARY VIEW */}
+{activeTab === 'dashboard' && hasFormAccess && (() => {
+  const tshirtCounts = {}; 
+  const shortsCounts = {}; 
+  let totalBelt = 0; 
+  let totalTowel = 0;
 
-            return (
-              <div className="w-full space-y-4 animate-in fade-in duration-200 text-left">
-                <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
-                  <div className="flex items-baseline space-x-2 min-w-0">
-                    <h1 className="text-sm font-black text-slate-800 uppercase tracking-wider">डॅशबोर्ड सारांश</h1>
-                    <span className="hidden sm:inline-block text-[10px] font-bold text-slate-400 bg-slate-50 border px-2 py-0.5 rounded-lg truncate max-w-xs">{user.teamName}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button onClick={() => fetchTeamPlayers(true)} className="p-1.5 text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl border transition-all active:scale-95" title="यादी रिफ्रेश करा"><RotateCcw size={14} /></button>
-                    <button onClick={() => openPlayerModal()} className="hidden sm:flex bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-xl font-bold text-xs shadow-xs items-center space-x-1 transition-all active:scale-95"><Plus size={14} /><span>खेळाडू जोडा</span></button>
-                  </div>
+  playersList.forEach(p => {
+    if (p.tshirt) tshirtCounts[p.tshirt] = (tshirtCounts[p.tshirt] || 0) + 1;
+    if (p.shorts) shortsCounts[p.shorts] = (shortsCounts[p.shorts] || 0) + 1;
+    if (p.belt === 'Yes') totalBelt++; 
+    if (p.towel === 'Yes') totalTowel++;
+  });
+
+  // 🎯 साईझ सॉर्टिंग ऑर्डर मॅप (लहान ते मोठे)
+  const sizeOrder = {
+    'XS': 1, 'S': 2, 'M': 3, 'L': 4, 'XL': 5, 
+    '2XL': 6, 'XXL': 6, '3XL': 7, '4XL': 8, '5XL': 9, 'CUSTOM': 10
+  };
+
+  // 🎯 सॉर्ट केलेले टी-शर्ट्स
+  const sortedTshirts = Object.entries(tshirtCounts).sort((a, b) => {
+    const orderA = sizeOrder[a[0].toUpperCase()] || 99;
+    const orderB = sizeOrder[b[0].toUpperCase()] || 99;
+    return orderA - orderB;
+  });
+
+  // 🎯 सॉर्ट केलेले शॉर्ट्स
+  const sortedShorts = Object.entries(shortsCounts).sort((a, b) => {
+    const orderA = sizeOrder[a[0].toUpperCase()] || 99;
+    const orderB = sizeOrder[b[0].toUpperCase()] || 99;
+    return orderA - orderB;
+  });
+
+  const recentPlayers = [...playersList]
+    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    .slice(0, 5);
+
+  return (
+    <div className="w-full space-y-4 animate-in fade-in duration-200 text-left">
+      <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
+        <div className="flex items-baseline space-x-2 min-w-0">
+          <h1 className="text-sm font-black text-slate-800 uppercase tracking-wider">डॅशबोर्ड सारांश</h1>
+          <span className="hidden sm:inline-block text-[10px] font-bold text-slate-400 bg-slate-50 border px-2 py-0.5 rounded-lg truncate max-w-xs">{user.teamName}</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button onClick={() => fetchTeamPlayers(true)} className="p-1.5 text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl border transition-all active:scale-95" title="यादी रिफ्रेश करा"><RotateCcw size={14} /></button>
+          <button onClick={() => openPlayerModal()} className="hidden sm:flex bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-xl font-bold text-xs shadow-xs items-center space-x-1 transition-all active:scale-95"><Plus size={14} /><span>खेळाडू जोडा</span></button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+        <div onClick={() => setActiveTab('players')} className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 cursor-pointer hover:shadow-md transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">एकूण खेळाडू</span></div>
+          <p className="text-xl md:text-2xl font-black text-slate-800 mt-2">{playersList.length}</p>
+          <span className="text-[9px] text-blue-500 font-bold mt-1 block">विवरण पहा</span>
+        </div>
+        <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">विमा पूर्ण</span></div>
+          <p className="text-xl md:text-2xl font-black text-slate-800 mt-2">{playersList.filter(p=>p.insurance==='Done' || p.insurance==='झालेले').length}</p>
+        </div>
+        <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">प्रलंबित विमा</span></div>
+          <p className="text-xl md:text-2xl font-black text-orange-500 mt-2">{playersList.filter(p=>p.insurance!=='Done' && p.insurance!=='झालेले').length}</p>
+        </div>
+        <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">टी-शर्ट नोंद</span></div>
+          <p className="text-xl md:text-2xl font-black text-slate-800 mt-2">{playersList.length}</p>
+        </div>
+        <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">शॉर्ट्स नोंद</span></div>
+          <p className="text-xl md:text-2xl font-black text-slate-800 mt-2">{playersList.filter(p=>p.shorts).length}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-5 bg-white p-4 rounded-2xl shadow-xs border border-slate-100 space-y-4">
+          
+          {/* 👕 टी-शर्ट साईझ वितरण (सॉर्ट केलेले) */}
+          <div>
+            <h3 className="text-xs font-black text-slate-800 tracking-wide border-b pb-1.5">टी-शर्ट साईझ वितरण</h3>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {sortedTshirts.map(([size, count]) => (
+                <div key={size} className="bg-purple-50 text-purple-700 font-black text-[10px] px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-purple-100 shadow-xs">
+                  <span className="w-1 h-1 rounded-full bg-purple-600"></span>
+                  <span>{size} : {count}</span>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-                  <div onClick={() => setActiveTab('players')} className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 cursor-pointer hover:shadow-md transition-all flex flex-col justify-between">
-                    <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">एकूण खेळाडू</span></div>
-                    <p className="text-xl md:text-2xl font-black text-slate-800 mt-2">{playersList.length}</p>
-                    <span className="text-[9px] text-blue-500 font-bold mt-1 block">विवरण पहा</span>
-                  </div>
-                  <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
-                    <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">विमा पूर्ण</span></div>
-                    <p className="text-xl md:text-2xl font-black text-slate-800 mt-2">{playersList.filter(p=>p.insurance==='Done' || p.insurance==='झालेले').length}</p>
-                  </div>
-                  <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
-                    <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">प्रलंबित विमा</span></div>
-                    <p className="text-xl md:text-2xl font-black text-orange-500 mt-2">{playersList.filter(p=>p.insurance!=='Done' && p.insurance!=='झालेले').length}</p>
-                  </div>
-                  <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
-                    <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">टी-शर्ट नोंद</span></div>
-                    <p className="text-xl md:text-2xl font-black text-slate-800 mt-2">{playersList.length}</p>
-                  </div>
-                  <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
-                    <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">शॉर्ट्स नोंद</span></div>
-                    <p className="text-xl md:text-2xl font-black text-slate-800 mt-2">{playersList.filter(p=>p.shorts).length}</p>
-                  </div>
+          {/* 🩳 शॉर्ट्स साईझ वितरण (सॉर्ट केलेले) */}
+          <div>
+            <h3 className="text-xs font-black text-slate-800 tracking-wide border-b pb-1.5">शॉर्ट्स साईझ वितरण</h3>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {sortedShorts.map(([size, count]) => (
+                <div key={size} className="bg-orange-50 text-orange-700 font-black text-[10px] px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-orange-100 shadow-xs">
+                  <span className="w-1 h-1 rounded-full bg-orange-500"></span>
+                  <span>{size} : {count}</span>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                  <div className="lg:col-span-5 bg-white p-4 rounded-2xl shadow-xs border border-slate-100 space-y-4">
-                    <div>
-                      <h3 className="text-xs font-black text-slate-800 tracking-wide border-b pb-1.5">टी-शर्ट साईझ वितरण</h3>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {Object.entries(tshirtCounts).map(([size, count]) => (
-                          <div key={size} className="bg-purple-50 text-purple-700 font-black text-[10px] px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-purple-100 shadow-xs"><span className="w-1 h-1 rounded-full bg-purple-600"></span><span>{size} : {count}</span></div>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="text-xs font-black text-slate-800 tracking-wide border-b pb-1.5">शॉर्ट्स साईझ वितरण</h3>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {Object.entries(shortsCounts).map(([size, count]) => (
-                          <div key={size} className="bg-orange-50 text-orange-700 font-black text-[10px] px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-orange-100 shadow-xs"><span className="w-1 h-1 rounded-full bg-orange-500"></span><span>{size} : {count}</span></div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+        </div>
 
-                  <div className="lg:col-span-7 bg-white p-4 rounded-2xl shadow-xs border border-slate-100 overflow-hidden flex flex-col justify-between">
-                    <div className="mb-2"><h3 className="text-xs font-black text-slate-800 tracking-wide">अलीकडील ५ नोंदणीकृत खेळाडू</h3></div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase bg-slate-50/50">
-                            <th className="py-2 px-1.5">नाव</th>
-                            <th className="py-2 px-1.5 text-center">वय</th>
-                            <th className="py-2 px-1.5 text-center">टी-शर्ट</th>
-                            <th className="py-2 px-1.5 text-right">विमा</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50 text-xs font-bold text-slate-600">
-                          {recentPlayers.map((p) => (
-                            <tr key={p.id} className="hover:bg-slate-50/40 transition-all">
-                              <td className="py-2 px-1.5 font-black text-slate-800 truncate max-w-[130px]">{p.name}</td>
-                              <td className="py-2 px-1.5 text-center text-slate-400 font-medium">{calculateAge(p.dob)}</td>
-                              <td className="py-2 px-1.5 text-center text-purple-600 font-mono">{p.tshirt}</td>
-                              <td className="py-2 px-1.5 text-right"><span className={`px-2 py-0.2 rounded text-[9px] font-black ${p.insurance === 'Done' || p.insurance === 'झालेले' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>{p.insurance === 'Done' || p.insurance === 'झालेले' ? 'झालेले' : 'प्रलंबित'}</span></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
+        <div className="lg:col-span-7 bg-white p-4 rounded-2xl shadow-xs border border-slate-100 overflow-hidden flex flex-col justify-between">
+          <div className="mb-2"><h3 className="text-xs font-black text-slate-800 tracking-wide">अलीकडील ५ नोंदणीकृत खेळाडू</h3></div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase bg-slate-50/50">
+                  <th className="py-2 px-1.5">नाव</th>
+                  <th className="py-2 px-1.5 text-center">वय</th>
+                  <th className="py-2 px-1.5 text-center">टी-शर्ट</th>
+                  <th className="py-2 px-1.5 text-right">विमा</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50 text-xs font-bold text-slate-600">
+                {recentPlayers.map((p) => (
+                  <tr key={p.id} className="hover:bg-slate-50/40 transition-all">
+                    <td className="py-2 px-1.5 font-black text-slate-800 truncate max-w-[130px]">{toProperCase(p.name)}</td>
+                    <td className="py-2 px-1.5 text-center text-slate-400 font-medium">{calculateAge(p.dob)}</td>
+                    <td className="py-2 px-1.5 text-center text-purple-600 font-mono">{p.tshirt}</td>
+                    <td className="py-2 px-1.5 text-right">
+                      <span className={`px-2 py-0.2 rounded text-[9px] font-black ${p.insurance === 'Done' || p.insurance === 'झालेले' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
+                        {p.insurance === 'Done' || p.insurance === 'झालेले' ? 'झालेले' : 'प्रलंबित'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+})()}
 
           {/* 👥 VIEW 2: PLAYERS MANAGEMENT LIST */}
           {activeTab === 'players' && hasFormAccess && (

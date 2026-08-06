@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, query, where, enableIndexedDbPersistence,getDocsFromCache } from 'firebase/firestore';
+import { collection, getDocs, query, where, enableIndexedDbPersistence, getDocsFromCache } from 'firebase/firestore';
 import { ArrowLeft, Loader2, Shirt, Printer, ShieldCheck, Download } from 'lucide-react';
 import * as XLSX from 'xlsx'; 
-
 
 export default function Reports({ userTeamName, onBack }) {
   // --- STATE MANAGEMENT ---
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // 🎯 [NEW HELPER]: नाव ट्रिम करून प्रॉपर केस (Title Case) मध्ये रूपांतरित करणारे फंकशन
+  const toProperCase = (str) => {
+    if (!str) return '';
+    return str
+      .trim()
+      .replaceAll(/\s+/g, ' ')
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
 
   // --- FIREBASE INDEXEDDB (OFFLINE PERSISTENCE) CONFIG ---
   useEffect(() => {
@@ -27,8 +38,7 @@ export default function Reports({ userTeamName, onBack }) {
     enableOffline();
   }, []);
 
-  // --- DATA FETCHING ---
-// --- HARDCORE OFF-LINE/CACHE-FIRST DATA FETCHING ---
+  // --- HARDCORE OFF-LINE/CACHE-FIRST DATA FETCHING ---
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
@@ -36,14 +46,14 @@ export default function Reports({ userTeamName, onBack }) {
         const q = query(collection(db, "players"), where("teamName", "==", userTeamName));
         
         try {
-          // 🎯 १. सर्वात आधी डेटा थेट लोकल IndexedDB (Cache) मधून मागवा (0 सर्व्हर Reads खर्च!)
+          // 🎯 १. सर्वात आधी डेटा थेट लोकल IndexedDB (Cache) मधून मागवा
           const cacheSnapshot = await getDocsFromCache(q);
           console.log("Data from Cache (IndexedDB)? true 🔥");
           setPlayers(cacheSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         } catch (cacheErr) {
-          // 🎯 २. जर कॅश रिकामी असेल (उदा. युझर पहिल्यांदाच रिपोर्ट पेजवर आलाय), तर सर्व्हरवरून आणा
+          // 🎯 २. जर कॅश रिकामी असेल, तर सर्व्हरवरून आणा
           console.log("Cache is empty, fetching from server...");
-          const serverSnapshot = await getDocs(q); // हा सर्व्हरवरून आणेल
+          const serverSnapshot = await getDocs(q);
           console.log("Data from Cache (IndexedDB)? false (Server Read Used) 🌍");
           setPlayers(serverSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         }
@@ -78,14 +88,13 @@ export default function Reports({ userTeamName, onBack }) {
     } catch (e) { return '—'; }
   };
 
-// --- 📊 STRICT ORDER ENG-BACKEND EXCEL EXPORT FUNCTION ---
+  // --- 📊 STRICT ORDER ENG-BACKEND EXCEL EXPORT FUNCTION ---
   const exportToExcel = () => {
     if (!players || players.length === 0) {
       alert("No player records found to export!");
       return;
     }
 
-    // १. तू ठरवून दिलेला कॉलम्सचा अचूक क्रम (Strict Column Order)
     const columnOrder = [
       'Sr.No',
       'name',
@@ -106,20 +115,19 @@ export default function Reports({ userTeamName, onBack }) {
       'createdAt'
     ];
 
-    // २. डेटाबेसमधील डेटा जसाच्या तसा मॅप करणे (No Emoji, No Marathi)
     const excelData = players.map((p, index) => {
       const row = {};
 
       columnOrder.forEach(key => {
         if (key === 'Sr.No') {
-          row[key] = index + 1; // अनुक्रम नंबर
+          row[key] = index + 1;
+        } else if (key === 'name') {
+          row[key] = toProperCase(p.name); // 🎯 एक्सेलमध्ये सुबक प्रॉपर केस नाव
         } else if (key === 'createdAt' || key === 'updatedAt') {
-          // जर तारीख ऑब्जेक्ट स्वरूपात असेल तर तिला स्ट्रिंग बनवू, नाहीतर तशीच ठेवू
           row[key] = p[key]?.seconds 
             ? new Date(p[key].seconds * 1000).toLocaleString() 
             : (p[key] || '—');
         } else {
-          // बाकी सर्व डेटाबेस व्हॅल्यूज (Pending, Done, Yes, No, Belt, Towel) जशाच्या तशा!
           row[key] = p[key] !== undefined && p[key] !== null && p[key] !== '' ? p[key] : '—';
         }
       });
@@ -127,12 +135,10 @@ export default function Reports({ userTeamName, onBack }) {
       return row;
     });
 
-    // ३. शीट आणि वर्कबुक तयार करणे
     const worksheet = XLSX.utils.json_to_sheet(excelData, { header: columnOrder });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Players_Master_List");
 
-    // ४. कॉलमची रुंदी ऑटोमॅटिक सेट करणे (जेणेकरून नावे किंवा डिटेल्स कट होणार नाहीत)
     const max_widths = columnOrder.map(key => {
       const maxLen = Math.max(
         ...excelData.map(obj => (obj[key] ? obj[key].toString().length : 0)),
@@ -142,7 +148,6 @@ export default function Reports({ userTeamName, onBack }) {
     });
     worksheet['!cols'] = max_widths;
 
-    // ५. फाईल डाऊनलोड करणे
     const formattedTeamName = userTeamName ? userTeamName.replace(/\s+/g, '_').toUpperCase() : "TEAM";
     XLSX.writeFile(workbook, `${formattedTeamName}_RAW_BACKUP_${new Date().getFullYear()}.xlsx`);
   };
@@ -155,7 +160,7 @@ export default function Reports({ userTeamName, onBack }) {
       const orderA = sizeOrder[a.tshirt?.toUpperCase()] || 99;
       const orderB = sizeOrder[b.tshirt?.toUpperCase()] || 99;
       if (orderA !== orderB) return orderA - orderB;
-      return a.name.localeCompare(b.name);
+      return toProperCase(a.name).localeCompare(toProperCase(b.name));
     });
 
     const counts = players.reduce((acc, p) => { 
@@ -222,7 +227,7 @@ export default function Reports({ userTeamName, onBack }) {
                 return `
                   <tr>
                     <td>${index + 1}</td>
-                    <td style="font-weight: 500;">${p.name}</td>
+                    <td style="font-weight: 500;">${toProperCase(p.name)}</td>
                     <td style="font-weight: bold;">${p.tshirt || '-'}</td>
                     <td>${p.shorts || '-'}</td>
                     <td>
@@ -245,19 +250,23 @@ export default function Reports({ userTeamName, onBack }) {
     printWindow.print();
   };
 
- // --- INSURANCE PRINT FUNCTION (🎯 वय १४ वर्षे पूर्ण पॅच) ---
+  // --- INSURANCE PRINT FUNCTION (🎯 आद्याक्षराप्रमाणे सॉर्टिंग A-Z + १४ वर्ष अट पॅच) ---
   const handleInsurancePrint = () => {
     const currentYear = new Date().getFullYear();
 
-    // 🎯 कडक बदल: विमा Pending असणारे आणि वय १४ किंवा त्याहून अधिक असणारे खेळाडू फिल्टर करणे
-    const pendingPlayers = players.filter(p => {
+    // 🎯 विमा Pending असणारे आणि वय १४ किंवा त्याहून अधिक असणारे खेळाडू
+    let pendingPlayers = players.filter(p => {
       const isPending = !p.insurance || p.insurance === 'Pending';
       const age = calculateAge(p.dob || p.birthDate || p.dobString);
-      
-      // जर वय आकड्यात असेल, तर ते १४ किंवा मोठे असावे
       const isAgeValid = age !== '—' && !isNaN(age) ? age >= 14 : false;
-      
       return isPending && isAgeValid;
+    });
+
+    // 🎯 [NEW]: नाव शोधणे सोपे जाण्यासाठी अद्याक्षराप्रमाणे (A to Z) सॉर्ट करणे
+    pendingPlayers.sort((a, b) => {
+      const nameA = toProperCase(a.name);
+      const nameB = toProperCase(b.name);
+      return nameA.localeCompare(nameB);
     });
 
     const totalPending = pendingPlayers.length;
@@ -286,7 +295,7 @@ export default function Reports({ userTeamName, onBack }) {
             <thead>
               <tr>
                 <th style="width: 60px;" class="text-center">SR No.</th>
-                <th>Name</th>
+                <th>Name (Alphabetical A-Z)</th>
                 <th style="width: 100px;" class="text-center">Age</th>
               </tr>
             </thead>
@@ -295,7 +304,7 @@ export default function Reports({ userTeamName, onBack }) {
                 pendingPlayers.map((p, index) => `
                   <tr>
                     <td class="text-center">${index + 1}</td>
-                    <td>${p.name}</td>
+                    <td>${toProperCase(p.name)}</td>
                     <td class="text-center">${calculateAge(p.dob || p.birthDate || p.dobString)}</td>
                   </tr>
                 `).join('') 
@@ -316,9 +325,8 @@ export default function Reports({ userTeamName, onBack }) {
   // --- LOADING UI ---
   if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-[#ff6600]" /></div>;
 
- // --- MAIN RENDER UI ---
+  // --- MAIN RENDER UI ---
   return (
-    /* 🎯 बदल: 'min-h-screen' आणि मॅन्युअल पॅडिंग काढून कंटेनर एकदम फ्लॅट आणि सुटसुटीत केला, जेणेकरून तो डॅशबोर्डमध्ये परफेक्ट बसेल */
     <div className="w-full bg-transparent">
       
       {/* 🟢 मुख्य रिपोर्ट्स ग्रिड */}
@@ -338,7 +346,7 @@ export default function Reports({ userTeamName, onBack }) {
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div>
             <h2 className="font-black mb-4 flex items-center gap-2 text-slate-800"><ShieldCheck size={20} className="text-emerald-600"/> विमा अहवाल</h2>
-            <p className="text-xs font-medium text-slate-400 mb-6">ज्या खेळाडूंचा विमा प्रलंबित (Pending) आहे, त्यांची यादी वयानुसार प्रिंट करा.</p>
+            <p className="text-xs font-medium text-slate-400 mb-6">ज्या खेळाडूंचा विमा प्रलंबित (Pending) आहे, त्यांची यादी अद्याक्षराप्रमाणे (A-Z) वयानुसार प्रिंट करा.</p>
           </div>
           <button onClick={handleInsurancePrint} className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all active:scale-95">
             <Printer size={16} /> प्रिंट विमा रिपोर्ट
@@ -346,7 +354,7 @@ export default function Reports({ userTeamName, onBack }) {
         </div>
       </div>
 
-      {/* 📊 नवीन कडक विभाग: एक्सेल डेटा बॅकअप */}
+      {/* 📊 एक्सेल डेटा बॅकअप */}
       <div className="max-w-4xl">
         <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 p-6 rounded-3xl border border-emerald-500/20 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>

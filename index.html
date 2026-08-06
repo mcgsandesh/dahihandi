@@ -6,26 +6,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Maharashtracha Govinda</title>
 
-    <!-- 💸 गुगल ॲडसेन्स मुख्य लायब्ररी स्क्रिप्ट (फक्त एकदाच संपूर्ण ॲपसाठी) 🚀 -->
+    <!-- 💸 गुगल ॲडसेन्स मुख्य लायब्ररी स्क्रिप्ट -->
     <script 
       async 
       src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3159634487006142" 
       crossorigin="anonymous">
     </script>
-    
 
-<script type="text/javascript">
+    <!-- 🎯 404.html वरून येणारी लिंक अचूक री-स्टोअर करणारी कडक स्क्रिप्ट -->
+    <script type="text/javascript">
       (function(l) {
         if (l.search[1] === 'p') {
           var pairs = l.search.slice(1).split('&');
           var r = pairs[0].split('=')[1].replace(/~and~/g, '&');
           if (r.slice(-1) === '/') r = r.slice(0, -1);
+          
+          // 🎯 ?t= किंवा इतर क्विरी पॅरामीटर्स योग्यरित्या री-स्टोअर करणे (q= काढून टाकणे)
+          var queryString = '';
+          if (pairs.length > 1) {
+            var rawQuery = pairs.slice(1).join('&').replace(/~and~/g, '&');
+            if (rawQuery.startsWith('q=')) {
+              rawQuery = rawQuery.slice(2); // q= काढून टाकणे
+            }
+            queryString = '?' + rawQuery;
+          }
+
           if (r !== '') {
-            // 🔥 सर्वात महत्वाचं: हा कोड pathname मध्ये पुन्हा '/dahihandi/parle-sports-club/register' सेट करेल
-            // ज्यामुळे App.jsx मधील .includes('/register') चा चेक १००% गॅरंटीने ट्रिगर होईल!
             window.history.replaceState(null, null,
               l.pathname.slice(0, -1) + (r.startsWith('/') ? r : '/' + r) +
-              (pairs[1] ? '?' + pairs.slice(1).join('&').replace(/~and~/g, '&') : '') +
+              queryString +
               l.hash
             );
           }
@@ -33,7 +42,7 @@
       }(window.location));
     </script>
     
-    <script type="module" crossorigin src="/assets/index-DpWHcgLL.js"></script>
+    <script type="module" crossorigin src="/assets/index-CLP2K9hN.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-Bc7u0Pg1.css">
   <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:inline-sw">if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/sw.js', { scope: '/' })})}</script></head>
   <body>

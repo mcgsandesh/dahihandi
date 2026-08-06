@@ -170,35 +170,86 @@ export default function TeamDashboard({ user, onLogout }) {
     return () => unsubscribeUser();
   }, [user]);
 
-  // 🔄 Players Cached Fetch Engine
+  // 🔄 🎯 [HYBRID ENGINE]: Cache (Instant Render) + Live Firestore onSnapshot Sync (Auto-Sync)
+  useEffect(() => {
+    const teamIdentifier = user.teamUID || user.uid;
+    if (!teamIdentifier || !hasFormAccess) return;
+
+    const CACHE_KEY = `govinda_players_cache_${teamIdentifier}`;
+
+    // 1️⃣ पायरी १: लोकल मेमरीमधून डेटा तात्काळ दाखवणे
+    try {
+      const cachedPlayers = localStorage.getItem(CACHE_KEY);
+      if (cachedPlayers) {
+        const parsedData = JSON.parse(cachedPlayers);
+        setPlayersList(parsedData);
+      }
+    } catch (err) {
+      console.error("Cache read error:", err);
+    }
+
+    // 2️⃣ पायरी २: बॅकग्राउंडमध्ये Firestore Live onSnapshot
+    const playersRef = collection(db, "players");
+    const q = query(playersRef, where("teamUID", "==", teamIdentifier));
+
+    const unsubscribePlayers = onSnapshot(q, (snapshot) => {
+      const freshPlayers = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.isDeleted !== true) {
+          freshPlayers.push({ id: docSnap.id, ...data });
+        }
+      });
+
+      setPlayersList(freshPlayers);
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(freshPlayers));
+      } catch (err) {
+        console.error("Cache save error:", err);
+      }
+    }, (error) => {
+      console.error("❌ [Live Listener Error]:", error);
+      fetchTeamPlayers(true);
+    });
+
+    return () => unsubscribePlayers();
+  }, [user, hasFormAccess]);
+
+  // 🔄 फॉलबॅक मॅन्युअल रिफ्रेश फंकशन
   const fetchTeamPlayers = async (forceServer = false) => {
     const teamIdentifier = user.teamUID || user.uid;
     if (!teamIdentifier || !hasFormAccess) return;
 
-    const playersRef = collection(db, "players");
-    const q = query(playersRef, where("teamUID", "==", teamIdentifier));
-    let querySnapshot;
-
     try {
-      if (forceServer) throw new Error("Server Refresh Forced");
-      querySnapshot = await getDocsFromCache(q);
-    } catch (err) {
-      querySnapshot = await getDocs(q);
-    }
-
-    const players = [];
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      if (data.isDeleted !== true) {
-        players.push({ id: doc.id, ...data });
+      const playersRef = collection(db, "players");
+      const q = query(playersRef, where("teamUID", "==", teamIdentifier));
+      
+      let querySnapshot;
+      if (forceServer) {
+        querySnapshot = await getDocs(q);
+      } else {
+        try {
+          querySnapshot = await getDocsFromCache(q);
+          if (querySnapshot.empty) {
+            querySnapshot = await getDocs(q);
+          }
+        } catch (err) {
+          querySnapshot = await getDocs(q);
+        }
       }
-    });
-    setPlayersList(players);
-  };
 
-  useEffect(() => {
-    fetchTeamPlayers(false);
-  }, [user, hasFormAccess]);
+      const players = [];
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.isDeleted !== true) {
+          players.push({ id: docSnap.id, ...data });
+        }
+      });
+      setPlayersList(players);
+    } catch (err) {
+      console.error("Manual fetch error:", err);
+    }
+  };
 
   const handleFastToggleInsurance = async (id, currentStatus) => {
     const nextStatus = currentStatus === 'Done' || currentStatus === 'झालेले' ? 'Pending' : 'Done';
@@ -268,7 +319,7 @@ export default function TeamDashboard({ user, onLogout }) {
         });
         Swal.fire({ icon: 'success', title: 'नोंदणी पूर्ण!', text: 'खेळाडू यशस्वी जोडला गेला.', confirmButtonColor: '#ff6600' });
       }
-      setIsModalOpen(false); fetchTeamPlayers(false);
+      setIsModalOpen(false);
     } catch (err) { 
       console.error(err); Swal.fire({ icon: 'error', title: 'त्रुटी!', text: 'अडचण आली.' }); 
     } finally { setLoading(false); }
@@ -493,7 +544,7 @@ export default function TeamDashboard({ user, onLogout }) {
                 <div className="absolute top-4 right-4 z-30">
                   <button onClick={() => setIsEditMode(!isEditMode)} className={`p-1.5 rounded-xl transition-all shadow-xs ${isEditMode ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}><Edit2 size={14} /></button>
                 </div>
-                {/* 🎯 [HERE IS THE FIX]: onOpenEventModal प्रॉप पास केली आहे */}
+                {/* 🎯 onOpenEventModal प्रॉप जोडली आहे */}
                 <TeamProfile 
                   user={user} 
                   teamData={teamData} 
@@ -570,7 +621,7 @@ export default function TeamDashboard({ user, onLogout }) {
         </div>
       )}
 
-      {/* 🎯 [NEW]: इव्हेंट नोंदणी मॉडेल पॉप-अप */}
+      {/* 🎯 इव्हेंट नोंदणी मॉडेल पॉप-अप */}
       <TeamEventModal 
         isOpen={isEventModalOpen} 
         onClose={() => setIsEventModalOpen(false)} 

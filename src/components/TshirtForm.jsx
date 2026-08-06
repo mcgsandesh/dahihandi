@@ -56,7 +56,7 @@ console.log("DEBUG TshirtForm - Belt Enabled:", isBeltEnabled, "| Towel Enabled:
             required 
             value={formData.playerName || ''} 
             onChange={(e) => handleChange('playerName', e.target.value)} 
-            placeholder="उदा. राहुल पाटील" 
+            placeholder="Ex. Ramesh Patil" 
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#ff6600] bg-white font-medium text-slate-800" 
           />
         </div>
